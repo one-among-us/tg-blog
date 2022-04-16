@@ -1,9 +1,13 @@
 # Vue 3 TS + Vite + Vue Router + SASS Template
 
+Demo: https://template.hydev.org/
+
 Usage:
 
 1. Clone this repo
 2. Change project name in package.json
+3. `yarn install`
+4. `yarn serve`
 
 ## Info
 
