@@ -17,6 +17,17 @@
             <div class="img" v-for="i in p.images" :key="i[0]"
                  :style="{'background-image': `url(${i.url})`, ...getImageStyle(p, i)}"></div>
         </div>
+        <div class="files" v-if="p.files">
+            <div class="file" v-for="f in p.files" :key="f">
+                <div class="audio" v-if="f.media_type === 'audio_file'">
+                    <div class="audio-thumb">
+                        <img class="thumb" :src="f.thumb" :alt="f.url"/>
+                        <div class="icon fbox-center"><i class="fa-solid fa-play"></i></div>
+                    </div>
+                    Audio
+                </div>
+            </div>
+        </div>
         <div class="text" v-html="text"></div>
         <div class="info font-code unselectable">
             <div class="id">#{{p.id}}</div>
@@ -147,6 +158,25 @@ export default class PostView extends Vue
         i
             font-size: 0.8em
             margin-left: 4px
+
+    .file
+        .thumb, .icon
+            border-radius: 10000px
+            width: 50px
+            height: 50px
+            object-fit: cover
+
+        .audio-thumb
+            position: relative
+            .icon
+                position: absolute
+                left: 0
+                top: 0
+                color: white
+                font-size: 1.5em
+                background: rgba(0, 0, 0, 0.25)
+                opacity: 0.8
+
 </style>
 
 <style lang="sass">

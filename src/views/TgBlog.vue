@@ -37,7 +37,11 @@ export default class TgBlog extends Vue
             {
                 it.images?.forEach(img => img.url = this.replaceUrl(img.url))
                 if (it.reply?.thumb) it.reply.thumb = this.replaceUrl(it.reply.thumb)
-                if (it.video?.thumb) it.video.thumb = this.replaceUrl(it.video.thumb)
+                it.files?.forEach(f =>
+                {
+                    f.url = this.replaceUrl(f.url)
+                    if (f.thumb) f.thumb = this.replaceUrl(f.thumb)
+                })
             })
             console.log(it)
             setTimeout(() => initSpoilers(), 100);
