@@ -1,3 +1,5 @@
+export type MediaType = "audio_file" | "animation" | "video_file" | "sticker" | "voice_message"
+
 export interface Image {
   url: string
   width: number
@@ -7,7 +9,7 @@ export interface Image {
 export interface File {
   url: string
   mime_type: string
-  media_type?: string // If media_type is null, then it's not a media, just a regular file
+  media_type?: MediaType // If media_type is null, then it's not a media, just a regular file
   size: number // Bytes
   thumb?: string
 
@@ -34,7 +36,7 @@ export interface Post {
     thumb?: string
   }
   images?: Image[]
-  file?: File[]
+  files?: File[]
 }
 // TODO: Other files types (i.e. pdf)
 // TODO: Video
