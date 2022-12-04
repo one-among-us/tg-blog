@@ -19,6 +19,7 @@
         </div>
         <div class="files" v-if="p.files">
             <div class="file" v-for="f in p.files" :key="f">
+                <!-- Files -->
                 <div class="thumb" v-if="shouldDisplayDetail(f)">
                     <img v-if="f.thumb" :src="f.thumb" :alt="f.url"/>
                     <div v-if="f.media_type === 'audio_file'" class="icon fbox-center">
@@ -34,6 +35,15 @@
                         <span class="duration" v-if="f.duration">{{durationFmt(f.duration)}}</span>
                         <span class="size" v-if="f.size">{{sizeFmt(f.size)}}</span>
                     </div>
+                </div>
+
+                <!-- Stickers -->
+                <div class="sticker" v-if="f.media_type === 'sticker'">
+                    <video v-if="f.url.endsWith('webm')" :src="f.url"
+                           preload="auto" muted autoplay loop playsinline disablepictureinpicture>
+                        <img v-if="f.thumb" :src="f.thumb">
+                    </video>
+                    <img v-else :src="f.url"/>
                 </div>
             </div>
         </div>
@@ -247,6 +257,10 @@ export default class PostView extends Vue
                 font-size: 1.5em
                 background: rgba(0, 0, 0, 0.25)
                 opacity: 0.8
+
+        .sticker
+            > *
+                width: 120px
 
 </style>
 
