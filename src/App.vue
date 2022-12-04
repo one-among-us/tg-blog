@@ -1,21 +1,16 @@
 <template>
-  <p>
-    <!-- use the router-link component for navigation. -->
-    <!-- specify the link by passing the `to` prop. -->
-    <!-- `<router-link>` will render an `<a>` tag with the correct `href` attribute -->
-    <router-link class="rlink" to="/">Home</router-link>
-    |
-    <router-link class="rlink" to="/about">About</router-link>
-  </p>
-
-  <!-- route outlet -->
-  <!-- component matched by the route will render here -->
-  <router-view></router-view>
+    <TgBlog postsUrl="https://profile-api.hydev.org/posts.json"></TgBlog>
 </template>
 
-<script setup lang="ts">
-// This starter template is using Vue 3 <script setup> SFCs
-// Check out https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup
+<script lang="ts">
+import {Options, Vue} from "vue-class-component";
+import TgBlog from "@/views/TgBlog.vue";
+
+@Options({components: {TgBlog}})
+export default class App extends Vue
+{
+
+}
 </script>
 
 <style lang="sass">
