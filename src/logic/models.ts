@@ -27,6 +27,7 @@ export interface Post {
   forwarded_from?: string
   type?: string // If type doesn't exist, it's a regular message
   views?: string // Service messages have no view count
+  author?: string
   reply?: {
     id: number
     text: string

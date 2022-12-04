@@ -21,6 +21,7 @@
         <div class="info font-code unselectable">
             <div class="id">#{{p.id}}</div>
             <div class="f-grow1"></div>
+            <div class="author" v-if="p.author">{{p.author}}</div>
             <div class="date">{{p.date}}</div>
             <div class="views" v-if="p.views">{{p.views}}<i class="fas fa-eye"/></div>
         </div>
