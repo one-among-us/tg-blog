@@ -1,5 +1,8 @@
 <template>
     <div class="post card" :class="{'service': p.type === 'service'}">
+        <div class="head unselectable">
+            <div class="forward" v-if="p.forwarded_from">Forwarded from: {{p.forwarded_from}}</div>
+        </div>
         <div class="reply" v-if="p.reply">
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
             <div class="mtext"><span v-html="p.reply.text"></span></div>
@@ -25,7 +28,7 @@
 import {Options, Vue} from 'vue-class-component';
 import {Prop} from "vue-property-decorator";
 import {Image, Post} from "@/logic/models";
-import { mdParse, mdParseInline } from '@/logic/spoilers';
+import { mdParseInline } from '@/logic/spoilers';
 
 @Options({components: {}})
 export default class PostView extends Vue
@@ -60,6 +63,11 @@ export default class PostView extends Vue
         margin-bottom: 10px
     > *:last-child
         margin-bottom: 0
+
+    .head
+        .forward
+            color: $color-text-special-dark
+            font-weight: bold
 
     .reply
         display: flex

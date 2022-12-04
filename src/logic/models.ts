@@ -9,7 +9,7 @@ export interface Post {
   date: string
 
   text?: string
-  forwarded_From?: string
+  forwarded_from?: string
   type?: string // If type doesn't exist, it's a regular message
   views?: string // Service messages have no view count
   reply?: {
@@ -25,5 +25,5 @@ export interface Post {
   images?: Image[]
 }
 // TODO: Other files types (i.e. pdf)
-// TODO: Forwared from
 // TODO: Video
+// TODO: Author
