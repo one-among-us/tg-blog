@@ -18,7 +18,7 @@
                  :style="{'background-image': `url(${i.url})`, ...getImageStyle(p, i)}"></div>
         </div>
         <div class="files" v-if="p.files">
-            <div class="file" v-for="f in p.files" :key="f">
+            <div class="file" v-for="f in p.files">
                 <!-- Files -->
                 <div class="thumb" v-if="shouldDisplayDetail(f)">
                     <img v-if="f.thumb" :src="f.thumb" :alt="f.url"/>
@@ -39,11 +39,11 @@
 
                 <!-- Stickers -->
                 <div class="sticker" v-if="f.media_type === 'sticker'">
-                    <video v-if="f.url.endsWith('webm')" :src="f.url"
+                    <video v-if="f.url.toLowerCase().endsWith('webm')" :src="f.url"
                            preload="auto" muted autoplay loop playsinline disablepictureinpicture>
-                        <img v-if="f.thumb" :src="f.thumb">
+                        <img v-if="f.thumb" :src="f.thumb" alt="">
                     </video>
-                    <img v-else :src="f.url"/>
+                    <img v-else :src="f.url" alt=""/>
                 </div>
             </div>
         </div>
