@@ -1,11 +1,14 @@
 <template>
-    <div class="post card" :class="{'service': p.type === 'service'}">
+    <div class="post card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}">
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">Forwarded from: {{p.forwarded_from}}</div>
         </div>
         <div class="reply" v-if="p.reply">
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
-            <div class="mtext"><span v-html="p.reply.text"></span></div>
+            <div class="mtext unselectable">
+                <div class="reply-to">Reply to:</div>
+                <span v-html="p.reply.text"></span>
+            </div>
         </div>
         <div class="images" v-if="p.images && p.images.length === 1">
             <img v-for="i in p.images" :key="i.url" :src="i.url" alt="image">
@@ -64,26 +67,26 @@ export default class PostView extends Vue
     > *:last-child
         margin-bottom: 0
 
-    .head
-        .forward
-            color: $color-text-special-dark
-            font-weight: bold
+    .forward, .reply-to
+        color: $color-text-special-dark
+        font-weight: bold
 
     .reply
         display: flex
-        font-size: 0.8em
+        //font-size: 0.9em
 
         .thumb
             margin-left: 10px
-            height: 40px
-            width: 40px
+            height: 35px
+            width: 35px
             object-fit: cover
 
         .mtext
             flex: 1
             max-height: 40px
             margin-left: 10px
-            color: lighten($color-text-main, 20)
+            //color: lighten($color-text-main, 20)
+            color: $color-text-light
             display: -webkit-box
             -webkit-line-clamp: 2 /* number of lines to show */
             line-clamp: 2
