@@ -10,10 +10,10 @@ export function initSpoilers()
 
   console.log("Spoilers initialized.")
 
-  for (const spoiler of spoilers)
+  spoilers.forEach(spoiler =>
   {
     // Already initialized
-    if (spoiler.classList.contains("spoiler-init")) continue
+    if (spoiler.classList.contains("spoiler-init")) return
     spoiler.classList.add("spoiler-init")
 
     // Add event listener
@@ -22,7 +22,7 @@ export function initSpoilers()
         spoiler.classList.toggle("spoiler-visible")
         console.log(`Spoiler clicked: ${spoiler}`);
     })
-  }
+  })
 }
 
 /**
