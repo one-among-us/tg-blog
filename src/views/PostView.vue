@@ -103,7 +103,7 @@ export default class PostView extends Vue
         margin: 0 -20px 10px
 
     .images
-        margin: -12px -20px 10px
+        margin: -22px -20px 10px
         display: flex
 
         .img
