@@ -24,7 +24,16 @@
                         <img class="thumb" :src="f.thumb" :alt="f.url"/>
                         <div class="icon fbox-center"><i class="fa-solid fa-play"></i></div>
                     </div>
-                    Audio
+                    <div class="detail">
+                        <div class="song" v-if="f.title || f.performer">
+                            <span class="performer" v-if="f.performer">{{f.performer}} - </span>
+                            <span class="title" v-if="f.title">{{f.title}}</span>
+                        </div>
+                        <div class="file-detail">
+                            <span class="duration" v-if="f.duration">{{durationFmt(f.duration)}}</span>
+                            <span class="size" v-if="f.size">{{sizeFmt(f.size)}}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -44,6 +53,7 @@ import {Options, Vue} from 'vue-class-component';
 import {Prop} from "vue-property-decorator";
 import {Image, Post} from "@/logic/models";
 import { mdParseInline } from '@/logic/spoilers';
+import moment from "moment";
 
 @Options({components: {}})
 export default class PostView extends Vue
@@ -54,6 +64,24 @@ export default class PostView extends Vue
     {
         if (!this.p.text) return undefined
         return mdParseInline(this.p.text)
+    }
+
+    durationFmt(duration: number): string
+    {
+        return moment.utc(moment.duration(duration, "seconds").asMilliseconds()).format("mm:ss")
+    }
+
+    sizeFmt(size: number): string
+    {
+        for (const unit of ["B", "KiB", "MiB", "GiB", "TiB", "PiB"])
+        {
+            if (Math.abs(size) < 1024.0)
+            {
+                return `${size.toFixed(1)} ${unit}`
+            }
+            size /= 1024.0
+        }
+        return "> 1024 PiB"
     }
 
     getImageStyle(post: Post, i: Image): object
