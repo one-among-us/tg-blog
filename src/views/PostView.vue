@@ -24,8 +24,8 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {Prop} from "vue-property-decorator";
-import linkifyUrls from 'linkify-urls';
 import {Image, Post} from "@/logic/models";
+import { mdParse, mdParseInline } from '@/logic/spoilers';
 
 @Options({components: {}})
 export default class PostView extends Vue
@@ -35,7 +35,7 @@ export default class PostView extends Vue
     get text(): string | undefined
     {
         if (!this.p.text) return undefined
-        return linkifyUrls(this.p.text)
+        return mdParseInline(this.p.text)
     }
 
     getImageStyle(post: Post, i: Image): object

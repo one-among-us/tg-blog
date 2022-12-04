@@ -10,6 +10,7 @@ import moment from "moment";
 import {Prop} from "vue-property-decorator";
 import {Post} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
+import { initSpoilers } from '@/logic/spoilers';
 
 @Options({components: {PostView}})
 export default class TgBlog extends Vue
@@ -27,6 +28,11 @@ export default class TgBlog extends Vue
             this.posts = this.posts.filter(it => it.type !== 'service')
             console.log(it)
         })
+    }
+
+    mounted(): void
+    {
+        initSpoilers()
     }
 }
 </script>
