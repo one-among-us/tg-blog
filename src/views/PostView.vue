@@ -2,7 +2,7 @@
     <div class="post card" :class="{'service': p.type === 'service'}">
         <div class="reply" v-if="p.reply">
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
-            <div class="mtext"><span>{{p.reply.text}}</span></div>
+            <div class="mtext"><span v-html="p.reply.text"></span></div>
         </div>
         <div class="images" v-if="p.images && p.images.length === 1">
             <img v-for="i in p.images" :key="i.url" :src="i.url" alt="image">
