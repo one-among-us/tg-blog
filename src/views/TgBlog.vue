@@ -61,7 +61,7 @@ export default class TgBlog extends Vue
 
 #Life
     margin: 20px auto
-    font-size: 0.8em
+    font-size: 1em
     width: min(450px, 80vw)
 
     #header
