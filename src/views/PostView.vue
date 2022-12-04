@@ -3,9 +3,9 @@
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">Forwarded from: {{p.forwarded_from}}</div>
         </div>
-        <div class="reply" v-if="p.reply">
+        <div class="reply undraggable clickable" v-if="p.reply">
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
-            <div class="mtext unselectable">
+            <div class="mtext">
                 <div class="reply-to">Reply to:</div>
                 <span v-html="p.reply.text"></span>
             </div>

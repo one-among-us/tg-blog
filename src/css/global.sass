@@ -24,6 +24,17 @@ $c-highlight: #ff7878
 .unselectable
   @include unselectable
 
+@mixin undraggable
+  user-drag: none
+  -webkit-user-drag: none
+  @include unselectable
+
+.undraggable
+  @include undraggable
+
+  img
+    @include undraggable
+
 // Clickable text
 .clickable:hover
   cursor: pointer
