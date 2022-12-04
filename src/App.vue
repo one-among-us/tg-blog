@@ -1,5 +1,5 @@
 <template>
-    <TgBlog postsUrl="https://profile-api.hydev.org/posts.json"></TgBlog>
+    <TgBlog postsUrl="http://localhost:8092/posts.json"></TgBlog>
 </template>
 
 <script lang="ts">
