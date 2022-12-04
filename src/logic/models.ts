@@ -4,6 +4,21 @@ export interface Image {
   height: number
 }
 
+export interface File {
+  url: string
+  mime_type: string
+  media_type?: string // If media_type is null, then it's not a media, just a regular file
+  size: number // Bytes
+  thumb?: string
+
+  duration?: number
+  width?: number
+  height?: number
+  sticker_emoji?: string
+  title?: string
+  performer?: string
+}
+
 export interface Post {
   id: number
   date: string
@@ -17,12 +32,8 @@ export interface Post {
     text: string
     thumb?: string
   }
-  video?: {
-    thumb: string
-    duration: string
-    src: string
-  }
   images?: Image[]
+  file?: File[]
 }
 // TODO: Other files types (i.e. pdf)
 // TODO: Video

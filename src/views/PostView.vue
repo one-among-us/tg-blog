@@ -51,6 +51,7 @@ export default class PostView extends Vue
 
     clickReply()
     {
+        // Scroll to the reply message
         document.getElementById(`message-${this.p.reply.id}`).scrollIntoView({ behavior: 'smooth', block: 'end'})
     }
 }
