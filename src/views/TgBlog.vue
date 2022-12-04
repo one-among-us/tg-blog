@@ -19,6 +19,12 @@ export default class TgBlog extends Vue
 
     @Prop({required: true}) postsUrl: string
 
+    
+    replaceUrl(url: string): string
+    {
+        return new URL(url, this.postsUrl).toString();
+    }
+
     created(): void
     {
         fetch(this.postsUrl).then(it => it.json()).then(it => {
@@ -26,11 +32,19 @@ export default class TgBlog extends Vue
             this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD h:mm'))
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
+            // Replace URLs
+            this.posts.forEach(it => 
+            {
+                it.images?.forEach(img => img.url = this.replaceUrl(img.url))
+                if (it.reply?.thumb) it.reply.thumb = this.replaceUrl(it.reply.thumb)
+                if (it.video?.thumb) it.video.thumb = this.replaceUrl(it.video.thumb)
+            })
             console.log(it)
+            setTimeout(() => initSpoilers(), 100);
         })
     }
 
-    mounted(): void
+    updated(): void
     {
         initSpoilers()
     }
