@@ -3,7 +3,7 @@
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">Forwarded from: {{p.forwarded_from}}</div>
         </div>
-        <div class="reply undraggable clickable" v-if="p.reply">
+        <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
             <div class="mtext">
                 <div class="reply-to">Reply to:</div>
@@ -47,6 +47,11 @@ export default class PostView extends Vue
     getImageStyle(post: Post, i: Image): object
     {
         return {}
+    }
+
+    clickReply()
+    {
+        document.getElementById(`message-${this.p.reply.id}`).scrollIntoView({ behavior: 'smooth', block: 'end'})
     }
 }
 </script>
