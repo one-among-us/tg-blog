@@ -1,20 +1,19 @@
 export interface Image {
-  href: string
   url: string
   width: number
   height: number
 }
 
 export interface Post {
-  id: string
+  id: number
   date: string
 
   text?: string
-
+  forwarded_From?: string
   type?: string // If type doesn't exist, it's a regular message
   views?: string // Service messages have no view count
   reply?: {
-    url: string
+    id: number
     text: string
     thumb?: string
   }
@@ -25,3 +24,6 @@ export interface Post {
   }
   images?: Image[]
 }
+// TODO: Other files types (i.e. pdf)
+// TODO: Forwared from
+// TODO: Video
