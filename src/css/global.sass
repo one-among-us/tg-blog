@@ -130,3 +130,21 @@ $c-highlight: #ff7878
   overflow-x: hidden
   box-sizing: border-box
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -1px rgb(0 0 0 / 6%)
+
+.spoiler
+  @include unselectable
+  cursor: pointer
+  transition: all .4s ease
+  background-color: $color-text-light
+  margin: 0 1px
+  border-radius: 3px
+
+  span
+    opacity: 0
+
+.spoiler.spoiler-visible
+  background-color: transparent
+
+  span
+    filter: blur(0)
+    opacity: 1
