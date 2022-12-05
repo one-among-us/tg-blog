@@ -1,4 +1,8 @@
 <template>
+    <div class="error card" v-if="fail">
+        <h2>Failed loading posts from: <br>{{postsUrl}}</h2>
+        {{fail}}
+    </div>
     <div id="Life" v-if="posts.length !== 0">
         <PostView :p="p" v-for="p in posts" :key="p.id" @play="a => audio = a" />
         <AudioPlayer :audio="audio" v-if="audio"
@@ -24,6 +28,8 @@ export default class TgBlog extends Vue
 
     audio?: TGFile = null
 
+    fail: string = null
+
     get audios(): TGFile[]
     {
         return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
@@ -47,7 +53,7 @@ export default class TgBlog extends Vue
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
             // Replace URLs
-            this.posts.forEach(it => 
+            this.posts.forEach(it =>
             {
                 it.images?.forEach(img => img.url = this.replaceUrl(img.url))
                 if (it.reply?.thumb) it.reply.thumb = this.replaceUrl(it.reply.thumb)
@@ -64,6 +70,8 @@ export default class TgBlog extends Vue
 
             console.log(it)
             setTimeout(() => initSpoilers(), 100);
+        }).catch(it => {
+            this.fail = it
         })
     }
 
