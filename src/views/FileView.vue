@@ -14,7 +14,7 @@
         <div class="detail fbox-vcenter">
             <div class="title" v-if="fileTitle">{{fileTitle}}</div>
             <div class="file-detail">
-                <span class="duration" v-if="f.duration">{{durationFmt(f.duration)}}</span>
+                <span class="duration" v-if="f.duration">{{duration}}</span>
                 <span class="size" v-if="f.size">{{size}}</span>
             </div>
         </div>
@@ -41,9 +41,10 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {File} from "@/logic/models";
+import {TGFile} from "@/logic/models";
 import moment from "moment/moment";
-import {Prop} from "vue-property-decorator";
+import {Emit, Prop} from "vue-property-decorator";
+import {durationFmt, sizeFmt} from "@/logic/formatter";
 
 function downloadURI(uri, name)
 {
@@ -60,7 +61,7 @@ function downloadURI(uri, name)
 @Options({components: {}})
 export default class FileView extends Vue
 {
-    @Prop({required: true}) f: File
+    @Prop({required: true}) f: TGFile
     @Prop({required: true}) hasHead: boolean
 
     fileThumbClick()
@@ -68,7 +69,13 @@ export default class FileView extends Vue
         // Is regular file, download
         if (!this.f.media_type)
             return downloadURI(this.f.url, this.f.url.split("/").slice(-1)[0])
+
+        // Is audio, emit event
+        this.play()
     }
+
+    @Emit('play')
+    play() { return this.f }
 
     get shouldDisplayDetail(): boolean
     {
@@ -98,28 +105,8 @@ export default class FileView extends Vue
         }
     }
 
-    durationFmt(duration: number): string
-    {
-        return moment.utc(moment.duration(duration, "seconds").asMilliseconds()).format("mm:ss")
-    }
-
-    get size(): string
-    {
-        return this.sizeFmt(this.f.size)
-    }
-
-    sizeFmt(size: number): string
-    {
-        for (const unit of ["B", "KiB", "MiB", "GiB", "TiB", "PiB"])
-        {
-            if (Math.abs(size) < 1024.0)
-            {
-                return `${size.toFixed(1)} ${unit}`
-            }
-            size /= 1024.0
-        }
-        return "> 1024 PiB"
-    }
+    get duration(): string { return durationFmt(this.f.duration) }
+    get size(): string { return sizeFmt(this.f.size) }
 }
 </script>
 

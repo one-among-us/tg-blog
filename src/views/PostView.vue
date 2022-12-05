@@ -18,7 +18,8 @@
                  :style="{'background-image': `url(${i.url})`, ...getImageStyle(p, i)}"></div>
         </div>
         <div class="files" v-if="p.files">
-            <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)" />
+            <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
+                      @play="e => $emit('play', e)" />
         </div>
         <div class="text" v-html="text"></div>
         <div class="info font-code unselectable">
@@ -141,6 +142,7 @@ export default class PostView extends Vue
     .info
         display: flex
         color: lighten($color-text-main, 40)
+        font-size: 0.9em
         div
             margin: 0 10px
 

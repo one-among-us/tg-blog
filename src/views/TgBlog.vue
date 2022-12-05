@@ -1,6 +1,8 @@
 <template>
     <div id="Life" v-if="posts.length !== 0">
-        <PostView :p="p" v-for="p in posts" :key="p.id"/>
+        <PostView :p="p" v-for="p in posts" :key="p.id" @play="a => audio = a" />
+        <AudioPlayer :audio="audio" v-if="audio"
+                     @prev="audioNext(-1)" @next="audioNext(1)"/>
     </div>
 </template>
 
@@ -8,17 +10,29 @@
 import {Options, Vue} from 'vue-class-component';
 import moment from "moment";
 import {Prop} from "vue-property-decorator";
-import {Post} from "@/logic/models";
+import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import { initSpoilers } from '@/logic/spoilers';
+import AudioPlayer from "@/views/AudioPlayer.vue";
 
-@Options({components: {PostView}})
+@Options({components: {AudioPlayer, PostView}})
 export default class TgBlog extends Vue
 {
     posts: Post[] = []
 
     @Prop({required: true}) postsUrl: string
 
+    audio?: TGFile = null
+
+    get audios(): TGFile[]
+    {
+        return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
+    }
+
+    audioNext(off: number)
+    {
+        this.audio = this.audios.at(this.audios.indexOf(this.audio) + off)
+    }
     
     replaceUrl(url: string): string
     {
@@ -43,6 +57,11 @@ export default class TgBlog extends Vue
                     if (f.thumb) f.thumb = this.replaceUrl(f.thumb)
                 })
             })
+
+            // // TODO: Remove this
+            // this.audio = this.audios[0]
+            // console.log(this.audios)
+
             console.log(it)
             setTimeout(() => initSpoilers(), 100);
         })

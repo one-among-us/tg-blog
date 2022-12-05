@@ -6,7 +6,7 @@ export interface Image {
   height: number
 }
 
-export interface File {
+export interface TGFile {
   url: string
   mime_type: string
   media_type?: MediaType // If media_type is null, then it's not a media, just a regular file
@@ -36,7 +36,7 @@ export interface Post {
     thumb?: string
   }
   images?: Image[]
-  files?: File[]
+  files?: TGFile[]
 }
 // TODO: Other files types (i.e. pdf)
 // TODO: Video
