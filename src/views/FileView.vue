@@ -1,23 +1,23 @@
 <template>
     <!-- Files -->
-    <div class="file" v-if="shouldDisplayDetail(f)">
-        <div class="thumb">
-            <img v-if="f.thumb" :src="f.thumb" :alt="f.url"/>
-            <div v-if="f.media_type === 'audio_file'" class="icon fbox-center">
+    <div class="file" v-if="shouldDisplayDetail">
+        <div class="thumb clickable" @click="fileThumbClick">
+            <img :src="f.thumb ?? 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='" alt=""/>
+            <div v-if="isAudioOrVoice" class="icon fbox-center">
                 <i class="fa-solid fa-play"></i>
             </div>
             <div v-if="!f.media_type" class="icon fbox-center">
                 <i class="fa-solid fa-download"></i>
             </div>
         </div>
+
         <div class="detail fbox-vcenter">
-            <div class="title" v-if="fileTitle(f)">{{fileTitle(f)}}</div>
+            <div class="title" v-if="fileTitle">{{fileTitle}}</div>
             <div class="file-detail">
                 <span class="duration" v-if="f.duration">{{durationFmt(f.duration)}}</span>
-                <span class="size" v-if="f.size">{{sizeFmt(f.size)}}</span>
+                <span class="size" v-if="f.size">{{size}}</span>
             </div>
         </div>
-
     </div>
 
     <!-- Stickers -->
@@ -45,23 +45,50 @@ import {File} from "@/logic/models";
 import moment from "moment/moment";
 import {Prop} from "vue-property-decorator";
 
+function downloadURI(uri, name)
+{
+    const link = document.createElement("a");
+    link.setAttribute('download', name)
+    link.setAttribute("target", "_blank")
+    link.setAttribute("rel", "noopener noreferrer")
+    link.href = uri;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
 @Options({components: {}})
 export default class FileView extends Vue
 {
     @Prop({required: true}) f: File
     @Prop({required: true}) hasHead: boolean
 
-    shouldDisplayDetail(f: File): boolean
+    fileThumbClick()
     {
-        return !f.media_type || f.media_type == 'audio_file'
+        // Is regular file, download
+        if (!this.f.media_type)
+            return downloadURI(this.f.url, this.f.url.split("/").slice(-1)[0])
     }
 
-    fileTitle(f: File): string | undefined
+    get shouldDisplayDetail(): boolean
     {
+        return !this.f.media_type || this.isAudioOrVoice
+    }
+
+    get isAudioOrVoice(): boolean
+    {
+        return this.f.media_type == 'audio_file' || this.f.media_type == 'voice_message'
+    }
+
+    get fileTitle(): string | undefined
+    {
+        const f = this.f
         if (!f.media_type)
-        {
             return f.url.split("/").slice(-1)[0]
-        }
+
+        if (f.media_type == 'voice_message')
+            return "Voice Message"
+
         if (f.media_type == "audio_file")
         {
             let ret = ""
@@ -74,6 +101,11 @@ export default class FileView extends Vue
     durationFmt(duration: number): string
     {
         return moment.utc(moment.duration(duration, "seconds").asMilliseconds()).format("mm:ss")
+    }
+
+    get size(): string
+    {
+        return this.sizeFmt(this.f.size)
     }
 
     sizeFmt(size: number): string

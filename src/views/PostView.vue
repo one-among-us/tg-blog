@@ -18,7 +18,7 @@
                  :style="{'background-image': `url(${i.url})`, ...getImageStyle(p, i)}"></div>
         </div>
         <div class="files" v-if="p.files">
-            <FileView class="file" v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)" />
+            <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)" />
         </div>
         <div class="text" v-html="text"></div>
         <div class="info font-code unselectable">
