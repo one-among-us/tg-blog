@@ -6,6 +6,9 @@
         <div><a href="/liaotalk">无聊的话</a></div>
         <div><a href="/test">Testing Channel</a></div>
         <div><a href="/Uekawakuyuurei">秋雲</a></div>
+        Or type your data url (posts.json) here:
+        <input v-model="keyboard">
+        <button @click="switchUrl">Load</button>
     </div>
 </template>
 
@@ -21,11 +24,26 @@ export default class App extends Vue
 {
     url: string = null
 
+    keyboard: string = ""
+
+    switchUrl()
+    {
+        window.location.replace('/custom?url=' + encodeURIComponent(this.keyboard))
+    }
+
     mounted()
     {
         let p = window.location.pathname
-        while (p.startsWith('/')) p = p.substring(1)
-        if (p) this.url = urlJoin(backendHost, p, '/posts.json')
+        if (p == '/custom')
+        {
+            let params = (new URL(document.location.toString())).searchParams;
+            this.url = params.get("url")
+        }
+        else
+        {
+            while (p.startsWith('/')) p = p.substring(1)
+            if (p) this.url = urlJoin(backendHost, p, '/posts.json')
+        }
     }
 }
 </script>

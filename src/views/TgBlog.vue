@@ -4,7 +4,7 @@
         {{fail}}
     </div>
     <div id="Life" v-if="posts.length !== 0">
-        <PostView :p="p" v-for="p in posts" :key="p.id" @play="a => audio = a" />
+        <PostView :p="p" :postsUrl="postsUrl" v-for="p in posts" :key="p.id" @play="a => audio = a" />
         <AudioPlayer :audio="audio" v-if="audio"
                      @prev="audioNext(-1)" @next="audioNext(1)"/>
     </div>

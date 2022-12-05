@@ -36,13 +36,14 @@
 import {Options, Vue} from 'vue-class-component';
 import {Prop} from "vue-property-decorator";
 import {Image, Post} from "@/logic/models";
-import { mdParseInline } from '@/logic/spoilers';
+import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
 
 @Options({components: {FileView}})
 export default class PostView extends Vue
 {
     @Prop({required: true}) p!: Post
+    @Prop({required: true}) postsUrl: string
 
     get text(): string | undefined
     {
@@ -59,6 +60,44 @@ export default class PostView extends Vue
     {
         // Scroll to the reply message
         document.getElementById(`message-${this.p.reply.id}`).scrollIntoView({ behavior: 'smooth', block: 'end'})
+    }
+
+    mounted()
+    {
+        this.initEmoji()
+    }
+
+    replaceUrl(url: string): string
+    {
+        return new URL(url, this.postsUrl).toString();
+    }
+
+    /**
+     * Initialize custom emojis
+     */
+    initEmoji()
+    {
+        // Find all non-initialized emojis
+        document.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
+            // Read attributes
+            const src = this.replaceUrl(it.getAttribute("emoji-src"))
+            // const orig = it.getAttribute("emoji-orig")
+
+            // Set initialized
+            it.classList.add("init")
+
+            // Video
+            if (src.endsWith("webm"))
+            {
+                it.innerHTML = `<video src="${src}" preload="auto" muted autoplay loop playsinline disablepictureinpicture></video>`
+            }
+
+            // Image
+            else
+            {
+                it.innerHTML = `<img src="${src}" alt="">`
+            }
+        })
     }
 }
 </script>
@@ -162,6 +201,7 @@ export default class PostView extends Vue
         // Margin between files in a file group
         > * + *
             margin-top: 10px
+
 </style>
 
 <style lang="sass">
@@ -171,4 +211,11 @@ export default class PostView extends Vue
     a
         color: $color-text-special
         text-decoration: none
+
+// Custom emojis
+i.custom-emoji
+    video, img
+        height: 1em
+        transform: translateY(0.125em)
+        pointer-events: none
 </style>

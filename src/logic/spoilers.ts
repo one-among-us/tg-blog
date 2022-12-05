@@ -69,9 +69,11 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
   allowedAttributes: {
     a: ['href', 'name', 'target'],
     img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading'],
+    i: ['emoji-src', 'emoji-orig']
   },
   allowedClasses: {
-    span: ['spoiler']
+    span: ['spoiler'],
+    i: ['custom-emoji']
   },
   selfClosing: [ 'img', 'br', 'hr', 'area', 'base', 'basefont', 'input', 'link', 'meta' ],
   allowedSchemes: [ 'http', 'https', 'ftp', 'mailto', 'tel' ],
