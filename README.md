@@ -1,22 +1,42 @@
-# Vue 3 TS + Vite + Vue Router + SASS Template
+# tg-blog: Display Telegram Channel in a Blog
 
-Demo: https://template.hydev.org/
+Demo: TODO
 
-Usage:
+## Usage
 
-1. Clone this repo
-2. Change project name in package.json
-3. `yarn install`
-4. `yarn serve`
+###  Usage in Vite
 
-## Info
+#### 1. Install dependencies
 
-Web Framework: `Vue 3 + Typescript + Vite + Vue Router + SASS + Element Plus + Class Components`
+```
+yarn add tg-blog
+```
 
-Useful Documentations:
+#### 2. Import CSS in your `main.ts`
 
-* [Script Setup SFC](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup)
-* [Vite Docs](https://vitejs.dev/guide/features.html)
-* [Vue 3 Docs](https://v3.vuejs.org/)
-* Recommended IDE: [VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=johnsoncodehk.volar)
-* My IDE: IDEA + Vue Plugin
+```ts
+import {createApp, h} from 'vue'
+import App from './App.vue'
+// Add this:
+import 'tg-blog/dist/style.css'
+```
+
+#### 3. In your `vite.config.ts`, you shall configure to dedupe `vue`
+
+```ts
+export default defineConfig({
+  resolve: {
+    dedupe: ['vue'],
+  },
+});
+```
+
+#### 4. Import components
+
+```ts
+import { TgBlog } from 'tg-blog';
+
+// If you're using Vue-TS Class Component, then add this:
+@Options({components: { TgBlog }})
+export default class ...
+```
