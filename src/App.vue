@@ -1,6 +1,6 @@
 <template>
     <TgBlog v-if="this.url" :postsUrl="url"></TgBlog>
-    <div v-else class="card">
+    <div v-else class="tgb-card">
         <h2>Please specify demo path</h2>
         Available paths:
         <div><a href="/liaotalk">无聊的话</a></div>

@@ -1,5 +1,5 @@
 <template>
-    <div class="post card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}">
+    <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}">
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">Forwarded from: {{p.forwarded_from}}</div>
         </div>

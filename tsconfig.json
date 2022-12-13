@@ -20,7 +20,14 @@
     "skipLibCheck": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "allowJs": true
+    "allowJs": true,
+
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationDir": "./dist/types",
+    "types": [
+      "vite/client"
+    ]
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
 }

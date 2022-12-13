@@ -1,5 +1,5 @@
 <template>
-    <div class="error card" v-if="fail">
+    <div class="error tgb-card" v-if="fail">
         <h2>Failed loading posts from: <br>{{postsUrl}}</h2>
         {{fail}}
     </div>
@@ -100,4 +100,7 @@ export default class TgBlog extends Vue
     #Life
         margin: 20px 20px 0
         width: unset
+
+*
+    transition: all .25s ease
 </style>
