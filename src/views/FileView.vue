@@ -28,7 +28,7 @@
     </div>
 
     <!-- Videos / GIF -->
-    <div class="video" v-if="f.media_type === 'video_file' || f.media_type === 'animation'"
+    <div class="video no-head" v-if="f.media_type === 'video_file' || f.media_type === 'animation'"
          :class="{'has-head': hasHead}">
         <video :src="f.url"
                preload="auto" muted autoplay loop playsinline disablepictureinpicture>
@@ -38,6 +38,10 @@
 
     <!-- Poll -->
     <Poll :f="pollFile" v-if="f.media_type === 'poll'"></Poll>
+
+    <!-- Location -->
+    <Location class="location no-head" :class="{'has-head': hasHead}"
+              :f="locationFile" v-if="f.media_type === 'location'"></Location>
 </template>
 
 <script lang="ts">
@@ -46,6 +50,7 @@ import {TGFile, TGPollFile} from "@/logic/models";
 import {Emit, Prop} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import Poll from "@/views/Poll.vue";
+import Location from "@/views/Location.vue";
 
 function downloadURI(uri, name)
 {
@@ -59,13 +64,14 @@ function downloadURI(uri, name)
     link.remove();
 }
 
-@Options({components: {Poll}})
+@Options({components: {Location, Poll}})
 export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile
     @Prop({required: true}) hasHead: boolean
 
     get pollFile() { return this.f as TGPollFile }
+    get locationFile() { return this.f as TGLocationFile }
 
     fileThumbClick()
     {
@@ -179,8 +185,11 @@ export default class FileView extends Vue
     > *
         width: 120px
 
-.video.has-head
+.no-head.has-head
     margin-top: 0
+
+.no-head
+    margin-top: -22px
 
 .video
     margin: -22px 0 10px

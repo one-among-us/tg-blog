@@ -46,6 +46,18 @@ export interface TGPollFile {
   allow_multiple_answers?: boolean
 }
 
+export interface Location {
+  longitude: number
+  latitude: number
+}
+
+export interface TGLocationFile extends Location{
+  location?: Location
+  title: string
+  address: string
+  foursquare_id: string
+}
+
 export interface ForwardFrom {
   name: string
   url?: string
