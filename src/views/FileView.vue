@@ -91,7 +91,7 @@ export default class FileView extends Vue
     {
         const f = this.f
         if (!f.media_type)
-            return f.url.split("/").slice(-1)[0]
+            return f.original_name ?? f.url.split("/").slice(-1)[0]
 
         if (f.media_type == 'voice_message')
             return "Voice Message"

@@ -12,6 +12,7 @@ export interface TGFile {
   media_type?: MediaType // If media_type is null, then it's not a media, just a regular file
   size: number // Bytes
   thumb?: string
+  original_name?: string
 
   duration?: number
   width?: number
