@@ -81,7 +81,7 @@ export default class Poll extends Vue
             top: 0
             left: 0
             bottom: 0
-            background: $color-bg-6
+            background: #ffe6dc
             border-radius: 5px
 
     .options.dominant
