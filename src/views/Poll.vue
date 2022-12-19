@@ -9,6 +9,8 @@
             <span class="percentage">{{percent(o)}}</span>
             <div class="bar" :style="{width: percent(o)}"></div>
         </div>
+
+        <div class="tail">Final Results - {{f.total_voter_count}} Responses</div>
     </div>
 </template>
 
@@ -38,7 +40,7 @@ export default class Poll extends Vue
         let txt = this.f.type == 'REGULAR' ? 'Poll' : 'Quiz'
         if (this.f.is_anonymous)
             txt = 'Anonymous ' + txt
-        return txt + " (Closed)"
+        return txt
     }
 }
 </script>
@@ -53,9 +55,11 @@ export default class Poll extends Vue
     .question
         font-weight: bold
 
-    .subtitle
+    .subtitle, .tail
         color: $color-text-light
         font-size: .9em
+
+    .subtitle
         margin-bottom: 5px
 
     .options
