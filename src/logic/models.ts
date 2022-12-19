@@ -1,10 +1,16 @@
 export type MediaType = "audio_file" | "animation" | "video_file" | "sticker" | "voice_message"
-  | "contact"
+  | "contact" | "poll"
 
 export interface Image {
   url: string
   width: number
   height: number
+}
+
+export interface PollOption {
+  text: string
+  voter_count: string
+  data: string
 }
 
 export interface TGFile {
@@ -26,6 +32,18 @@ export interface TGFile {
   phone_number?: string
   first_name?: string
   last_name?: string
+}
+
+export interface TGPollFile {
+  // For polls
+  id?: string
+  question?: string
+  options?: PollOption[]
+  total_voter_count?: number
+  is_closed?: number
+  is_anonymous?: number
+  type?: "REGULAR" | "QUIZ"
+  allow_multiple_answers?: boolean
 }
 
 export interface ForwardFrom {

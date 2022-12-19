@@ -36,18 +36,16 @@
         </video>
     </div>
 
-    <!-- Contacts -->
-<!--    <div class="contact" v-if="f.media_type === 'contact'">-->
-<!--        <div class="head">Shared Contact</div>-->
-<!--        <div></div>-->
-<!--    </div>-->
+    <!-- Poll -->
+    <Poll :f="pollFile" v-if="f.media_type === 'poll'"></Poll>
 </template>
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {TGFile} from "@/logic/models";
+import {TGFile, TGPollFile} from "@/logic/models";
 import {Emit, Prop} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
+import Poll from "@/views/Poll.vue";
 
 function downloadURI(uri, name)
 {
@@ -61,11 +59,13 @@ function downloadURI(uri, name)
     link.remove();
 }
 
-@Options({components: {}})
+@Options({components: {Poll}})
 export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile
     @Prop({required: true}) hasHead: boolean
+
+    get pollFile() { return this.f as TGPollFile }
 
     fileThumbClick()
     {
