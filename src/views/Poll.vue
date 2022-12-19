@@ -66,6 +66,7 @@ export default class Poll extends Vue
         display: flex
         margin-bottom: 5px
         position: relative
+        padding: 2px 10px
 
         .text, .percentage
             z-index: 10
@@ -79,7 +80,7 @@ export default class Poll extends Vue
             position: absolute
             top: 0
             left: 0
-            height: 1.5em
+            bottom: 0
             background: $color-bg-6
             border-radius: 5px
 
