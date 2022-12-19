@@ -3,7 +3,7 @@
         <div class="question">{{f.question}}</div>
         <div class="subtitle">{{subtitle}}</div>
 
-        <div class="options" v-for="o of f.options">
+        <div class="options" v-for="o of f.options" :class="{dominant: o.voter_count === max && max !== 0}">
             <span class="text">{{o.text}}</span>
             <span class="f-grow1"></span>
             <span class="percentage">{{percent(o)}}</span>
@@ -21,6 +21,11 @@ import {PollOption, TGPollFile} from "@/logic";
 export default class Poll extends Vue
 {
     @Prop({required: true}) f: TGPollFile
+
+    get max()
+    {
+        return Math.max(...this.f.options.map(it => it.voter_count))
+    }
 
     percent(o: PollOption)
     {
@@ -74,4 +79,9 @@ export default class Poll extends Vue
             background: $color-bg-6
             border-radius: 5px
 
+    .options.dominant
+        font-weight: bold
+
+        .bar
+            background: #ffd4d0
 </style>
