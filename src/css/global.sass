@@ -40,6 +40,67 @@ $c-highlight: #ff7878
   cursor: pointer
   @include unselectable
 
+// Vertical flex
+.fbox-v
+  display: flex
+  flex-flow: column
+  height: 100%
+
+.mh0
+  min-height: 0
+
+// Horizontal flex
+.fbox-h
+  display: flex
+  flex-flow: row
+
+.mw0
+  min-width: 0
+
+// Flex properties
+.f-no-grow
+  flex-grow: 0
+
+.f-grow1
+  flex-grow: 1
+
+.f-no-shrink
+  flex-shrink: 0
+
+.f-shrink1
+  flex-shrink: 1
+
+// Expand in the vertical direction
+.f-v-expand
+  flex: 1 0
+  min-height: 0
+
+// Expand in the horizontal direction
+.f-h-expand
+  flex: 1 0
+  min-width: 0
+
+.h100
+  height: 100%
+
+.w100
+  width: 100%
+
+// Vertical Flex Center
+@mixin flex-vcenter
+  display: flex
+  flex-flow: column
+  justify-content: center
+
+// Center both horizontally and vertically
+.fbox-center
+  @include flex-vcenter
+  align-items: center
+
+// Center vertically only
+.fbox-vcenter
+  @include flex-vcenter
+
 // No wrap text
 .nowrap
   overflow: hidden
