@@ -1,4 +1,5 @@
 export type MediaType = "audio_file" | "animation" | "video_file" | "sticker" | "voice_message"
+  | "contact"
 
 export interface Image {
   url: string
@@ -20,6 +21,11 @@ export interface TGFile {
   sticker_emoji?: string
   title?: string
   performer?: string
+
+  // For contact
+  phone_number?: string
+  first_name?: string
+  last_name?: string
 }
 
 export interface ForwardFrom {

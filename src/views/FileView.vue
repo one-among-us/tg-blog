@@ -3,11 +3,8 @@
     <div class="file" v-if="shouldDisplayDetail">
         <div class="thumb clickable" @click="fileThumbClick">
             <img :src="f.thumb ?? 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='" alt=""/>
-            <div v-if="isAudioOrVoice" class="icon fbox-center">
-                <i class="fa-solid fa-play"></i>
-            </div>
-            <div v-if="!f.media_type" class="icon fbox-center">
-                <i class="fa-solid fa-download"></i>
+            <div v-if="fileIcon" class="icon fbox-center">
+                <i :class="fileIcon" v-if="fileIcon"></i>
             </div>
         </div>
 
@@ -16,6 +13,7 @@
             <div class="file-detail">
                 <span class="duration" v-if="f.duration">{{duration}}</span>
                 <span class="size" v-if="f.size">{{size}}</span>
+                <span class="phone" v-if="f.phone_number">{{f.phone_number}}</span>
             </div>
         </div>
     </div>
@@ -37,12 +35,17 @@
             <img v-if="f.thumb" :src="f.thumb" alt="">
         </video>
     </div>
+
+    <!-- Contacts -->
+<!--    <div class="contact" v-if="f.media_type === 'contact'">-->
+<!--        <div class="head">Shared Contact</div>-->
+<!--        <div></div>-->
+<!--    </div>-->
 </template>
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {TGFile} from "@/logic/models";
-import moment from "moment/moment";
 import {Emit, Prop} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 
@@ -79,7 +82,7 @@ export default class FileView extends Vue
 
     get shouldDisplayDetail(): boolean
     {
-        return !this.f.media_type || this.isAudioOrVoice
+        return !this.f.media_type || this.isAudioOrVoice || this.f.media_type == 'contact'
     }
 
     get isAudioOrVoice(): boolean
@@ -103,6 +106,24 @@ export default class FileView extends Vue
             if (f.title) ret += f.title
             return ret
         }
+
+        if (f.media_type == 'contact')
+        {
+            let name = f.first_name ?? ''
+            if (f.last_name) name += ' ' + f.last_name
+            return name
+        }
+    }
+
+    get fileIcon(): string | undefined
+    {
+        const f = this.f
+        if (!f.media_type)
+            return 'fa-solid fa-download'
+        if (this.isAudioOrVoice)
+            return 'fa-solid fa-play'
+        if (f.media_type == 'contact')
+            return 'fa-solid fa-address-book'
     }
 
     get duration(): string { return durationFmt(this.f.duration) }
