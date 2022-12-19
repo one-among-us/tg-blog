@@ -179,6 +179,7 @@ export default class PostView extends Vue
 
     .text
         white-space: pre-line
+        overflow-wrap: break-word
 
     .info
         display: flex
