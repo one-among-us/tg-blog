@@ -1,7 +1,9 @@
 <template>
     <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}">
         <div class="head unselectable">
-            <div class="forward" v-if="p.forwarded_from">Forwarded from: {{p.forwarded_from}}</div>
+            <div class="forward" v-if="p.forwarded_from">
+                Forwarded from: <a :href="p.forwarded_from.url">{{p.forwarded_from.name ?? p.forwarded_from}}</a>
+            </div>
         </div>
         <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
@@ -118,7 +120,7 @@ export default class PostView extends Vue
     > *:last-child
         margin-bottom: 0
 
-    .forward, .reply-to
+    .forward, .forward a, .reply-to
         color: $color-text-special-dark
         font-weight: bold
 

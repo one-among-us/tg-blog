@@ -21,12 +21,17 @@ export interface TGFile {
   performer?: string
 }
 
+export interface ForwardFrom {
+  name: string
+  url?: string
+}
+
 export interface Post {
   id: number
   date: string
 
   text?: string
-  forwarded_from?: string
+  forwarded_from?: string | ForwardFrom
   type?: string // If type doesn't exist, it's a regular message
   views?: string // Service messages have no view count
   author?: string
