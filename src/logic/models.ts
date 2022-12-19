@@ -9,7 +9,7 @@ export interface Image {
 
 export interface PollOption {
   text: string
-  voter_count: string
+  voter_count: number
   data: string
 }
 

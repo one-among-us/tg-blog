@@ -24,6 +24,7 @@ export default class Poll extends Vue
 
     percent(o: PollOption)
     {
+        if (this.f.total_voter_count == 0) return "0%"
         return (o.voter_count / this.f.total_voter_count * 100).toFixed(0) + '%'
     }
 
