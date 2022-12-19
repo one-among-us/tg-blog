@@ -7,6 +7,7 @@
             <span class="text">{{o.text}}</span>
             <span class="f-grow1"></span>
             <span class="percentage">{{percent(o)}}</span>
+            <div class="bar" :style="{width: percent(o)}"></div>
         </div>
     </div>
 </template>
@@ -23,7 +24,7 @@ export default class Poll extends Vue
 
     percent(o: PollOption)
     {
-        return (o.voter_count / f.total_voter_count * 100).toFixed(0) + '%'
+        return (o.voter_count / this.f.total_voter_count * 100).toFixed(0) + '%'
     }
 
     get subtitle()
@@ -54,9 +55,22 @@ export default class Poll extends Vue
     .options
         display: flex
         margin-bottom: 5px
+        position: relative
+
+        .text, .percentage
+            z-index: 10
 
         .percentage
             display: inline-block
             width: 50px
             text-align: right
+
+        .bar
+            position: absolute
+            top: 0
+            left: 0
+            height: 1.5em
+            background: $color-bg-6
+            border-radius: 5px
+
 </style>
