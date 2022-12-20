@@ -193,12 +193,10 @@ export default class PostView extends Vue
     .info
         display: flex
         color: lighten($color-text-main, 40)
+        white-space: nowrap
+        overflow: hidden
         font-size: 0.9em
-        div
-            margin: 0 10px
-
-        div:first-child, div:last-child
-            margin: 0
+        gap: 10px
 
         i
             font-size: 0.8em
