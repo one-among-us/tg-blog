@@ -2,7 +2,7 @@
     <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}">
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">
-                Forwarded from: <a :href="p.forwarded_from.url">{{p.forwarded_from.name ?? p.forwarded_from}}</a>
+                Forwarded from: <a :href="fwdUrl">{{fwdName}}</a>
             </div>
         </div>
         <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
@@ -37,7 +37,7 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {Prop} from "vue-property-decorator";
-import {Image, Post} from "@/logic/models";
+import {Image, Post, ForwardFrom} from "@/logic/models";
 import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
 
@@ -52,6 +52,9 @@ export default class PostView extends Vue
         if (!this.p.text) return undefined
         return mdParseInline(this.p.text)
     }
+
+    get fwdUrl() { return typeof this.p.forwarded_from == 'string' ? undefined : this.p.forwarded_from.url }
+    get fwdName() { return typeof this.p.forwarded_from == 'string' ? this.p.forwarded_from : this.p.forwarded_from.name }
 
     getImageStyle(post: Post, i: Image): object
     {

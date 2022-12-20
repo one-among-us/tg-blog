@@ -1,5 +1,5 @@
 export type MediaType = "audio_file" | "animation" | "video_file" | "sticker" | "voice_message"
-  | "contact" | "poll"
+  | "contact" | "poll" | "location"
 
 export interface Image {
   url: string
