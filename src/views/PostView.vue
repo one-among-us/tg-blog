@@ -12,12 +12,12 @@
                 <div class="reply-text" v-html="p.reply.text"></div>
             </div>
         </div>
-<!--        <div class="images" v-if="p.images && p.images.length === 1" :class="{'has-head': p.reply || p.forwarded_from}">-->
-<!--            <img v-for="i in p.images" :key="i.url" :src="i.url" alt="image">-->
-<!--        </div>-->
-        <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from}">
-            <el-image class="img" v-for="i in p.images" :key="i[0]" :src="i.url"
-                 :style="{...getImageStyle(p, i)}" :preview-src-list="imgList" :infinite="false"></el-image>
+        <div class="images" v-if="p.images && p.images.length === 1" :class="{'has-head': p.reply || p.forwarded_from}">
+            <img v-for="i in p.images" :key="i.url" :src="i.url" alt="image">
+        </div>
+        <div class="images" v-if="p.images && p.images.length !== 1" :class="{'has-head': p.reply || p.forwarded_from}">
+            <div class="img" v-for="i in p.images" :key="i[0]"
+                 :style="{'background-image': `url(${i.url})`, ...getImageStyle(p, i)}"></div>
         </div>
         <div class="files" v-if="p.files">
             <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
@@ -46,7 +46,6 @@ export default class PostView extends Vue
 {
     @Prop({required: true}) p!: Post
     @Prop({required: true}) postsUrl: string
-    @Prop({required: true}) imgList!: string[]
 
     get text(): string | undefined
     {
