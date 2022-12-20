@@ -8,6 +8,7 @@
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
+    <ImageViewer :imgs="imgList" :initial-index="img" v-if="img"/>
 </template>
 
 <script lang="ts">
@@ -18,8 +19,9 @@ import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import { initSpoilers } from '@/logic/spoilers';
 import AudioPlayer from "@/views/AudioPlayer.vue";
+import ImageViewer, {ViewedImage} from "@/views/ImageViewer.vue";
 
-@Options({components: {AudioPlayer, PostView}})
+@Options({components: {ImageViewer, AudioPlayer, PostView}})
 export default class TgBlog extends Vue
 {
     posts: Post[] = []
@@ -28,12 +30,24 @@ export default class TgBlog extends Vue
     @Prop({required: true}) postsUrl: string
 
     audio?: TGFile = null
+    img?: number = 1
 
     fail: string = null
 
     get audios(): TGFile[]
     {
         return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
+    }
+
+    get imgList(): ViewedImage[]
+    {
+        return this.posts.flatMap(post => (post.images ?? []).map(img => {
+            return {
+                url: img.url,
+                text: post.text,
+                date: post.date
+            }
+        }))
     }
 
     audioNext(off: number)
