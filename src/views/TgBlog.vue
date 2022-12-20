@@ -48,7 +48,8 @@ export default class TgBlog extends Vue
 
     infiniteScroll()
     {
-        this.count += 10
+        console.log("Infinite Scroll - Load more")
+        this.count = Math.min(this.count + 10, this.posts.length)
     }
 
     created(): void
