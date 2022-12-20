@@ -3,11 +3,11 @@
         <h2>Failed loading posts from: <br>{{postsUrl}}</h2>
         {{fail}}
     </div>
-    <div id="Life" v-if="posts.length !== 0">
-        <PostView :p="p" :postsUrl="postsUrl" v-for="p in posts" :key="p.id" @play="a => audio = a" />
-        <AudioPlayer :audio="audio" v-if="audio"
-                     @prev="audioNext(-1)" @next="audioNext(1)"/>
+    <div v-infinite-scroll="infiniteScroll" id="Life" v-if="posts.length !== 0">
+        <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="i in count" :key="i" @play="a => audio = a" />
     </div>
+    <AudioPlayer :audio="audio" v-if="audio"
+                 @prev="audioNext(-1)" @next="audioNext(1)"/>
 </template>
 
 <script lang="ts">
@@ -23,6 +23,7 @@ import AudioPlayer from "@/views/AudioPlayer.vue";
 export default class TgBlog extends Vue
 {
     posts: Post[] = []
+    count = 20
 
     @Prop({required: true}) postsUrl: string
 
@@ -43,6 +44,11 @@ export default class TgBlog extends Vue
     replaceUrl(url: string): string
     {
         return new URL(url, this.postsUrl).toString();
+    }
+
+    infiniteScroll()
+    {
+        this.count += 10
     }
 
     created(): void
