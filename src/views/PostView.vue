@@ -105,7 +105,12 @@ export default class PostView extends Vue
 </script>
 
 <style lang="sass" scoped>
+@import "src/css/global"
 @import "src/css/colors"
+@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@500&family=Shadows+Into+Light&display=swap')
+
+.font-code
+    font-family: Inconsolata, Monospaced, $font
 
 .post.service
     .id
