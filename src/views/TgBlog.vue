@@ -4,7 +4,7 @@
         {{fail}}
     </div>
     <div v-infinite-scroll="infiniteScroll" id="Life" v-if="posts.length !== 0">
-        <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="i in count" :key="i" @play="a => audio = a" />
+        <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i" @play="a => audio = a" />
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
