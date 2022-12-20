@@ -1,7 +1,7 @@
 <template>
     <div id="Location">
         <div class="map">
-            <LMap :zoom="zoom" :center="center" :minZoom="3" :maxZoom="16">
+            <LMap :options="options" :zoom="zoom" :center="center" :minZoom="3" :maxZoom="16">
                 <LMarker :lat-lng="marker"/>
                 <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             layer-type="base"
@@ -29,6 +29,10 @@ export default class Location extends Vue
 {
     @Prop({required: true}) f: TGLocationFile
     marker: number[]
+
+    options = {
+        scrollWheelZoom: false
+    }
 
     get center()
     {
