@@ -8,7 +8,7 @@
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
-    <ImageViewer :imgs="imgList" :initial-index="img" v-if="img"/>
+    <ImageViewer :imgs="imgList" :initial-index="img" v-if="img" @close="this.img = null"/>
 </template>
 
 <script lang="ts">
