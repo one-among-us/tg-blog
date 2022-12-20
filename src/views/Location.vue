@@ -1,11 +1,18 @@
 <template>
     <div id="Location">
-        <LMap :zoom="zoom" :center="center" :minZoom="3" :maxZoom="16">
-            <LMarker :lat-lng="marker"/>
-            <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        layer-type="base"
-                        name="OpenStreetMap"/>
-        </LMap>
+        <div class="map">
+            <LMap :zoom="zoom" :center="center" :minZoom="3" :maxZoom="16">
+                <LMarker :lat-lng="marker"/>
+                <LTileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            layer-type="base"
+                            name="OpenStreetMap"/>
+            </LMap>
+        </div>
+
+        <div class="info" v-if="f.title">
+            <div class="title" v-if="f.title">{{f.title}}</div>
+            <div class="address" v-if="f.address">{{f.address}}</div>
+        </div>
     </div>
 </template>
 
@@ -39,6 +46,18 @@ export default class Location extends Vue
 </script>
 
 <style lang="sass" scoped>
-#Location
+@import "src/css/colors"
+
+.map
     height: 400px
+
+.info
+    margin: 10px 20px
+
+    .title
+        font-weight: bold
+
+    .address
+        font-size: 0.9em
+        color: $color-text-light
 </style>

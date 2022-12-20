@@ -90,6 +90,7 @@ export default class TgBlog extends Vue
     margin: 20px auto
     font-size: 1em
     width: min(450px, 80vw)
+    color: $color-text-main
 
     #header
         color: $color-text-light
