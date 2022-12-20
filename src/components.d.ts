@@ -6,6 +6,9 @@ import '@vue/runtime-core'
 export {}
 
 declare module '@vue/runtime-core' {
+  export interface GlobalComponents {
+    ElIcon: typeof import('element-plus/es')['ElIcon']
+  }
   export interface ComponentCustomProperties {
     vInfiniteScroll: typeof import('element-plus/es')['ElInfiniteScroll']
   }

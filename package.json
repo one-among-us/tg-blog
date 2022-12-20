@@ -8,7 +8,6 @@
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src"
   },
   "dependencies": {
-    "@element-plus/icons-vue": "^2.0.10",
     "@fortawesome/fontawesome-free": "^6.2.1",
     "@vue-leaflet/vue-leaflet": "^0.7.0",
     "element-plus": "^2.2.26",
