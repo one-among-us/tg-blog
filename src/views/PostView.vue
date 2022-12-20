@@ -9,7 +9,7 @@
             <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
             <div class="mtext">
                 <div class="reply-to">Reply to:</div>
-                <span v-html="p.reply.text"></span>
+                <div class="reply-text" v-html="p.reply.text"></div>
             </div>
         </div>
         <div class="images" v-if="p.images && p.images.length === 1" :class="{'has-head': p.reply || p.forwarded_from}">
@@ -135,16 +135,17 @@ export default class PostView extends Vue
             object-fit: cover
 
         .mtext
-            flex: 1
-            max-height: 40px
+            flex-grow: 1
             margin-left: 10px
-            //color: lighten($color-text-main, 20)
             color: $color-text-light
             display: -webkit-box
-            -webkit-line-clamp: 2 /* number of lines to show */
-            line-clamp: 2
             -webkit-box-orient: vertical
             overflow: hidden
+
+        .reply-text
+            white-space: nowrap
+            overflow: hidden
+            text-overflow: ellipsis
 
     .reply:before
         content: " "
