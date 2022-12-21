@@ -1,37 +1,33 @@
 <template>
     <div id="ImageViewer" v-if="img">
-        <div class="abs img-container">
+        <div class="img-container">
             <img :src="img.url" alt="Photo" class="undraggable" :style="imgStyle">
         </div>
-        <div class="abs controls">
-            <div class="top">
-                <span class="f-grow1"></span>
-                <IconClose class="icn close clickable" @click="close"/>
+        <div class="top">
+            <span class="f-grow1"></span>
+            <IconClose class="icn close clickable" @click="close"/>
+        </div>
+        <div class="bottom">
+            <div class="left">
+                <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
+                <div class="detail">
+                    <span class="author" v-if="img.author">{{img.author}}</span>
+                    <span class="date" v-if="img.date">{{img.date}}</span>
+                </div>
             </div>
+            <div class="middle">
+                <div class="text" v-if="img.text">
+                    <div v-html="textHtml"></div>
+                </div>
+            </div>
+            <div class="right">
+                <IconDownload class="icn download clickable" @click="download"/>
+            </div>
+        </div>
+        <div class="arrows">
+            <IconArrowLeft class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"/>
             <div class="f-grow1"></div>
-            <div class="center">
-                <IconArrowLeft class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"/>
-                <div class="f-grow1"></div>
-                <IconArrowRight class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"/>
-            </div>
-            <div class="f-grow1"></div>
-            <div class="bottom">
-                <div class="left">
-                    <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
-                    <div class="detail">
-                        <span class="author" v-if="img.author">{{img.author}}</span>
-                        <span class="date" v-if="img.date">{{img.date}}</span>
-                    </div>
-                </div>
-                <div class="middle">
-                    <div class="text" v-if="img.text">
-                        <div v-html="textHtml"></div>
-                    </div>
-                </div>
-                <div class="right">
-                    <IconDownload class="icn download clickable" @click="download"/>
-                </div>
-            </div>
+            <IconArrowRight class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"/>
         </div>
     </div>
 </template>
@@ -153,11 +149,10 @@ export default class ImageViewer extends Vue
     inset: 0
     background: rgba(0, 0, 0, 0.8)
 
-    .abs
+    .img-container
         position: absolute
         inset: 0
 
-    .img-container
         display: flex
         align-items: center
         justify-content: center
@@ -166,77 +161,95 @@ export default class ImageViewer extends Vue
             max-width: 100%
             max-height: 100%
 
-    .controls
-        display: flex
-        padding: 10px
+    .icn
+        font-size: 2em
+        filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
+
+    .top, .bottom, .arrows
+        color: white
+        opacity: 0.8
         z-index: 1000002
-        flex-direction: column
-        color: rgba(255, 255, 255)
-        opacity: 0.75
 
-        .icn
-            font-size: 2em
-            filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
+    .top
+        position: absolute
 
-        .top
+    .arrows
+        position: absolute
+        inset: calc(50% - 2em) 10px auto 10px
+
+        display: flex
+        flex-direction: row
+        align-items: center
+
+    .top
+        position: absolute
+        inset: 10px 10px auto 10px
+
+        display: flex
+        flex-grow: 1
+
+    .bottom
+        position: absolute
+        inset: auto 10px 10px 10px
+
+        display: flex
+        flex-grow: 1
+        gap: 20px
+
+        .left, .middle, .right
+            // Align contents inside info box to the bottom
             display: flex
+            flex-direction: column
+            justify-content: end
 
-        .center
+        .left, .right
+            flex-grow: 1
+            flex-shrink: 0
+
+        .left
+            // Align the info box
+            text-align: left
+
             display: flex
-            flex-direction: row
+            flex-direction: column
+            justify-content: end
 
-        .bottom
-            display: flex
-            gap: 20px
+            .index
+                font-weight: bold
 
-            .left, .middle, .right
-                // Align contents inside info box to the bottom
+            .detail
                 display: flex
-                flex-direction: column
-                justify-content: end
+                gap: 20px
 
-            .left, .right
-                flex-grow: 1
-                flex-shrink: 0
+        .middle
+            max-width: 800px
 
-            .left
-                // Align the info box
+            .text
+                // Border box
+                padding: 10px
+                background: rgba(0, 0, 0, 0.5)
+                border-radius: 10px
+
+                // Text
+                font-size: 0.8em
                 text-align: left
+                white-space: pre-line
 
-                display: flex
-                flex-direction: column
-                justify-content: end
+                // Limit content to 10 lines
+                > div
+                    overflow: hidden
+                    text-overflow: ellipsis
+                    display: -webkit-box
+                    -webkit-line-clamp: 10
+                    line-clamp: 10
+                    -webkit-box-orient: vertical
 
-                .index
-                    font-weight: bold
+        .right
+            align-items: end
+</style>
 
-                .detail
-                    display: flex
-                    gap: 20px
-
-            .middle
-                max-width: 800px
-
-                .text
-                    // Border box
-                    padding: 10px
-                    background: rgba(0, 0, 0, 0.5)
-                    border-radius: 10px
-
-                    // Text
-                    font-size: 0.8em
-                    text-align: left
-                    white-space: pre-line
-
-                    // Limit content to 10 lines
-                    > div
-                        overflow: hidden
-                        text-overflow: ellipsis
-                        display: -webkit-box
-                        -webkit-line-clamp: 10
-                        line-clamp: 10
-                        -webkit-box-orient: vertical
-
-            .right
-                text-align: right
+<style lang="sass">
+#ImageViewer
+    a
+        color: unset
 </style>
