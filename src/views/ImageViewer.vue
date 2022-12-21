@@ -10,9 +10,9 @@
             </div>
             <div class="f-grow1"></div>
             <div class="center">
-                <div class="icn left clickable" v-if="index > 0" @click="updateIndex(-1)"><IconArrowLeft/></div>
+                <div class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"><IconArrowLeft/></div>
                 <div class="f-grow1"></div>
-                <div class="icn right clickable" v-if="index < imgs.length - 1" @click="updateIndex(1)"><IconArrowRight/></div>
+                <div class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"><IconArrowRight/></div>
             </div>
             <div class="f-grow1"></div>
             <div class="bottom">
@@ -64,6 +64,8 @@ export default class ImageViewer extends Vue
 
     get img() { if (this.imgs) return this.imgs[this.index] }
     get isOpen() { return !!this.img }
+    get hasPrev() { return this.index > 0 }
+    get hasNext() { return this.index <= this.imgs.length }
 
     @Emit("close")
     close() { }
