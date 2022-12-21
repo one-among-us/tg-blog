@@ -51,18 +51,7 @@ import {Emit, Prop} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import Poll from "@/views/Poll.vue";
 import Location from "@/views/Location.vue";
-
-function downloadURI(uri, name)
-{
-    const link = document.createElement("a");
-    link.setAttribute('download', name)
-    link.setAttribute("target", "_blank")
-    link.setAttribute("rel", "noopener noreferrer")
-    link.href = uri;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-}
+import fileDownload from "js-file-download"
 
 @Options({components: {Location, Poll}})
 export default class FileView extends Vue
@@ -77,7 +66,7 @@ export default class FileView extends Vue
     {
         // Is regular file, download
         if (!this.f.media_type)
-            return downloadURI(this.f.url, this.f.url.split("/").slice(-1)[0])
+            return fileDownload(this.f.url, this.f.url.split("/").slice(-1)[0])
 
         // Is audio, emit event
         this.play()

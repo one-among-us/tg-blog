@@ -42,11 +42,6 @@ export default class TgBlog extends Vue
         return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
     }
 
-    findImgIndex(pi: number, ii: number): string[]
-    {
-        return this.imgList.map(it => it.url)
-    }
-
     audioNext(off: number)
     {
         this.audio = this.audios.at(this.audios.indexOf(this.audio) + off)
