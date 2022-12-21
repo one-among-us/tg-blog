@@ -30,7 +30,7 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {Emit, Prop} from "vue-property-decorator";
+import {Emit, Model, Prop} from "vue-property-decorator";
 
 // @ts-ignore
 import IconClose from '~icons/ep/close';
@@ -66,7 +66,9 @@ export default class ImageViewer extends Vue
     @Emit("update:index")
     updateIndex(offset: number)
     {
-        return this.index + offset
+        const ni = this.index + offset
+        if (ni > this.imgs.length - 1 || ni < 0) return this.index
+        return ni
     }
 }
 </script>
