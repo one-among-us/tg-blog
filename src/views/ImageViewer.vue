@@ -10,9 +10,9 @@
             </div>
             <div class="f-grow1"></div>
             <div class="center">
-                <div class="icn left clickable" @click="updateIndex(-1)"><IconArrowLeft/></div>
+                <div class="icn left clickable" v-if="index > 0" @click="updateIndex(-1)"><IconArrowLeft/></div>
                 <div class="f-grow1"></div>
-                <div class="icn right clickable" @click="updateIndex(1)"><IconArrowRight/></div>
+                <div class="icn right clickable" v-if="index < imgs.length - 1" @click="updateIndex(1)"><IconArrowRight/></div>
             </div>
             <div class="f-grow1"></div>
             <div class="bottom">
@@ -30,7 +30,7 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {Emit, Model, Prop} from "vue-property-decorator";
+import {Emit, Prop} from "vue-property-decorator";
 
 // @ts-ignore
 import IconClose from '~icons/ep/close';
@@ -66,9 +66,7 @@ export default class ImageViewer extends Vue
     @Emit("update:index")
     updateIndex(offset: number)
     {
-        const ni = this.index + offset
-        if (ni > this.imgs.length - 1 || ni < 0) return this.index
-        return ni
+        return this.index + offset
     }
 }
 </script>
