@@ -5,6 +5,7 @@
     "dev": "vite",
     "serve": "vite",
     "build": "vue-tsc && vite build",
+    "build.demo": "BUILD_DEMO=1 yarn build",
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src"
   },
   "dependencies": {

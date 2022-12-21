@@ -6,6 +6,7 @@
         <div><a href="/liaotalk">无聊的话</a></div>
         <div><a href="/test">Testing Channel</a></div>
         <div><a href="/Uekawakuyuurei">秋雲</a></div>
+        <div><a href="/custom?url=https%3A%2F%2Fprofile-api.hydev.org%2Fexports%2Fhykilp%2Fposts.json">小桂桂的回忆录</a></div>
         Or type your data url (posts.json) here:
         <input v-model="keyboard">
         <button @click="switchUrl">Load</button>
