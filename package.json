@@ -1,6 +1,6 @@
 {
   "name": "tg-blog",
-  "version": "1.0.4-alpha2",
+  "version": "1.0.4",
   "scripts": {
     "dev": "vite",
     "serve": "vite",
