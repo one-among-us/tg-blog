@@ -31,6 +31,7 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop} from "vue-property-decorator";
+import * as KeyCode from 'keycode-js';
 
 // @ts-ignore
 import IconClose from '~icons/ep/close';
@@ -68,6 +69,24 @@ export default class ImageViewer extends Vue
     {
         return this.index + offset
     }
+
+    key(e: KeyboardEvent)
+    {
+        if (e.code === KeyCode.CODE_ESCAPE)
+        {
+            this.close()
+        }
+    }
+
+    mounted()
+    {
+        document.addEventListener('keydown', this.key)
+    }
+
+    unmounted()
+    {
+        document.removeEventListener('keydown', this.key)
+    }
 }
 </script>
 
@@ -103,6 +122,7 @@ export default class ImageViewer extends Vue
         .icn
             font-size: 2em
             filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
+
         .top
             display: flex
 
