@@ -1,6 +1,7 @@
-# tg-blog: Display Telegram Channel in a Blog
+# tg-blog: Display Telegram Channel with Vue 3
 
-Demo: TODO
+Demo: https://test-tg.one-among.us/test  
+You can also check out [Azalea's Blog](https://aza.moe/life) for a demo.
 
 ## Usage
 
