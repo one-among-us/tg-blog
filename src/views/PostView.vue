@@ -13,11 +13,13 @@
             </div>
         </div>
         <div class="images" v-if="p.images && p.images.length === 1" :class="{'has-head': p.reply || p.forwarded_from}">
-            <img v-for="i in p.images" :key="i.url" :src="i.url" alt="image">
+            <img v-for="(img, i) in p.images" :key="img.url" :src="img.url" alt="image"
+                class="clickable" @click="clickImg(i)">
         </div>
         <div class="images" v-if="p.images && p.images.length !== 1" :class="{'has-head': p.reply || p.forwarded_from}">
-            <div class="img" v-for="i in p.images" :key="i[0]"
-                 :style="{'background-image': `url(${i.url})`, ...getImageStyle(p, i)}"></div>
+            <div class="img clickable" v-for="(img, i) in p.images" :key="img[0]"
+                 :style="{'background-image': `url(${img.url})`, ...getImageStyle(p, img)}"
+                 @click="clickImg(i)"></div>
         </div>
         <div class="files" v-if="p.files">
             <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
@@ -36,8 +38,8 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {Prop} from "vue-property-decorator";
-import {Image, Post, ForwardFrom} from "@/logic/models";
+import {Emit, Prop} from "vue-property-decorator";
+import {Image, Post} from "@/logic/models";
 import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
 
@@ -103,6 +105,12 @@ export default class PostView extends Vue
                 it.innerHTML = `<img src="${src}" alt="">`
             }
         })
+    }
+
+    @Emit("click-img")
+    clickImg(i: number)
+    {
+        return i
     }
 }
 </script>

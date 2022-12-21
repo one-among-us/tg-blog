@@ -4,11 +4,12 @@
         {{fail}}
     </div>
     <div v-infinite-scroll="infiniteScroll" id="Life" v-if="posts.length !== 0">
-        <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i" @play="a => audio = a" />
+        <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i"
+                  @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" />
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
-    <ImageViewer :imgs="imgList" :initial-index="img" v-if="img" @close="this.img = null"/>
+    <ImageViewer :imgs="imgList" :initial-index="img" v-if="img !== null" @close="img = null"/>
 </template>
 
 <script lang="ts">
@@ -19,12 +20,14 @@ import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import { initSpoilers } from '@/logic/spoilers';
 import AudioPlayer from "@/views/AudioPlayer.vue";
-import ImageViewer, {ViewedImage} from "@/views/ImageViewer.vue";
+import ImageViewer, {TrackedImage, ViewedImage} from "@/views/ImageViewer.vue";
 
 @Options({components: {ImageViewer, AudioPlayer, PostView}})
 export default class TgBlog extends Vue
 {
     posts: Post[] = []
+    imgList: TrackedImage[]
+    postImgIndex: number[]
     count = 20
 
     @Prop({required: true}) postsUrl: string
@@ -39,15 +42,9 @@ export default class TgBlog extends Vue
         return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
     }
 
-    get imgList(): ViewedImage[]
+    findImgIndex(pi: number, ii: number): string[]
     {
-        return this.posts.flatMap(post => (post.images ?? []).map(img => {
-            return {
-                url: img.url,
-                text: post.text,
-                date: post.date
-            }
-        }))
+        return this.imgList.map(it => it.url)
     }
 
     audioNext(off: number)
@@ -66,13 +63,15 @@ export default class TgBlog extends Vue
         this.count = Math.min(this.count + 10, this.posts.length)
     }
 
-    created(): void
+    async created(): Promise<void>
     {
-        fetch(this.postsUrl).then(it => it.json()).then(it => {
-            this.posts = it
+        try
+        {
+            this.posts = await (await fetch(this.postsUrl)).json()
             this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD h:mm'))
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
+
             // Replace URLs
             this.posts.forEach(it =>
             {
@@ -85,15 +84,29 @@ export default class TgBlog extends Vue
                 })
             })
 
-            // // TODO: Remove this
-            // this.audio = this.audios[0]
-            // console.log(this.audios)
+            // Index images
+            this.imgList = this.posts.flatMap((post, pi) => (post.images ?? []).map(img => {
+                return {
+                    url: img.url,
+                    text: post.text,
+                    date: post.date,
+                    postIndex: pi
+                }
+            }))
+            this.postImgIndex = new Array(this.posts.length).fill(null)
+            this.imgList.forEach((img, i) => {
+                if (this.postImgIndex[img.postIndex] === null)
+                    this.postImgIndex[img.postIndex] = i
+            })
+            console.log(this.imgList)
+            console.log(this.postImgIndex)
 
-            console.log(it)
             setTimeout(() => initSpoilers(), 100);
-        }).catch(it => {
-            this.fail = it
-        })
+        }
+        catch (e)
+        {
+            this.fail = e
+        }
     }
 
     updated(): void

@@ -26,6 +26,11 @@ export interface ViewedImage
     date?: string
 }
 
+export interface TrackedImage extends ViewedImage
+{
+    postIndex: number
+}
+
 @Options({components: {IconClose}})
 export default class ImageViewer extends Vue
 {
