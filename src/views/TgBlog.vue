@@ -84,7 +84,7 @@ export default class TgBlog extends Vue
                 return {
                     url: img.url,
                     text: post.text,
-                    author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from.name),
+                    author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from?.name),
                     date: post.date,
                     postIndex: pi
                 }
