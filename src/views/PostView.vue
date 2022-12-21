@@ -191,6 +191,8 @@ export default class PostView extends Vue
         img
             max-width: 100%
             min-width: 100%
+            max-height: 300px
+            object-fit: cover
             width: auto
             height: auto
 
