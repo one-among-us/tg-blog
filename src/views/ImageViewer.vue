@@ -6,13 +6,13 @@
         <div class="abs controls">
             <div class="top">
                 <span class="f-grow1"></span>
-                <span class="icn close clickable" @click="close"><IconClose/></span>
+                <IconClose class="icn close clickable" @click="close"/>
             </div>
             <div class="f-grow1"></div>
             <div class="center">
-                <div class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"><IconArrowLeft/></div>
+                <IconArrowLeft class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"/>
                 <div class="f-grow1"></div>
-                <div class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"><IconArrowRight/></div>
+                <IconArrowRight class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"/>
             </div>
             <div class="f-grow1"></div>
             <div class="bottom">
@@ -24,7 +24,7 @@
                     </div>
                 </div>
                 <div class="buttons">
-                    <div class="icn download clickable" @click="download"><IconDownload/></div>
+                    <IconDownload class="icn download clickable" @click="download"/>
                 </div>
             </div>
         </div>
