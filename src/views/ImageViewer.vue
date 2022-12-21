@@ -60,6 +60,7 @@ export default class ImageViewer extends Vue
     @Prop({required: true}) index: number
 
     get img() { if (this.imgs) return this.imgs[this.index] }
+    get isOpen() { return !!this.img }
 
     @Emit("close")
     close() { }
@@ -72,10 +73,10 @@ export default class ImageViewer extends Vue
 
     key(e: KeyboardEvent)
     {
-        if (e.code === KeyCode.CODE_ESCAPE)
-        {
-            this.close()
-        }
+        if (!this.isOpen) return
+        if (e.code === KeyCode.CODE_ESCAPE) return this.close()
+        if (e.code === KeyCode.CODE_LEFT) return this.updateIndex(-1)
+        if (e.code === KeyCode.CODE_RIGHT) return this.updateIndex(1)
     }
 
     mounted()
