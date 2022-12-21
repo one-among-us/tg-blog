@@ -73,6 +73,7 @@ export default class ImageViewer extends Vue
     {
         const ni = this.index + offset
         if (ni < 0 || ni >= this.imgs.length) return this.index
+        this.zoom = 1
         return ni
     }
 
