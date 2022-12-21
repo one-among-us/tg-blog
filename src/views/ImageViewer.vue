@@ -1,12 +1,26 @@
 <template>
-    <div id="ImageViewer" v-if="imgs[index]">
+    <div id="ImageViewer" v-if="img">
         <div class="abs img-container">
-            <img :src="imgs[index].url" alt="Photo" class="undraggable">
+            <img :src="img.url" alt="Photo" class="undraggable">
         </div>
         <div class="abs controls">
             <div class="top">
                 <span class="f-grow1"></span>
                 <span class="icn close clickable" @click="close"><IconClose/></span>
+            </div>
+            <div class="f-grow1"></div>
+            <div class="center">
+
+            </div>
+            <div class="f-grow1"></div>
+            <div class="bottom">
+                <div class="info">
+                    <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
+                    <div class="detail">
+                        <span class="author" v-if="img.author">{{img.author}}</span>
+                        <span class="date" v-if="img.date">{{img.date}}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -23,6 +37,7 @@ export interface ViewedImage
 {
     url: string
     text?: string
+    author?: string
     date?: string
 }
 
@@ -38,6 +53,8 @@ export default class ImageViewer extends Vue
     @Prop({required: true}) initialIndex: number
 
     index: number
+
+    get img() { if (this.imgs) return this.imgs[this.index] }
 
     created()
     {
@@ -55,7 +72,7 @@ export default class ImageViewer extends Vue
     position: fixed
     z-index: 1000000
     inset: 0
-    background: rgba(0, 0, 0, 0.64)
+    background: rgba(0, 0, 0, 0.8)
 
     .abs
         position: absolute
@@ -81,4 +98,17 @@ export default class ImageViewer extends Vue
 
         .top
             display: flex
+
+        .bottom
+            display: flex
+
+        .info
+            text-align: left
+
+            .index
+                font-weight: bold
+
+            .detail
+                display: flex
+                gap: 10px
 </style>
