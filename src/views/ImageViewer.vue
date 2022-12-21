@@ -16,14 +16,19 @@
             </div>
             <div class="f-grow1"></div>
             <div class="bottom">
-                <div class="info">
+                <div class="left">
                     <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
                     <div class="detail">
                         <span class="author" v-if="img.author">{{img.author}}</span>
                         <span class="date" v-if="img.date">{{img.date}}</span>
                     </div>
                 </div>
-                <div class="buttons">
+                <div class="middle">
+                    <div class="text" v-if="img.text">
+                        <div v-html="textHtml"></div>
+                    </div>
+                </div>
+                <div class="right">
                     <IconDownload class="icn download clickable" @click="download"/>
                 </div>
             </div>
@@ -45,6 +50,7 @@ import IconArrowLeft from '~icons/ep/arrow-left';
 import IconArrowRight from '~icons/ep/arrow-right';
 // @ts-ignore
 import IconDownload from '~icons/ep/download';
+import {mdParseInline} from "@/logic";
 
 export interface ViewedImage
 {
@@ -73,6 +79,7 @@ export default class ImageViewer extends Vue
     get isOpen() { return !!this.img }
     get hasPrev() { return this.index > 0 }
     get hasNext() { return this.index <= this.imgs.length }
+    get textHtml() { if (this.img.text) return mdParseInline(this.img.text) }
 
     download() { fileDownload(this.img.url, this.img.fileName ?? this.img.url.split("/").slice(-1)[0]) }
 
@@ -180,19 +187,56 @@ export default class ImageViewer extends Vue
 
         .bottom
             display: flex
+            gap: 20px
 
-            .info
+            .left, .middle, .right
+                // Align contents inside info box to the bottom
+                display: flex
+                flex-direction: column
+                justify-content: end
+
+            .left, .right
+                flex-grow: 1
+                flex-shrink: 0
+
+            .left
+                // Align the info box
                 text-align: left
-                flex: 1
+
+                display: flex
+                flex-direction: column
+                justify-content: end
 
                 .index
                     font-weight: bold
 
                 .detail
                     display: flex
-                    gap: 10px
+                    gap: 20px
 
-            .buttons
+            .middle
+                max-width: 800px
+
+                .text
+                    // Border box
+                    padding: 10px
+                    background: rgba(0, 0, 0, 0.5)
+                    border-radius: 10px
+
+                    // Text
+                    font-size: 0.8em
+                    text-align: left
+                    white-space: pre-line
+
+                    // Limit content to 10 lines
+                    > div
+                        overflow: hidden
+                        text-overflow: ellipsis
+                        display: -webkit-box
+                        -webkit-line-clamp: 10
+                        line-clamp: 10
+                        -webkit-box-orient: vertical
+
+            .right
                 text-align: right
-                flex: 1
 </style>
