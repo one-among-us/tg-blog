@@ -10,9 +10,9 @@
             </div>
             <div class="f-grow1"></div>
             <div class="center">
-                <div class="icn left clickable"><IconArrowLeft/></div>
+                <div class="icn left clickable" @click="updateIndex(-1)"><IconArrowLeft/></div>
                 <div class="f-grow1"></div>
-                <div class="icn right clickable"><IconArrowRight/></div>
+                <div class="icn right clickable" @click="updateIndex(1)"><IconArrowRight/></div>
             </div>
             <div class="f-grow1"></div>
             <div class="bottom">
@@ -56,19 +56,18 @@ export interface TrackedImage extends ViewedImage
 export default class ImageViewer extends Vue
 {
     @Prop({required: true}) imgs: ViewedImage[]
-    @Prop({required: true}) initialIndex: number
-
-    index: number
+    @Prop({required: true}) index: number
 
     get img() { if (this.imgs) return this.imgs[this.index] }
 
-    created()
-    {
-        this.index = this.initialIndex
-    }
-
     @Emit("close")
     close() { }
+
+    @Emit("update:index")
+    updateIndex(offset: number)
+    {
+        return this.index + offset
+    }
 }
 </script>
 

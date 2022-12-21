@@ -9,7 +9,7 @@
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
-    <ImageViewer :imgs="imgList" :initial-index="img" v-if="img !== null" @close="img = null"/>
+    <ImageViewer :imgs="imgList" v-model:index="img" v-if="img !== null" @close="img = null"/>
 </template>
 
 <script lang="ts">
