@@ -148,6 +148,7 @@ export default class ImageViewer extends Vue
     z-index: 1000000
     inset: 0
     background: rgba(0, 0, 0, 0.8)
+    backdrop-filter: blur(2px)
 
     .img-container
         position: absolute
@@ -228,7 +229,7 @@ export default class ImageViewer extends Vue
             .text
                 // Border box
                 padding: 10px
-                background: rgba(0, 0, 0, 0.5)
+                background: rgba(0, 0, 0, 0.7)
                 border-radius: 10px
 
                 // Text
