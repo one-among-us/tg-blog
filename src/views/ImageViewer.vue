@@ -23,6 +23,9 @@
                         <span class="date" v-if="img.date">{{img.date}}</span>
                     </div>
                 </div>
+                <div class="buttons">
+                    <div class="icn download clickable" @click="download"><IconDownload/></div>
+                </div>
             </div>
         </div>
     </div>
@@ -32,6 +35,7 @@
 import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop} from "vue-property-decorator";
 import * as KeyCode from 'keycode-js';
+import fileDownload from "js-file-download";
 
 // @ts-ignore
 import IconClose from '~icons/ep/close';
@@ -39,6 +43,8 @@ import IconClose from '~icons/ep/close';
 import IconArrowLeft from '~icons/ep/arrow-left';
 // @ts-ignore
 import IconArrowRight from '~icons/ep/arrow-right';
+// @ts-ignore
+import IconDownload from '~icons/ep/download';
 
 export interface ViewedImage
 {
@@ -46,6 +52,7 @@ export interface ViewedImage
     text?: string
     author?: string
     date?: string
+    fileName?: string
 }
 
 export interface TrackedImage extends ViewedImage
@@ -53,7 +60,7 @@ export interface TrackedImage extends ViewedImage
     postIndex: number
 }
 
-@Options({components: {IconClose, IconArrowLeft, IconArrowRight}})
+@Options({components: {IconClose, IconArrowLeft, IconArrowRight, IconDownload}})
 export default class ImageViewer extends Vue
 {
     @Prop({required: true}) imgs: ViewedImage[]
@@ -66,6 +73,8 @@ export default class ImageViewer extends Vue
     get isOpen() { return !!this.img }
     get hasPrev() { return this.index > 0 }
     get hasNext() { return this.index <= this.imgs.length }
+
+    download() { fileDownload(this.img.url, this.img.fileName ?? this.img.url.split("/").slice(-1)[0]) }
 
     @Emit("close")
     close() { }
@@ -172,13 +181,18 @@ export default class ImageViewer extends Vue
         .bottom
             display: flex
 
-        .info
-            text-align: left
+            .info
+                text-align: left
+                flex: 1
 
-            .index
-                font-weight: bold
+                .index
+                    font-weight: bold
 
-            .detail
-                display: flex
-                gap: 10px
+                .detail
+                    display: flex
+                    gap: 10px
+
+            .buttons
+                text-align: right
+                flex: 1
 </style>
