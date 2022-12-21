@@ -68,7 +68,9 @@ export default class ImageViewer extends Vue
     @Emit("update:index")
     updateIndex(offset: number)
     {
-        return this.index + offset
+        const ni = this.index + offset
+        if (ni < 0 || ni >= this.imgs.length) return this.index
+        return ni
     }
 
     key(e: KeyboardEvent)
