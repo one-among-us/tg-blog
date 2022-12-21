@@ -87,6 +87,10 @@ export default class ImageViewer extends Vue
 
         // Prevent page scroll
         e.preventDefault()
+
+        // Get scroll direction
+        const dir = Math.sign(e.deltaY)
+        this.updateIndex(dir)
     }
 
     mounted()
