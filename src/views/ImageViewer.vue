@@ -11,17 +11,16 @@
             <div class="left">
                 <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
                 <div class="detail">
-                    <span class="author" v-if="img.author">{{img.author}}</span>
                     <span class="date" v-if="img.date">{{img.date}}</span>
-                </div>
-            </div>
-            <div class="middle">
-                <div class="text" v-if="img.text">
-                    <div v-html="textHtml"></div>
                 </div>
             </div>
             <div class="right">
                 <IconDownload class="icn download clickable" @click="download"/>
+            </div>
+            <div class="description">
+                <div class="text" v-if="img.text">
+                    <div v-html="textHtml"></div>
+                </div>
             </div>
         </div>
         <div class="arrows">
@@ -52,7 +51,6 @@ export interface ViewedImage
 {
     url: string
     text?: string
-    author?: string
     date?: string
     fileName?: string
 }
@@ -186,19 +184,14 @@ export default class ImageViewer extends Vue
     .top
         position: absolute
         inset: 10px 10px auto 10px
-
         display: flex
-        flex-grow: 1
 
     .bottom
         position: absolute
         inset: auto 10px 10px 10px
-
         display: flex
-        flex-grow: 1
-        gap: 20px
 
-        .left, .middle, .right
+        .left, .right
             // Align contents inside info box to the bottom
             display: flex
             flex-direction: column
@@ -221,41 +214,46 @@ export default class ImageViewer extends Vue
 
             .detail
                 display: flex
-                gap: 20px
-
-        .middle
-            max-width: 800px
-
-            .text
-                // Border box
-                padding: 10px
-                background: rgba(0, 0, 0, 0.7)
-                border-radius: 10px
-
-                // Text
-                font-size: 0.8em
-                text-align: left
-                white-space: pre-line
-
-                // Limit content to 10 lines
-                > div
-                    overflow: hidden
-                    text-overflow: ellipsis
-                    display: -webkit-box
-                    -webkit-line-clamp: 10
-                    line-clamp: 10
-                    -webkit-box-orient: vertical
+                gap: 10px
 
         .right
             align-items: end
 
-// Mobile optimizations
-@media only screen and (max-width: 600px)
-    // Put middle text block outside
-    .middle
+    .description
         position: absolute
-        bottom: 100%
-        margin-bottom: 10px
+        inset: auto 0 0 0
+
+        display: flex
+        justify-content: center
+
+        .text
+            max-width: 800px
+            // Border box
+            padding: 10px
+            background: rgba(0, 0, 0, 0.7)
+            border-radius: 10px
+
+            // Text
+            font-size: 0.8em
+            text-align: left
+            white-space: pre-line
+
+            // Limit content to 10 lines
+            > div
+                overflow: hidden
+                text-overflow: ellipsis
+                display: -webkit-box
+                -webkit-line-clamp: 10
+                line-clamp: 10
+                -webkit-box-orient: vertical
+
+    // Mobile optimizations
+    @media only screen and (max-width: 600px)
+        // Put middle text block outside
+        .description
+            position: absolute
+            bottom: 100%
+            margin-bottom: 10px
 </style>
 
 <style lang="sass">
