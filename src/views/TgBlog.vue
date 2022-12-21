@@ -9,7 +9,7 @@
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
-    <ImageViewer :imgs="imgList" v-model:index="img" v-if="img !== null" @close="img = null"/>
+    <ImageViewer :imgs="imgList" v-model:index="img" />
 </template>
 
 <script lang="ts">
@@ -33,7 +33,7 @@ export default class TgBlog extends Vue
     @Prop({required: true}) postsUrl: string
 
     audio?: TGFile = null
-    img?: number = 1
+    img: number = -1
 
     fail: string = null
 

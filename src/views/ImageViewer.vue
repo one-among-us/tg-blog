@@ -78,16 +78,18 @@ export default class ImageViewer extends Vue
     download() { fileDownload(this.img.url, this.img.fileName ?? this.img.url.split("/").slice(-1)[0]) }
 
     @Emit("close")
-    close() { }
+    close() { this._rawUpdateIndex(-1) }
 
-    @Emit("update:index")
     updateIndex(offset: number)
     {
         const ni = this.index + offset
-        if (ni < 0 || ni >= this.imgs.length) return this.index
+        if (ni < 0 || ni >= this.imgs.length) return
         this.zoom = 1
-        return ni
+        this._rawUpdateIndex(ni)
     }
+
+    @Emit("update:index")
+    _rawUpdateIndex(index: number) { return index }
 
     keydown(e: KeyboardEvent)
     {
