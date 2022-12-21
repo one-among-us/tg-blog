@@ -95,12 +95,14 @@ export default class ImageViewer extends Vue
     .controls
         display: flex
         padding: 10px
+        z-index: 1000002
         flex-direction: column
-        color: #d5d5d5
+        color: rgba(255, 255, 255)
+        opacity: 0.75
 
         .icn
             font-size: 2em
-
+            filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
         .top
             display: flex
 
