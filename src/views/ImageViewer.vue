@@ -180,6 +180,7 @@ export default class ImageViewer extends Vue
         display: flex
         flex-direction: row
         align-items: center
+        z-index: 1000004
 
     .top
         position: absolute
@@ -246,6 +247,14 @@ export default class ImageViewer extends Vue
 
         .right
             align-items: end
+
+// Mobile optimizations
+@media only screen and (max-width: 600px)
+    // Put middle text block outside
+    .middle
+        position: absolute
+        bottom: 100%
+        margin-bottom: 10px
 </style>
 
 <style lang="sass">
