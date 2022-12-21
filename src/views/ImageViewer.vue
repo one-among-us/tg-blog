@@ -103,7 +103,7 @@ export default class ImageViewer extends Vue
 
         // Regular scroll: switch photos, Ctrl scroll: zoom
         if (!this.ctrlDown) this.updateIndex(dir)
-        else this.zoom = Math.min(Math.max(this.zoom += dir * -0.1, 0.1), 5.0)
+        else this.zoom = Math.min(Math.max(this.zoom *= 1 + (dir * -0.1), 0.1), 5.0)
     }
 
     get imgStyle()
