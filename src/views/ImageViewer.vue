@@ -1,7 +1,7 @@
 <template>
     <div id="ImageViewer" v-if="img">
         <div class="abs img-container">
-            <img :src="img.url" alt="Photo" class="undraggable">
+            <img :src="img.url" alt="Photo" class="undraggable" :style="imgStyle">
         </div>
         <div class="abs controls">
             <div class="top">
@@ -59,6 +59,9 @@ export default class ImageViewer extends Vue
     @Prop({required: true}) imgs: ViewedImage[]
     @Prop({required: true}) index: number
 
+    ctrlDown: boolean = false
+    zoom: number = 1
+
     get img() { if (this.imgs) return this.imgs[this.index] }
     get isOpen() { return !!this.img }
 
@@ -79,6 +82,12 @@ export default class ImageViewer extends Vue
         if (e.code === KeyCode.CODE_ESCAPE) return this.close()
         if (e.code === KeyCode.CODE_LEFT) return this.updateIndex(-1)
         if (e.code === KeyCode.CODE_RIGHT) return this.updateIndex(1)
+        if (e.key == KeyCode.VALUE_CONTROL || e.key === KeyCode.VALUE_META) return this.ctrlDown = true
+    }
+
+    keyup(e: KeyboardEvent)
+    {
+        if (e.key == KeyCode.VALUE_CONTROL || e.key === KeyCode.VALUE_META) return this.ctrlDown = false
     }
 
     wheel(e: WheelEvent)
@@ -90,18 +99,28 @@ export default class ImageViewer extends Vue
 
         // Get scroll direction
         const dir = Math.sign(e.deltaY)
-        this.updateIndex(dir)
+
+        // Regular scroll: switch photos, Ctrl scroll: zoom
+        if (!this.ctrlDown) this.updateIndex(dir)
+        else this.zoom += dir * -0.1
+    }
+
+    get imgStyle()
+    {
+        return {transform: `scale(${this.zoom.toFixed(2)})`}
     }
 
     mounted()
     {
         document.addEventListener('keydown', this.keydown)
+        document.addEventListener('keyup', this.keyup)
         document.addEventListener("wheel", this.wheel, { passive: false })
     }
 
     unmounted()
     {
         document.removeEventListener('keydown', this.keydown)
+        document.removeEventListener('keyup', this.keyup)
         document.removeEventListener("wheel", this.wheel)
     }
 }
