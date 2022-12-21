@@ -10,7 +10,9 @@
             </div>
             <div class="f-grow1"></div>
             <div class="center">
-
+                <div class="icn left clickable"><IconArrowLeft/></div>
+                <div class="f-grow1"></div>
+                <div class="icn right clickable"><IconArrowRight/></div>
             </div>
             <div class="f-grow1"></div>
             <div class="bottom">
@@ -32,6 +34,10 @@ import {Emit, Prop} from "vue-property-decorator";
 
 // @ts-ignore
 import IconClose from '~icons/ep/close';
+// @ts-ignore
+import IconArrowLeft from '~icons/ep/arrow-left';
+// @ts-ignore
+import IconArrowRight from '~icons/ep/arrow-right';
 
 export interface ViewedImage
 {
@@ -46,7 +52,7 @@ export interface TrackedImage extends ViewedImage
     postIndex: number
 }
 
-@Options({components: {IconClose}})
+@Options({components: {IconClose, IconArrowLeft, IconArrowRight}})
 export default class ImageViewer extends Vue
 {
     @Prop({required: true}) imgs: ViewedImage[]
@@ -98,6 +104,10 @@ export default class ImageViewer extends Vue
 
         .top
             display: flex
+
+        .center
+            display: flex
+            flex-direction: row
 
         .bottom
             display: flex
