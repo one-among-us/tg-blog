@@ -73,7 +73,7 @@ export default class ImageViewer extends Vue
         return ni
     }
 
-    key(e: KeyboardEvent)
+    keydown(e: KeyboardEvent)
     {
         if (!this.isOpen) return
         if (e.code === KeyCode.CODE_ESCAPE) return this.close()
@@ -81,14 +81,24 @@ export default class ImageViewer extends Vue
         if (e.code === KeyCode.CODE_RIGHT) return this.updateIndex(1)
     }
 
+    wheel(e: WheelEvent)
+    {
+        if (!this.isOpen) return
+
+        // Prevent page scroll
+        e.preventDefault()
+    }
+
     mounted()
     {
-        document.addEventListener('keydown', this.key)
+        document.addEventListener('keydown', this.keydown)
+        document.addEventListener("wheel", this.wheel, { passive: false })
     }
 
     unmounted()
     {
-        document.removeEventListener('keydown', this.key)
+        document.removeEventListener('keydown', this.keydown)
+        document.removeEventListener("wheel", this.wheel)
     }
 }
 </script>
