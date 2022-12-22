@@ -1,11 +1,11 @@
 <template>
     <div id="Life">
         <div class="error tgb-card" v-if="fail">
-            <h2>Failed loading posts from: <br>{{postsUrl}}</h2>
+            <h2>Failed loading posts from: <br>{{purl}}</h2>
             {{fail}}
         </div>
         <div v-infinite-scroll="infiniteScroll" v-if="posts.length !== 0">
-            <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i"
+            <PostView :p="posts[i]" :postsUrl="purl" v-for="(n, i) in count" :key="i"
                       @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
                       :class="{shake: replyShake.includes(i)}" />
         </div>
@@ -30,6 +30,7 @@ export default class TgBlog extends Vue
 {
     // Post URL for loading the posts
     @Prop({required: true}) postsUrl: string
+    get purl() { return new URL(this.postsUrl, document.location.href).href }
 
     // Loaded posts
     posts: Post[] = []
@@ -64,7 +65,7 @@ export default class TgBlog extends Vue
     
     replaceUrl(url: string): string
     {
-        return new URL(url, this.postsUrl).toString();
+        return new URL(url, this.purl).toString();
     }
 
     infiniteScroll()
@@ -143,7 +144,7 @@ export default class TgBlog extends Vue
     {
         try
         {
-            this.posts = await (await fetch(this.postsUrl)).json()
+            this.posts = await (await fetch(this.purl)).json()
             this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD h:mm'))
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
@@ -182,6 +183,7 @@ export default class TgBlog extends Vue
         }
         catch (e)
         {
+            console.log(e)
             this.fail = e
         }
     }
