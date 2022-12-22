@@ -5,6 +5,27 @@ This is a front-end for displaying telegram (or any compatible) channel data as 
 Demo: https://test-tg.one-among.us/test  
 You can also check out [Azalea's Blog](https://aza.moe/life) for a demo.
 
+## Support Status
+
+### Feature Support
+
+- [x] All text formatting (including spoilers)
+- [x] @username, #hashtag
+- [x] Forwarded from, reply to (clickable)
+- [x] Maps! (location sharing)
+- [x] Polls (show result only, unable to vote)
+- [x] Contacts
+
+### Media Support
+
+- [x] Stickers, Animated stickers (webm & tgs)
+- [x] Custom emojis, animated custom emojis
+- [x] Videos, gif animations
+- [x] Files
+- [x] Audio, voice message (Including an audio player)
+- [x] Media groups
+- [x] Image viewing & tiling
+
 ## Getting Started
 
 ### Use in Plain HTML
