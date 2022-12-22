@@ -5,8 +5,8 @@
     </div>
     <div v-infinite-scroll="infiniteScroll" id="Life" v-if="posts.length !== 0">
         <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i"
-                  @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="id => clickReply(i, id)"
-                  :class="{shake: replyShake === i}" />
+                  @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
+                  :class="{shake: replyShake.includes(i)}" />
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
@@ -43,6 +43,10 @@ export default class TgBlog extends Vue
     audio?: TGFile = null
     img: number = -1
 
+    // The indicies of the post that's currently shaking
+    replyShake = []
+    replyLoading = false
+
     // Whether loading failed
     fail: string = null
 
@@ -73,35 +77,64 @@ export default class TgBlog extends Vue
         return Object.fromEntries(this.posts.map((it, i) => [it.id, i]))
     }
 
-    clickReply(fromId: number, id: number)
+    clickReply(id: number)
     {
-        console.log(`Reply id ${id} clicked`)
+        if (this.replyLoading) return
 
         // Check if reply message is loaded, if not, load
         const index = this.postIdIndex[id]
-        console.log(this.count, index)
         if (index > this.count)
         {
-            console.log("Setting count to index")
-            this.count = index + 1
+            this.replyLoading = true
+            this.count = Math.min(index + 10, this.posts.length)
         }
 
-        console.log("Jumping")
-        this.jumpToReply(fromId, id, index)
+        this.jumpToReply(id, index)
     }
 
-    jumpToReply(fromId: number, id: number, index: number)
+    jumpToReply(id: number, index: number)
     {
         // Did it load yet?
         const el = document.getElementById(`message-${id}`)
         if (!el)
         {
             // No, wait for another 50ms
-            return setTimeout(() => this.jumpToReply(fromId, id, index), 50)
+            return setTimeout(() => this.jumpToReply(id, index), 50)
         }
         // Yes, jump
-        el.scrollIntoView({ behavior: 'smooth', block: fromId > id ? 'end' : 'start' })
-        // TODO: Emphasize post
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        this.replyLoading = false
+
+        // Try to listen to scroll end and shake posts when scrolling is done
+        const shake = () => {
+            // Shake the post
+            this.replyShake = [...this.replyShake, index]
+            setTimeout(() => this.replyShake = this.replyShake.filter(it => it != index), 1500)
+        }
+
+        // The below code doesn't work when the post is already at the scrolled position.
+        // So we have to set another timeout: If nothing moves in 1 second, shake it
+        let sh: (Event) => void;
+        const fallback = setTimeout(() => {
+            shake()
+            window.removeEventListener('scroll', sh)
+        }, 1000)
+
+        // Try to listen to scroll events
+        let scrollTimeout;
+        sh = e => {
+            // Still scrolling, reset the timeout to 100ms
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+                clearTimeout(fallback)
+                // Done scrolling
+                shake()
+
+                // Remove listener
+                window.removeEventListener('scroll', sh)
+            }, 100);
+        }
+        window.addEventListener('scroll', sh);
     }
 
     async created(): Promise<void>
@@ -180,4 +213,22 @@ export default class TgBlog extends Vue
 
 *
     transition: all .25s ease
+
+// Animations
+.shake
+    animation: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both
+    transform: translate3d(0, 0, 0)
+
+@keyframes shake
+    10%, 90%
+        transform: translate3d(-1px, 0, 0)
+
+    20%, 80%
+        transform: translate3d(2px, 0, 0)
+
+    30%, 50%, 70%
+        transform: translate3d(-4px, 0, 0)
+
+    40%, 60%
+        transform: translate3d(4px, 0, 0)
 </style>
