@@ -5,12 +5,12 @@
             <div class="control">
                 <span>{{this.time}}</span>
                 <span class="f-grow1"></span>
-                <i class="fas fa-backward clickable" @click="prev"></i>
-                <span class="play-button clickable">
-                    <i v-if="playing?.paused" class="fas fa-play" @click="play"></i>
-                    <i v-else class="fas fa-pause" @click="pause"></i>
-                </span>
-                <i class="fas fa-forward clickable" @click="next"></i>
+                <IconPrev class="clickable" @click="prev"></IconPrev>
+
+                <IconPlay v-if="playing?.paused" @click="play"></IconPlay>
+                <IconPause v-else @click="pause"></IconPause>
+
+                <IconNext class="clickable" @click="next"></IconNext>
                 <span class="f-grow1"></span>
                 <span>{{this.duration}}</span>
             </div>
@@ -20,11 +20,20 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {Emit, Prop, Ref, Watch} from "vue-property-decorator";
+import {Emit, Prop, Watch} from "vue-property-decorator";
 import {TGFile} from "@/logic/models";
 import {durationFmt} from "@/logic/formatter";
 
-@Options({components: {}})
+// @ts-ignore
+import IconPause from '~icons/fa-solid/pause';
+// @ts-ignore
+import IconPlay from '~icons/fa-solid/play';
+// @ts-ignore
+import IconPrev from '~icons/fa-solid/backward';
+// @ts-ignore
+import IconNext from '~icons/fa-solid/forward';
+
+@Options({components: {IconPause, IconPlay, IconPrev, IconNext}})
 export default class AudioPlayer extends Vue
 {
     @Prop({required: true}) audio: TGFile
