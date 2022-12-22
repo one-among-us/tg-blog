@@ -201,6 +201,10 @@ export default class TgBlog extends Vue
     width: min(450px, 80vw)
     color: $color-text-main
 
+    text-align: center
+    -webkit-font-smoothing: antialiased
+    -moz-osx-font-smoothing: grayscale
+
     #header
         color: $color-text-light
         margin-bottom: 30px
