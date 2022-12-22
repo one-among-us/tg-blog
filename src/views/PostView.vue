@@ -40,6 +40,7 @@ import {Image, Post} from "@/logic/models";
 import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout, IAlbumLayout, IMediaDimensions} from "@/logic/webz/calculateAlbumLayout";
+import {StyleValue} from "vue";
 
 @Options({components: {FileView}})
 export default class PostView extends Vue
@@ -68,7 +69,7 @@ export default class PostView extends Vue
         return { width: dm.width + "px", height: dm.height + "px" }
     }
 
-    getImageStyle(i: number): object
+    getImageStyle(i: number): StyleValue
     {
         const dm = this.dims.layout[i].dimensions
         return {
