@@ -5,7 +5,8 @@
     </div>
     <div v-infinite-scroll="infiniteScroll" id="Life" v-if="posts.length !== 0">
         <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i"
-                  @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" />
+                  @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="id => clickReply(i, id)"
+                  :class="{shake: replyShake === i}" />
     </div>
     <AudioPlayer :audio="audio" v-if="audio"
                  @prev="audioNext(-1)" @next="audioNext(1)"/>
@@ -25,16 +26,24 @@ import ImageViewer, {TrackedImage, ViewedImage} from "@/views/ImageViewer.vue";
 @Options({components: {ImageViewer, AudioPlayer, PostView}})
 export default class TgBlog extends Vue
 {
-    posts: Post[] = []
-    imgList: TrackedImage[]
-    postImgIndex: number[]
-    count = 20
-
+    // Post URL for loading the posts
     @Prop({required: true}) postsUrl: string
 
+    // Loaded posts
+    posts: Post[] = []
+
+    // Constants: imgList and postImgIndex are computed based on posts
+    imgList: TrackedImage[]
+    postImgIndex: number[]
+
+    // Currently shown number of posts (used for infinite scroll)
+    count = 20
+
+    // Audio player will be open when audio != null, and image viewer will be open when img != -1
     audio?: TGFile = null
     img: number = -1
 
+    // Whether loading failed
     fail: string = null
 
     get audios(): TGFile[]
@@ -56,6 +65,43 @@ export default class TgBlog extends Vue
     {
         console.log("Infinite Scroll - Load more")
         this.count = Math.min(this.count + 10, this.posts.length)
+    }
+
+    get postIdIndex(): {[index: number]: number}
+    {
+        // Mapping of post id to post index in the array
+        return Object.fromEntries(this.posts.map((it, i) => [it.id, i]))
+    }
+
+    clickReply(fromId: number, id: number)
+    {
+        console.log(`Reply id ${id} clicked`)
+
+        // Check if reply message is loaded, if not, load
+        const index = this.postIdIndex[id]
+        console.log(this.count, index)
+        if (index > this.count)
+        {
+            console.log("Setting count to index")
+            this.count = index + 1
+        }
+
+        console.log("Jumping")
+        this.jumpToReply(fromId, id, index)
+    }
+
+    jumpToReply(fromId: number, id: number, index: number)
+    {
+        // Did it load yet?
+        const el = document.getElementById(`message-${id}`)
+        if (!el)
+        {
+            // No, wait for another 50ms
+            return setTimeout(() => this.jumpToReply(fromId, id, index), 50)
+        }
+        // Yes, jump
+        el.scrollIntoView({ behavior: 'smooth', block: fromId > id ? 'end' : 'start' })
+        // TODO: Emphasize post
     }
 
     async created(): Promise<void>
