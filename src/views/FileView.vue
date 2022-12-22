@@ -145,8 +145,6 @@ export default class FileView extends Vue
     object-fit: cover
 
 .detail
-    gap: 5px
-
     .title
         font-weight: bold
 
