@@ -12,6 +12,9 @@ const src = path.resolve(__dirname, 'src')
 
 // https://vitejs.dev/config/
 const cfg: UserConfigExport = {
+  define: {
+    'process.env': {}
+  },
   plugins: [
     vue(),
 
@@ -51,16 +54,16 @@ const cfg: UserConfigExport = {
   build: {
     lib: {
       entry: path.resolve(src, 'index.ts'),
-      name: 'tg-blog',
-      formats: ['es'], // adding 'umd' requires globals set to every external module
+      name: 'TgBlog',
+      formats: ['es', 'cjs', 'umd'],
       fileName: (format) => `tg-blog.${format}.js`,
     },
     rollupOptions: {
       // external modules won't be bundled into your library
-      external: ['vue', /primevue\/.+/], // not every external has a global
+      external: ['vue'], // not every external has a global
       output: {
         // disable warning on src/index.ts using both default and named export
-        exports: 'named',
+        // exports: 'named',
         // Provide global variables to use in the UMD build
         // for externalized deps (not useful if 'umd' is not in lib.formats)
         globals: {

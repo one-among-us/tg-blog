@@ -1,10 +1,11 @@
 {
   "name": "tg-blog",
   "version": "1.0.6",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "serve": "vite",
-    "build": "vue-tsc && vite build",
+    "build": "rimraf dist && vue-tsc && vite build",
     "build.demo": "BUILD_DEMO=1 yarn build",
     "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src"
   },
@@ -27,6 +28,7 @@
     "@types/moment": "^2.13.0",
     "@types/node": "^18.11.10",
     "@vitejs/plugin-vue": "^3.2.0",
+    "rimraf": "^3.0.2",
     "sass": "^1.50.0",
     "typescript": "^4.6.3",
     "unplugin-auto-import": "^0.12.1",
@@ -43,10 +45,12 @@
     "dist"
   ],
   "types": "./dist/types/index.d.ts",
+  "main": "./dist/tg-blog.umd.js",
   "module": "./dist/tg-blog.es.js",
   "exports": {
     ".": {
-      "import": "./dist/tg-blog.es.js"
+      "import": "./dist/tg-blog.es.js",
+      "require": "./dist/tg-blog.umd.js"
     },
     "./dist/style.css": "./dist/style.css"
   }
