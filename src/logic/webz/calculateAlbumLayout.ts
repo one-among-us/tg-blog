@@ -99,7 +99,17 @@ export function calculateAlbumLayout(
     spacing,
   };
 
-  if (albumCount >= 5 || forceCalc) {
+  if (albumCount === 1) {
+    const ratio = ratios[0]
+    layout = [{
+      dimensions: {
+        x: 0, y: 0,
+        width: maxWidth,
+        height: ratio > 1 ? maxHeight / ratio : maxHeight
+      },
+      sides: 4
+    }]
+  } else if (albumCount >= 5 || forceCalc) {
     layout = layoutWithComplexLayouter(params);
   } else if (albumCount === 2) {
     layout = layoutTwo(params);
