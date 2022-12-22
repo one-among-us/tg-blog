@@ -12,14 +12,11 @@
                 <div class="reply-text" v-html="p.reply.text"></div>
             </div>
         </div>
-        <div class="images" v-if="p.images && p.images.length === 1" :class="{'has-head': p.reply || p.forwarded_from}">
-            <img v-for="(img, i) in p.images" :key="img.url" :src="img.url" alt="image"
-                class="clickable" @click="clickImg(i)">
-        </div>
-        <div class="images" v-if="p.images && p.images.length !== 1" :class="{'has-head': p.reply || p.forwarded_from}">
-            <div class="img clickable" v-for="(img, i) in p.images" :key="img[0]"
-                 :style="{'background-image': `url(${img.url})`, ...getImageStyle(p, img)}"
-                 @click="clickImg(i)"></div>
+        <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from}"
+             :style="containerStyle">
+            <img v-for="(img, i) in p.images" :key="i" :src="img.url" alt="image" loading="lazy"
+                 class="clickable" @click="clickImg(i)"
+                 :style="getImageStyle(i)">
         </div>
         <div class="files" v-if="p.files">
             <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
@@ -42,6 +39,7 @@ import {Emit, Prop} from "vue-property-decorator";
 import {Image, Post} from "@/logic/models";
 import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
+import {calculateAlbumLayout, IAlbumLayout, IMediaDimensions} from "@/logic/webz/calculateAlbumLayout";
 
 @Options({components: {FileView}})
 export default class PostView extends Vue
@@ -58,9 +56,25 @@ export default class PostView extends Vue
     get fwdUrl() { return typeof this.p.forwarded_from == 'string' ? undefined : this.p.forwarded_from.url }
     get fwdName() { return typeof this.p.forwarded_from == 'string' ? this.p.forwarded_from : this.p.forwarded_from.name }
 
-    getImageStyle(post: Post, i: Image): object
+    get dims()
     {
-        return {}
+        console.log(`Calculating dimensions for ${this.p.id}...`)
+        return calculateAlbumLayout(this.p.images, 450, 450)
+    }
+
+    get containerStyle()
+    {
+        const dm = this.dims.containerStyle
+        return { width: dm.width + "px", height: dm.height + "px" }
+    }
+
+    getImageStyle(i: number): object
+    {
+        const dm = this.dims.layout[i].dimensions
+        return {
+            left: dm.x + "px", top: dm.y + "px",
+            width: dm.width + "px", height: dm.height + "px"
+        }
     }
 
     clickReply()
@@ -174,27 +188,14 @@ export default class PostView extends Vue
     .images
         margin: -20px -20px 10px
         display: flex
-
-        .img
-            flex: 1
-            height: 200px
-            width: 200px
-            background-size: cover
-            background-repeat: no-repeat
-            background-position: center
-
-            margin-right: 2px
+        position: relative
 
         .img:last-child
             margin-right: 0
 
         img
-            max-width: 100%
-            min-width: 100%
-            max-height: 300px
+            position: absolute
             object-fit: cover
-            width: auto
-            height: auto
 
     .text
         white-space: pre-line
