@@ -1,16 +1,18 @@
 <template>
-    <div class="error tgb-card" v-if="fail">
-        <h2>Failed loading posts from: <br>{{postsUrl}}</h2>
-        {{fail}}
+    <div id="Life">
+        <div class="error tgb-card" v-if="fail">
+            <h2>Failed loading posts from: <br>{{postsUrl}}</h2>
+            {{fail}}
+        </div>
+        <div v-infinite-scroll="infiniteScroll" v-if="posts.length !== 0">
+            <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i"
+                      @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
+                      :class="{shake: replyShake.includes(i)}" />
+        </div>
+        <AudioPlayer :audio="audio" v-if="audio"
+                     @prev="audioNext(-1)" @next="audioNext(1)"/>
+        <ImageViewer :imgs="imgList" v-model:index="img" />
     </div>
-    <div v-infinite-scroll="infiniteScroll" id="Life" v-if="posts.length !== 0">
-        <PostView :p="posts[i]" :postsUrl="postsUrl" v-for="(n, i) in count" :key="i"
-                  @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
-                  :class="{shake: replyShake.includes(i)}" />
-    </div>
-    <AudioPlayer :audio="audio" v-if="audio"
-                 @prev="audioNext(-1)" @next="audioNext(1)"/>
-    <ImageViewer :imgs="imgList" v-model:index="img" />
 </template>
 
 <script lang="ts">
@@ -209,14 +211,13 @@ export default class TgBlog extends Vue
         color: $color-text-light
         margin-bottom: 30px
 
-// Phone layout
-@media screen and (max-width: 570px)
-    #Life
+    // Phone layout
+    @media screen and (max-width: 570px)
         margin: 20px 20px 0
         width: unset
 
-*
-    transition: all .25s ease
+    *
+        transition: all .25s ease
 
 // Animations
 .shake
