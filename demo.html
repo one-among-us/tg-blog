@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Blog</title>
+
+  <!-- Import Libraries -->
+  <script src="https://unpkg.com/vue@3"></script>
+  <script src="https://unpkg.com/tg-blog"></script>
+  <link rel="stylesheet" href="https://unpkg.com/tg-blog/dist/style.css">
+
+  <!-- Styles -->
+  <style>
+      body {
+          font-family: Avenir, Helvetica, Arial, sans-serif;
+      }
+  </style>
+</head>
+<body>
+  <!-- Template setup -->
+  <div id="app">
+    <tg-blog posts-url="https://profile-api.hydev.org/exports/hykilp/posts.json"></tg-blog>
+  </div>
+
+  <!-- Vue js setup -->
+  <script>
+      Vue.createApp().component("tg-blog", TgBlog.TgBlog).mount('#app')
+  </script>
+</body>
+</html>
