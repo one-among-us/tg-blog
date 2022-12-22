@@ -28,7 +28,7 @@
             <div class="f-grow1"></div>
             <div class="author" v-if="p.author">{{p.author}}</div>
             <div class="date">{{p.date}}</div>
-            <div class="views" v-if="p.views">{{p.views}}<i class="fas fa-eye"/></div>
+            <div class="views" v-if="p.views">{{p.views}} <IconEye/></div>
         </div>
     </div>
 </template>
@@ -36,13 +36,16 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop} from "vue-property-decorator";
-import {Image, Post} from "@/logic/models";
+import {Post} from "@/logic/models";
 import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
-import {calculateAlbumLayout, IAlbumLayout, IMediaDimensions} from "@/logic/webz/calculateAlbumLayout";
+import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {StyleValue} from "vue";
 
-@Options({components: {FileView}})
+// @ts-ignore
+import IconEye from '~icons/fa-solid/eye';
+
+@Options({components: {FileView, IconEye}})
 export default class PostView extends Vue
 {
     @Prop({required: true}) p!: Post
@@ -207,9 +210,13 @@ export default class PostView extends Vue
         font-size: 0.9em
         gap: 10px
 
-        i
-            font-size: 0.8em
-            margin-left: 4px
+        .views
+            display: flex
+            align-items: center
+            gap: 5px
+
+        svg
+            font-size: 0.75em
 
     // Files
     .files
