@@ -1,10 +1,14 @@
 export type MediaType = "audio_file" | "animation" | "video_file" | "sticker" | "voice_message"
   | "contact" | "poll" | "location"
 
-export interface Image {
-  url: string
+
+export interface Dimension {
   width: number
   height: number
+}
+
+export interface Image extends Dimension {
+  url: string
 }
 
 export interface PollOption {

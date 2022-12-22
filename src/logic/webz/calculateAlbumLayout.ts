@@ -1,10 +1,9 @@
 // Modified from:  https://github.com/Ajaxy/telegram-tt/blob/master/src/components/middle/message/helpers/calculateAlbumLayout.ts
 
-import type { IAlbum } from '../../../../types';
-import type { ApiMessage, ApiDimensions } from '../../../../api/types';
+import {Dimension, Image} from "@/logic";
 
-import { getAvailableWidth, REM } from '../../../common/helpers/mediaDimensions';
-import { clamp } from '../../../../util/math';
+export const REM = parseInt(getComputedStyle(document.documentElement).fontSize, 10);
+export const clamp = (num: number, min: number, max: number) => (Math.min(max, Math.max(min, num)));
 
 export const AlbumRectPart = {
   None: 0,
@@ -39,18 +38,8 @@ type ILayoutParams = {
 };
 export type IAlbumLayout = {
   layout: IMediaLayout[];
-  containerStyle: ApiDimensions;
+  containerStyle: Dimension;
 };
-
-function getRatios(messages: ApiMessage[]) {
-  return messages.map(
-    (message) => {
-      const dimensions = calculateMediaDimensions(message) as ApiDimensions;
-
-      return dimensions.width / dimensions.height;
-    },
-  );
-}
 
 function getProportions(ratios: number[]) {
   return ratios.map((ratio) => (ratio > 1.2 ? 'w' : (ratio < 0.8 ? 'n' : 'q'))).join('');
@@ -71,7 +60,7 @@ function cropRatios(ratios: number[], averageRatio: number) {
 }
 
 function calculateContainerSize(layout: IMediaLayout[]) {
-  const styles: ApiDimensions = { width: 0, height: 0 };
+  const styles: Dimension = { width: 0, height: 0 };
   layout.forEach(({
     dimensions,
     sides,
@@ -88,21 +77,17 @@ function calculateContainerSize(layout: IMediaLayout[]) {
 }
 
 export function calculateAlbumLayout(
-  isOwn: boolean,
-  asForwarded: boolean,
-  noAvatars: boolean,
-  album: IAlbum,
+  album: Image[],
+  maxWidth: number,
+  maxHeight: number
 ): IAlbumLayout {
   const spacing = 2;
-  const ratios = getRatios(album.messages);
+  const ratios = album.map(i => i.width / i.height);
   const proportions = getProportions(ratios);
   const averageRatio = getAverageRatio(ratios);
   const albumCount = ratios.length;
   const forceCalc = ratios.some((ratio) => ratio > 2);
-  const maxWidth = getAvailableWidth(isOwn, asForwarded, false, noAvatars) - (asForwarded ? 2.5 : 0) * REM;
-  const maxHeight = maxWidth;
-
-  let layout;
+  let layout: IMediaLayout[];
 
   const params = {
     ratios,
