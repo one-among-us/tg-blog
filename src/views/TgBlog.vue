@@ -30,13 +30,14 @@ export default class TgBlog extends Vue
 {
     // Post URL for loading the posts
     @Prop({required: true}) postsUrl: string
+    @Prop() postsData?: Post[]
     get purl() { return new URL(this.postsUrl, document.location.href).href }
 
     // Loaded posts
     posts: Post[] = []
 
     // Constants: imgList and postImgIndex are computed based on posts
-    imgList: TrackedImage[]
+    imgList: TrackedImage[] = null
     postImgIndex: number[]
 
     // Currently shown number of posts (used for infinite scroll)
@@ -144,7 +145,8 @@ export default class TgBlog extends Vue
     {
         try
         {
-            this.posts = await (await fetch(this.purl)).json()
+            if (this.postsData) this.posts = this.postsData
+            else this.posts = await (await fetch(this.purl)).json()
             this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD h:mm'))
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
