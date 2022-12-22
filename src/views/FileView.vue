@@ -3,8 +3,10 @@
     <div class="file" v-if="shouldDisplayDetail">
         <div class="thumb clickable" @click="fileThumbClick">
             <img :src="f.thumb ?? 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='" alt=""/>
-            <div v-if="fileIcon" class="icon fbox-center">
-                <i :class="fileIcon" v-if="fileIcon"></i>
+            <div class="icon fbox-center">
+                <IconFile v-if="!f.media_type" />
+                <IconAudio v-else-if="isAudioOrVoice" />
+                <IconContact v-else-if="f.media_type === 'contact'" />
             </div>
         </div>
 
@@ -53,7 +55,14 @@ import Poll from "@/views/Poll.vue";
 import Location from "@/views/Location.vue";
 import fileDownload from "js-file-download"
 
-@Options({components: {Location, Poll}})
+// @ts-ignore
+import IconFile from '~icons/fa-solid/download';
+// @ts-ignore
+import IconAudio from '~icons/fa-solid/play';
+// @ts-ignore
+import IconContact from '~icons/fa-solid/address-book';
+
+@Options({components: {Location, Poll, IconFile, IconAudio, IconContact}})
 export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile
@@ -110,17 +119,6 @@ export default class FileView extends Vue
         }
     }
 
-    get fileIcon(): string | undefined
-    {
-        const f = this.f
-        if (!f.media_type)
-            return 'fa-solid fa-download'
-        if (this.isAudioOrVoice)
-            return 'fa-solid fa-play'
-        if (f.media_type == 'contact')
-            return 'fa-solid fa-address-book'
-    }
-
     get duration(): string { return durationFmt(this.f.duration) }
     get size(): string { return sizeFmt(this.f.size) }
 }
@@ -166,7 +164,7 @@ export default class FileView extends Vue
         left: 0
         top: 0
         color: white
-        font-size: 1.5em
+        font-size: 1.2em
         background: rgba(0, 0, 0, 0.25)
         opacity: 0.8
 
