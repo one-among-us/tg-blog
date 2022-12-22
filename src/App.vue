@@ -58,11 +58,6 @@ export default class App extends Vue
   -webkit-font-smoothing: antialiased
   -moz-osx-font-smoothing: grayscale
   text-align: center
-  color: #2c3e50
-
-  .rlink
-    color: hotpink
-    text-decoration: none
 
   max-width: 600px
   margin: auto
