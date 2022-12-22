@@ -56,7 +56,6 @@ export interface Location {
 }
 
 export interface TGLocationFile extends Location{
-  location?: Location
   title: string
   address: string
   foursquare_id: string
@@ -73,7 +72,7 @@ export interface Post {
 
   text?: string
   forwarded_from?: string | ForwardFrom
-  type?: string // If type doesn't exist, it's a regular message
+  type?: 'service' // If type is not service, it's a regular message
   views?: string // Service messages have no view count
   author?: string
   reply?: {

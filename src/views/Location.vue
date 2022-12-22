@@ -30,15 +30,8 @@ export default class Location extends Vue
     @Prop({required: true}) f: TGLocationFile
     marker: number[]
 
-    options = {
-        scrollWheelZoom: false
-    }
-
-    get center()
-    {
-        const f = this.f
-        return [f.latitude ?? f.location?.longitude, f.longitude ?? f.location?.longitude]
-    }
+    get options() { return {scrollWheelZoom: false} }
+    get center() { return [this.f.latitude, this.f.longitude] }
 
     created()
     {
