@@ -155,6 +155,7 @@ export default class TgBlog extends Vue
             this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD h:mm'))
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
+            this.count = Math.min(this.count, this.posts.length)
 
             // Replace URLs
             this.posts.forEach(it =>
