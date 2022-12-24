@@ -213,7 +213,7 @@ export default class TgBlog extends Vue
 .tg-blog
     margin-left: auto
     margin-right: auto
-    width: min(450px, 80vw)
+    width: 450px
     color: $color-text-main
 
     text-align: center
@@ -221,7 +221,7 @@ export default class TgBlog extends Vue
     -moz-osx-font-smoothing: grayscale
 
     // Phone layout
-    @media screen and (max-width: 570px)
+    @media screen and (max-width: 490px)
         margin: 20px 20px 0
         width: unset
 
