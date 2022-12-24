@@ -52,10 +52,12 @@ import {TGFile, TGPollFile, TGLocationFile} from "@/logic/models";
 import {Emit, Prop} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import Poll from "@/views/Poll.vue";
-import Location from "@/views/Location.vue";
 import fileDownload from "js-file-download"
 
-@Options({components: {Location, Poll}})
+@Options({components: {
+    Location: defineAsyncComponent(() => import("@/views/Location.vue")),
+    Poll
+}})
 export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile
