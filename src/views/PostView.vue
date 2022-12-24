@@ -39,7 +39,6 @@
 import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop, Ref} from "vue-property-decorator";
 import {Post} from "@/logic/models";
-import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {StyleValue} from "vue";
@@ -54,12 +53,7 @@ export default class PostView extends Vue
 
     sizeScale: number = 1
 
-    get text(): string | undefined
-    {
-        if (!this.p.text) return undefined
-        return mdParseInline(this.p.text)
-    }
-
+    get text() { if (this.p.text) return this.p.text }
     get fwdUrl() { return typeof this.p.forwarded_from == 'string' ? undefined : this.p.forwarded_from.url }
     get fwdName() { return typeof this.p.forwarded_from == 'string' ? this.p.forwarded_from : this.p.forwarded_from.name }
 

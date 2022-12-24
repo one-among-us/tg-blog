@@ -36,7 +36,6 @@ import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop} from "vue-property-decorator";
 import * as KeyCode from 'keycode-js';
 import fileDownload from "js-file-download";
-import {mdParseInline} from "@/logic";
 
 export interface ViewedImage
 {
@@ -64,7 +63,7 @@ export default class ImageViewer extends Vue
     get isOpen() { return !!this.img }
     get hasPrev() { return this.index > 0 }
     get hasNext() { return this.index <= this.imgs.length }
-    get textHtml() { if (this.img.text) return mdParseInline(this.img.text) }
+    get textHtml() { if (this.img.text) return this.img.text }
 
     download() { fileDownload(this.img.url, this.img.fileName ?? this.img.url.split("/").slice(-1)[0]) }
 
