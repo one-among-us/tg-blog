@@ -198,6 +198,7 @@ export default class PostView extends Vue
         content: " "
         border: 2px solid lighten($color-text-main, 20)
         border-radius: 2px
+        background: $color-text-main
 
     .images.has-head
         margin: 0 -20px 10px
