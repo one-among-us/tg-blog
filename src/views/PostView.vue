@@ -96,6 +96,13 @@ export default class PostView extends Vue
     {
         this.initEmoji()
         this.refreshSize()
+
+        window.addEventListener('resize', this.refreshSize)
+    }
+
+    unmounted()
+    {
+        window.removeEventListener('resize', this.refreshSize)
     }
 
     replaceUrl(url: string): string
