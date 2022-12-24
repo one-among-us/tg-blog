@@ -1,5 +1,5 @@
 <template>
-    <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}">
+    <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}" ref="post">
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">
                 Forwarded from: <a :href="fwdUrl">{{fwdName}}</a>
@@ -35,7 +35,7 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {Emit, Prop} from "vue-property-decorator";
+import {Emit, Prop, Ref} from "vue-property-decorator";
 import {Post} from "@/logic/models";
 import {mdParseInline} from '@/logic/spoilers';
 import FileView from "@/views/FileView.vue";
@@ -50,6 +50,10 @@ export default class PostView extends Vue
 {
     @Prop({required: true}) p!: Post
     @Prop({required: true}) postsUrl: string
+
+    @Ref("post") el: HTMLDivElement
+
+    sizeScale: number = 1
 
     get text(): string | undefined
     {
@@ -68,25 +72,30 @@ export default class PostView extends Vue
 
     get containerStyle()
     {
+        const ss = this.sizeScale
         const dm = this.dims.containerStyle
-        return { width: dm.width + "px", height: dm.height + "px" }
+        return { width: dm.width * ss + "px", height: dm.height * ss + "px" }
     }
 
     getImageStyle(i: number): StyleValue
     {
+        const ss = this.sizeScale
         const dm = this.dims.layout[i].dimensions
         return {
-            left: dm.x + "px", top: dm.y + "px",
-            width: dm.width + "px", height: dm.height + "px"
+            left: dm.x * ss + "px", top: dm.y * ss + "px",
+            width: dm.width * ss + "px", height: dm.height * ss + "px"
         }
     }
 
     @Emit("click-reply")
     clickReply() { return this.p.reply.id }
 
+    refreshSize() { this.sizeScale = this.el.clientWidth / 450 }
+
     mounted()
     {
         this.initEmoji()
+        this.refreshSize()
     }
 
     replaceUrl(url: string): string
