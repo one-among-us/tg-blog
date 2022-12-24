@@ -5,12 +5,12 @@
             <div class="control">
                 <span>{{this.time}}</span>
                 <span class="f-grow1"></span>
-                <IconPrev class="clickable" @click="prev"></IconPrev>
+                <i-fas-backward class="clickable" @click="prev" />
 
-                <IconPlay v-if="playing?.paused" @click="play"></IconPlay>
-                <IconPause v-else @click="pause"></IconPause>
+                <i-fas-play v-if="playing?.paused" @click="play" />
+                <i-fas-pause v-else @click="pause" />
 
-                <IconNext class="clickable" @click="next"></IconNext>
+                <i-fas-forward class="clickable" @click="next" />
                 <span class="f-grow1"></span>
                 <span>{{this.duration}}</span>
             </div>
@@ -24,16 +24,7 @@ import {Emit, Prop, Watch} from "vue-property-decorator";
 import {TGFile} from "@/logic/models";
 import {durationFmt} from "@/logic/formatter";
 
-// @ts-ignore
-import IconPause from '~icons/fa-solid/pause';
-// @ts-ignore
-import IconPlay from '~icons/fa-solid/play';
-// @ts-ignore
-import IconPrev from '~icons/fa-solid/backward';
-// @ts-ignore
-import IconNext from '~icons/fa-solid/forward';
-
-@Options({components: {IconPause, IconPlay, IconPrev, IconNext}})
+@Options({components: {}})
 export default class AudioPlayer extends Vue
 {
     @Prop({required: true}) audio: TGFile

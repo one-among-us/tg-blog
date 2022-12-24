@@ -5,7 +5,7 @@
         </div>
         <div class="top">
             <span class="f-grow1"></span>
-            <IconClose class="icn close clickable" @click="close"/>
+            <i-ep-close class="icn close clickable" @click="close"/>
         </div>
         <div class="bottom">
             <div class="left">
@@ -15,7 +15,7 @@
                 </div>
             </div>
             <div class="right">
-                <IconDownload class="icn download clickable" @click="download"/>
+                <i-ep-download class="icn download clickable" @click="download"/>
             </div>
             <div class="description">
                 <div class="text" v-if="img.text">
@@ -24,9 +24,9 @@
             </div>
         </div>
         <div class="arrows">
-            <IconArrowLeft class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"/>
+            <i-ep-arrow-left class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"/>
             <div class="f-grow1"></div>
-            <IconArrowRight class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"/>
+            <i-ep-arrow-right class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"/>
         </div>
     </div>
 </template>
@@ -36,15 +36,6 @@ import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop} from "vue-property-decorator";
 import * as KeyCode from 'keycode-js';
 import fileDownload from "js-file-download";
-
-// @ts-ignore
-import IconClose from '~icons/ep/close';
-// @ts-ignore
-import IconArrowLeft from '~icons/ep/arrow-left';
-// @ts-ignore
-import IconArrowRight from '~icons/ep/arrow-right';
-// @ts-ignore
-import IconDownload from '~icons/ep/download';
 import {mdParseInline} from "@/logic";
 
 export interface ViewedImage
@@ -60,7 +51,7 @@ export interface TrackedImage extends ViewedImage
     postIndex: number
 }
 
-@Options({components: {IconClose, IconArrowLeft, IconArrowRight, IconDownload}})
+@Options({components: {}})
 export default class ImageViewer extends Vue
 {
     @Prop({required: true}) imgs: ViewedImage[]

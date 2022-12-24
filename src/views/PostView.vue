@@ -30,7 +30,7 @@
             <div class="f-grow1"></div>
             <div class="author" v-if="p.author">{{p.author}}</div>
             <div class="date">{{p.date}}</div>
-            <div class="views" v-if="p.views">{{p.views}} <IconEye/></div>
+            <div class="views" v-if="p.views">{{p.views}} <i-fas-eye /></div>
         </div>
     </div>
 </template>
@@ -44,10 +44,7 @@ import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {StyleValue} from "vue";
 
-// @ts-ignore
-import IconEye from '~icons/fa-solid/eye';
-
-@Options({components: {FileView, IconEye}})
+@Options({components: {FileView}})
 export default class PostView extends Vue
 {
     @Prop({required: true}) p!: Post

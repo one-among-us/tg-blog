@@ -4,9 +4,9 @@
         <div class="thumb clickable" @click="fileThumbClick">
             <img :src="f.thumb ?? 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs='" alt=""/>
             <div class="icon fbox-center">
-                <IconFile v-if="!f.media_type" />
-                <IconAudio v-else-if="isAudioOrVoice" />
-                <IconContact v-else-if="f.media_type === 'contact'" />
+                <i-fas-download v-if="!f.media_type" />
+                <i-fas-play v-else-if="isAudioOrVoice" />
+                <i-fas-address-book v-else-if="f.media_type === 'contact'" />
             </div>
         </div>
 
@@ -55,14 +55,7 @@ import Poll from "@/views/Poll.vue";
 import Location from "@/views/Location.vue";
 import fileDownload from "js-file-download"
 
-// @ts-ignore
-import IconFile from '~icons/fa-solid/download';
-// @ts-ignore
-import IconAudio from '~icons/fa-solid/play';
-// @ts-ignore
-import IconContact from '~icons/fa-solid/address-book';
-
-@Options({components: {Location, Poll, IconFile, IconAudio, IconContact}})
+@Options({components: {Location, Poll}})
 export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile

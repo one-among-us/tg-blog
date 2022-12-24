@@ -6,6 +6,19 @@ import '@vue/runtime-core'
 export {}
 
 declare module '@vue/runtime-core' {
+  export interface GlobalComponents {
+    IEpArrowLeft: typeof import('~icons/ep/arrow-left')['default']
+    IEpArrowRight: typeof import('~icons/ep/arrow-right')['default']
+    IEpClose: typeof import('~icons/ep/close')['default']
+    IEpDownload: typeof import('~icons/ep/download')['default']
+    IFasAddressBook: typeof import('~icons/fa6-solid/address-book')['default']
+    IFasBackward: typeof import('~icons/fa6-solid/backward')['default']
+    IFasDownload: typeof import('~icons/fa6-solid/download')['default']
+    IFasEye: typeof import('~icons/fa6-solid/eye')['default']
+    IFasForward: typeof import('~icons/fa6-solid/forward')['default']
+    IFasPause: typeof import('~icons/fa6-solid/pause')['default']
+    IFasPlay: typeof import('~icons/fa6-solid/play')['default']
+  }
   export interface ComponentCustomProperties {
     vInfiniteScroll: typeof import('element-plus/es')['ElInfiniteScroll']
   }
