@@ -6,7 +6,9 @@
             </div>
         </div>
         <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
-            <img class="thumb" v-if="p.reply.thumb" :src="p.reply.thumb" alt="">
+            <div class="thumb-wrap" v-if="p.reply.thumb">
+                <img class="thumb" :src="p.reply.thumb" alt="" loading="lazy">
+            </div>
             <div class="mtext">
                 <div class="reply-to">Reply to:</div>
                 <div class="reply-text" v-html="p.reply.text"></div>
@@ -173,17 +175,19 @@ export default class PostView extends Vue
 
     .reply
         display: flex
-        //font-size: 0.9em
+        gap: 10px
+
+        .thumb-wrap
+            display: flex
+            align-items: center
 
         .thumb
-            margin-left: 10px
-            height: 35px
-            width: 35px
+            height: 2.6em
+            aspect-ratio: 1
             object-fit: cover
 
         .mtext
             flex-grow: 1
-            margin-left: 10px
             color: $color-text-light
             display: -webkit-box
             -webkit-box-orient: vertical
@@ -207,9 +211,6 @@ export default class PostView extends Vue
         margin: -20px -20px 10px
         display: flex
         position: relative
-
-        .img:last-child
-            margin-right: 0
 
         img
             position: absolute
