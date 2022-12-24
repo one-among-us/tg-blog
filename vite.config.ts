@@ -37,6 +37,16 @@ const cfg: UserConfigExport = {
         // Auto register Element Plus components
         // 自动导入 Element Plus 组件
         ElementPlusResolver(),
+
+        // Auto register icon components
+        // 自动注册图标组件
+        IconsResolver({
+          prefix: 'i',
+          enabledCollections: ['ep', 'fa6-solid'],
+          alias: {
+            fas: 'fa6-solid',
+          }
+        }),
       ],
 
       dts: path.resolve(src, 'components.d.ts'),
