@@ -1,5 +1,6 @@
 <template>
-    <div id="Life">
+    <div class="tg-blog" :class="{margins: margins}">
+        <slot></slot>
         <div class="error tgb-card" v-if="fail">
             <h2>Failed loading posts from: <br>{{purl}}</h2>
             {{fail}}
@@ -31,6 +32,10 @@ export default class TgBlog extends Vue
     // Post URL for loading the posts
     @Prop({required: true}) postsUrl: string
     @Prop() postsData?: Post[]
+
+    // Whether to add margins
+    @Prop({default: true}) margins: boolean
+
     get purl() { return new URL(this.postsUrl, document.location.href).href }
 
     // Loaded posts
@@ -201,19 +206,19 @@ export default class TgBlog extends Vue
 @import "src/css/colors"
 @import "src/css/global"
 
-#Life
-    margin: 20px auto
-    font-size: 1em
+.tg-blog.margins
+    margin-top: 20px
+    margin-bottom: 20px
+
+.tg-blog
+    margin-left: auto
+    margin-right: auto
     width: min(450px, 80vw)
     color: $color-text-main
 
     text-align: center
     -webkit-font-smoothing: antialiased
     -moz-osx-font-smoothing: grayscale
-
-    #header
-        color: $color-text-light
-        margin-bottom: 30px
 
     // Phone layout
     @media screen and (max-width: 570px)
