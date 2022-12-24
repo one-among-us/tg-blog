@@ -23,10 +23,12 @@ import {Prop} from "vue-property-decorator";
 import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import { initSpoilers } from '@/logic/spoilers';
-import AudioPlayer from "@/views/AudioPlayer.vue";
-import ImageViewer, {TrackedImage, ViewedImage} from "@/views/ImageViewer.vue";
+import ImageViewer, {TrackedImage} from "@/views/ImageViewer.vue";
 
-@Options({components: {ImageViewer, AudioPlayer, PostView}})
+@Options({components: {
+    PostView, ImageViewer,
+    AudioPlayer: defineAsyncComponent(() => import("./AudioPlayer.vue"))
+}})
 export default class TgBlog extends Vue
 {
     // Post URL for loading the posts
