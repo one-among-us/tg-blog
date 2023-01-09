@@ -50,12 +50,13 @@ export interface TGPollFile {
   allow_multiple_answers?: boolean
 }
 
-export interface Location {
+export interface TGLocation
+{
   longitude: number
   latitude: number
 }
 
-export interface TGLocationFile extends Location{
+export interface TGLocationFile extends TGLocation{
   title: string
   address: string
   foursquare_id: string
