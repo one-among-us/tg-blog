@@ -62,7 +62,7 @@ export default class ImageViewer extends Vue
     get img() { if (this.imgs) return this.imgs[this.index] }
     get isOpen() { return !!this.img }
     get hasPrev() { return this.index > 0 }
-    get hasNext() { return this.index <= this.imgs.length }
+    get hasNext() { return this.index < this.imgs.length }
     get textHtml() { if (this.img.text) return this.img.text }
 
     download() { fileDownload(this.img.url, this.img.fileName ?? this.img.url.split("/").slice(-1)[0]) }
