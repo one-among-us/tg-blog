@@ -8,7 +8,7 @@
             <i-ep-close class="icn close clickable" @click="close"/>
         </div>
         <div class="bottom">
-            <div class="left">
+            <div class="left unselectable">
                 <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
                 <div class="detail">
                     <span class="date" v-if="img.date">{{img.date}}</span>
@@ -17,7 +17,7 @@
             <div class="right">
                 <i-ep-download class="icn download clickable" @click="download"/>
             </div>
-            <div class="description">
+            <div class="description unselectable">
                 <div class="text" v-if="img.text">
                     <div v-html="textHtml"></div>
                 </div>
@@ -62,7 +62,7 @@ export default class ImageViewer extends Vue
     get img() { if (this.imgs) return this.imgs[this.index] }
     get isOpen() { return !!this.img }
     get hasPrev() { return this.index > 0 }
-    get hasNext() { return this.index < this.imgs.length }
+    get hasNext() { return this.index + 1 < this.imgs.length }
     get textHtml() { if (this.img.text) return this.img.text }
 
     download() { fileDownload(this.img.url, this.img.fileName ?? this.img.url.split("/").slice(-1)[0]) }
@@ -182,6 +182,9 @@ export default class ImageViewer extends Vue
         position: absolute
         inset: auto 10px 10px 10px
         display: flex
+
+        .clickable
+            z-index: 1000008
 
         .left, .right
             // Align contents inside info box to the bottom
