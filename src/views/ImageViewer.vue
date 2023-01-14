@@ -156,7 +156,7 @@ export default class ImageViewer extends Vue
         font-size: 2em
         filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
 
-    .top, .bottom, .arrows
+    .top, .bottom
         color: white
         opacity: 0.8
         z-index: 1000002
