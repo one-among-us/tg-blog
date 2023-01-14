@@ -25,7 +25,6 @@
         </div>
         <div class="arrows">
             <i-ep-arrow-left class="icn left clickable" v-if="hasPrev" @click="updateIndex(-1)"/>
-            <div class="f-grow1"></div>
             <i-ep-arrow-right class="icn right clickable" v-if="hasNext" @click="updateIndex(1)"/>
         </div>
     </div>
@@ -156,7 +155,7 @@ export default class ImageViewer extends Vue
         font-size: 2em
         filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
 
-    .top, .bottom
+    .top, .bottom, .arrows
         color: white
         opacity: 0.8
         z-index: 1000002
@@ -165,15 +164,16 @@ export default class ImageViewer extends Vue
         position: absolute
 
     .arrows
-        position: absolute
-        inset: calc(50% - 2em) 10px auto 10px
-
-        display: flex
-        flex-direction: row
-        align-items: center
-
-        > .icn
+        .icn
+            position: absolute
+            top: calc(50% - 0.5em)
             z-index: 1000004
+
+        .left
+            left: 10px
+
+        .right
+            right: 10px
 
     .top
         position: absolute
