@@ -61,6 +61,62 @@ You can use it in plain HTML without a modern web build tool:
 </html>
 ```
 
+### Use in Hexo Blog
+
+You can also use it in a Hexo blog like in [Linda's Blog](https://blog.1mether.me/tg-channel) ([source code](https://github.com/locoda/blog/blob/master/source/tg-channel.md?plain=1))
+
+Depending on the css of your theme, it might need some modifications to work. For example, [these modifications](https://github.com/locoda/blog/pull/66) were needed for the Icalm theme.
+
+However, you can add the page as a markdown in the following format:
+
+```md
+---
+title: 'Telegram Blog'
+date: 2023-01-13
+---
+
+{% raw %}
+
+<!-- Import Libraries -->
+<script src="https://unpkg.com/vue@3"></script>
+<script src="https://unpkg.com/tg-blog"></script>
+<link rel="stylesheet" href="https://unpkg.com/tg-blog/dist/style.css">
+
+<!-- Styles & Patches -->
+<style>
+    #tg-blog-app { font-family: Avenir, Helvetica, Arial, sans-serif }
+
+    /* Icalm Fix: Override img max-width: 100% set in layout.styl */
+    #tg-blog-app img { max-width: unset; }
+
+    /* Icalm Fix: overflow-x: hidden breaks infinite scroll */
+    .container { overflow-x: unset !important; }
+    body { overflow-x: unset !important; }
+</style>
+
+<!-- Template setup (Paste your data url here) -->
+<div id="tg-blog-app">
+    <tg-blog posts-url="YOUR-POSTS-URL-HERE!"></tg-blog>
+</div>
+
+<!-- Vue js setup -->
+<script>
+const app = Vue.createApp().component("tg-blog", TgBlog.TgBlog)
+app.mount('#tg-blog-app')
+
+// Hexo patch: Destroy app when page switched
+const interval = setInterval(() => {
+    if (!document.getElementById('tg-blog-app')) 
+    {
+        app.unmount()
+        clearInterval(interval)
+    }
+}, 1000)
+</script>
+
+{% endraw %}
+```
+
 ### Use in Vite
 
 You can also use import it into your project using modern build tools like vite:
