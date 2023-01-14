@@ -171,7 +171,9 @@ export default class ImageViewer extends Vue
         display: flex
         flex-direction: row
         align-items: center
-        z-index: 1000004
+
+        > .icn
+            z-index: 1000004
 
     .top
         position: absolute
