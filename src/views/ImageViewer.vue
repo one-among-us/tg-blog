@@ -141,118 +141,120 @@ export default class ImageViewer extends Vue
     background: rgba(0, 0, 0, 0.8)
     backdrop-filter: blur(2px)
 
-    .img-container
-        position: absolute
-        inset: 0
+.img-container
+    position: absolute
+    inset: 0
 
-        display: flex
-        align-items: center
-        justify-content: center
+    display: flex
+    align-items: center
+    justify-content: center
 
-        img
-            max-width: 100%
-            max-height: 100%
+    img
+        max-width: 100%
+        max-height: 100%
 
+.icn
+    font-size: 2em
+    filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
+
+.top, .bottom, .arrows
+    color: white
+    opacity: 0.8
+    z-index: 1000002
+
+.top
+    position: absolute
+
+.arrows
     .icn
-        font-size: 2em
-        filter: drop-shadow(0px 2px 2px rgba(0, 0, 0, 0.4))
-
-    .top, .bottom, .arrows
-        color: white
-        opacity: 0.8
-        z-index: 1000002
-
-    .top
         position: absolute
+        top: calc(50% - 0.5em)
+        z-index: 1000004
 
-    .arrows
-        .icn
-            position: absolute
-            top: calc(50% - 0.5em)
-            z-index: 1000004
+    .left
+        left: 10px
 
-        .left
-            left: 10px
+    .right
+        right: 10px
 
-        .right
-            right: 10px
+.top
+    position: absolute
+    inset: 10px 10px auto 10px
+    display: flex
 
-    .top
-        position: absolute
-        inset: 10px 10px auto 10px
+.bottom
+    position: absolute
+    inset: auto 10px 10px 10px
+    display: flex
+
+    .clickable
+        z-index: 1000008
+
+    .left, .right
+        // Align contents inside info box to the bottom
         display: flex
+        flex-direction: column
+        justify-content: end
 
-    .bottom
-        position: absolute
-        inset: auto 10px 10px 10px
+    .left, .right
+        flex-grow: 1
+        flex-shrink: 0
+
+    .left
+        // Align the info box
+        text-align: left
+
         display: flex
+        flex-direction: column
+        justify-content: end
 
-        .clickable
-            z-index: 1000008
+        .index
+            font-weight: bold
 
-        .left, .right
-            // Align contents inside info box to the bottom
+        .detail
             display: flex
-            flex-direction: column
-            justify-content: end
+            gap: 10px
 
-        .left, .right
-            flex-grow: 1
-            flex-shrink: 0
+    .right
+        flex-direction: row
+        align-items: center
+        justify-content: end
 
-        .left
-            // Align the info box
-            text-align: left
+.description
+    position: absolute
+    inset: auto 0 0 0
 
-            display: flex
-            flex-direction: column
-            justify-content: end
+    display: flex
+    justify-content: center
 
-            .index
-                font-weight: bold
+    .text
+        max-width: 800px
+        // Border box
+        padding: 10px
+        background: rgba(0, 0, 0, 0.7)
+        border-radius: 10px
 
-            .detail
-                display: flex
-                gap: 10px
+        // Text
+        font-size: 0.8em
+        text-align: left
+        white-space: pre-line
 
-        .right
-            align-items: end
-
+        // Limit content to 10 lines
+        > div
+            overflow: hidden
+            text-overflow: ellipsis
+            display: -webkit-box
+            -webkit-line-clamp: 10
+            line-clamp: 10
+            -webkit-box-orient: vertical
+    
+// Mobile optimizations
+@media only screen and (max-width: 600px)
+    // Put middle text block outside
     .description
         position: absolute
-        inset: auto 0 0 0
-
-        display: flex
-        justify-content: center
-
-        .text
-            max-width: 800px
-            // Border box
-            padding: 10px
-            background: rgba(0, 0, 0, 0.7)
-            border-radius: 10px
-
-            // Text
-            font-size: 0.8em
-            text-align: left
-            white-space: pre-line
-
-            // Limit content to 10 lines
-            > div
-                overflow: hidden
-                text-overflow: ellipsis
-                display: -webkit-box
-                -webkit-line-clamp: 10
-                line-clamp: 10
-                -webkit-box-orient: vertical
-
-    // Mobile optimizations
-    @media only screen and (max-width: 600px)
-        // Put middle text block outside
-        .description
-            position: absolute
-            bottom: 100%
-            margin-bottom: 10px
+        bottom: 100%
+        margin-bottom: 10px
 </style>
 
 <style lang="sass">
