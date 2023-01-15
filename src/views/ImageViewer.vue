@@ -16,6 +16,7 @@
             </div>
             <div class="right">
                 <i-ep-download class="icn download clickable" @click="download"/>
+                <div class="progress" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100" style="--value:65"></div>
             </div>
             <div class="description unselectable">
                 <div class="text" v-if="img.text">
@@ -247,6 +248,30 @@ export default class ImageViewer extends Vue
             -webkit-line-clamp: 10
             line-clamp: 10
             -webkit-box-orient: vertical
+
+@keyframes growProgressBar
+    0%, 33%
+        --pgPercentage: 0
+    100%
+        --pgPercentage: var(--value)
+
+.progress
+    --fg: #ffffff
+    --bg: rgba(255, 255, 255, 0.41)
+    --pgPercentage: var(--value)
+    animation: growProgressBar 3s 1 forwards
+    width: 2em
+    height: 2em
+    border-radius: 50%
+    background: conic-gradient(var(--fg) calc(var(--pgPercentage) * 1%), var(--bg) 0)
+
+    font-family: Helvetica, Arial, sans-serif
+    font-size: calc(var(--size) / 5)
+    color: var(--fg)
+
+.progress::before
+    counter-reset: percentage var(--value)
+    //content: counter(percentage) '%'
     
 // Mobile optimizations
 @media only screen and (max-width: 600px)
