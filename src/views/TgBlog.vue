@@ -7,7 +7,7 @@
         </div>
         <div v-infinite-scroll="infiniteScroll" v-if="posts.length !== 0">
             <PostView :p="posts[i]" :postsUrl="purl" v-for="(n, i) in count" :key="i"
-                      @play="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
+                      @play-file="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
                       :class="{shake: replyShake.includes(i)}" />
         </div>
         <AudioPlayer :audio="audio" v-if="audio"

@@ -22,7 +22,7 @@
         </div>
         <div class="files" v-if="p.files">
             <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
-                      @play="e => $emit('play', e)" />
+                      @play-file="e => $emit('play-file', e)" />
         </div>
         <div class="text" v-html="text"></div>
         <div class="info font-code unselectable">
