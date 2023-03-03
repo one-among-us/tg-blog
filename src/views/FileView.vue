@@ -188,4 +188,7 @@ export default class FileView extends Vue
     video
         max-height: 500px
         width: 100%
+
+    .plyr:fullscreen video
+        max-height: unset
 </style>
