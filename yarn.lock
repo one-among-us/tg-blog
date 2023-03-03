@@ -572,10 +572,10 @@
     "@volar/typescript" "1.3.0-alpha.0"
     "@volar/vue-language-core" "1.2.0"
 
-"@vue-leaflet/vue-leaflet@^0.7.0":
-  version "0.7.0"
-  resolved "https://registry.yarnpkg.com/@vue-leaflet/vue-leaflet/-/vue-leaflet-0.7.0.tgz#5497ede3346ca3bd009c5636dba2512ea01579d7"
-  integrity sha512-YY1bcg+7ftGZk4ihCOckOSFMfuhimGxEpPabtpBpaaaquABliB0dkANNFx5d8Y5Vadko5Yjc8Vq74hb/dg4gQw==
+"@vue-leaflet/vue-leaflet@0.8.4":
+  version "0.8.4"
+  resolved "https://registry.yarnpkg.com/@vue-leaflet/vue-leaflet/-/vue-leaflet-0.8.4.tgz#8a26606fd1c28e1ca8717aebd4c5c147057c6b29"
+  integrity sha512-FyD75jMKzBQCW4TrzRMrIBa8OwaUXaSeaDWJvp7FIjpZzk8niHBfpP+QirA/BT9536FJXviRkmwac3Z7YOQHKQ==
 
 "@vue/compiler-core@3.2.47":
   version "3.2.47"
