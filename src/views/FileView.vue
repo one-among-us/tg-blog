@@ -57,6 +57,7 @@ import {TGFile, TGPollFile, TGLocationFile} from "@/logic/models";
 import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import fileDownload from "js-file-download"
+import Plyr from "plyr";
 
 @Options({components: {
     Location: defineAsyncComponent(() => import("./Location.vue")),
@@ -81,7 +82,11 @@ export default class FileView extends Vue
         this.play()
     }
 
-    @Emit('play')
+    mounted() {
+        if (this.vid) new Plyr(this.vid)
+    }
+
+    @Emit('play-file')
     play() { return this.f }
 
     get shouldDisplayDetail(): boolean
