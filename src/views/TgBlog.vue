@@ -78,8 +78,47 @@ export default class TgBlog extends Vue
 
     get searchedPosts(): Post[]
     {
-        if (!this.search) return this.posts
-        return this.posts.filter(p => (p.author + p.date + p.id + p.text).includes(this.search))
+        let q = this.search
+        if (!q) return this.posts
+        let res = this.posts
+
+        function take(len: number): string
+        {
+            let tk: string
+            [tk, q] = q.split(" ", 2)
+            return tk.substring(len)
+        }
+
+        // Take all specific queries
+        while (q)
+        {
+            if (q.startsWith("id:"))
+            {
+                let id = take(3)
+                console.log(id)
+                res = res.filter(p => p.id + "" == id)
+                continue
+            }
+
+            if (q.startsWith("author:"))
+            {
+                let author = take(7)
+                res = res.filter(p => p.author.startsWith(author))
+                continue
+            }
+
+            if (q.startsWith("date:"))
+            {
+                let date = take(5)
+                res = res.filter(p => p.date.includes(date))
+                continue
+            }
+
+            break
+        }
+
+        if (!q) return res
+        return res.filter(p => p.text && p.text.includes(q))
     }
 
     get searchedCount(): number {
