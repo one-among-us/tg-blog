@@ -288,6 +288,9 @@ export default class TgBlog extends Vue
         background: transparent
         color: inherit
 
+    input::placeholder
+        color: $color-text-light
+
     input:focus-visible
         outline: none
 
