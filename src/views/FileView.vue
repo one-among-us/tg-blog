@@ -65,7 +65,6 @@ export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile
     @Prop({required: true}) hasHead: boolean
-    @Ref("vid") vid: HTMLVideoElement
 
     get pollFile() { return this.f as unknown as TGPollFile }
     get locationFile() { return this.f as unknown as TGLocationFile }
@@ -78,10 +77,6 @@ export default class FileView extends Vue
 
         // Is audio, emit event
         this.play()
-    }
-
-    mounted() {
-        if (this.vid) new Plyr(this.vid)
     }
 
     @Emit('play-file')
