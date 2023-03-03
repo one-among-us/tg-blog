@@ -1,15 +1,22 @@
 <template>
     <div class="tg-blog" :class="{margins: margins}">
         <slot></slot>
+
+        <div class="search">
+            <input v-model="search" placeholder="Search...">
+        </div>
+
         <div class="error tgb-card" v-if="fail">
             <h2>Failed loading posts from: <br>{{purl}}</h2>
             {{fail}}
         </div>
+
         <div v-infinite-scroll="infiniteScroll" v-if="posts.length !== 0">
             <PostView :p="posts[i]" :postsUrl="purl" v-for="(n, i) in count" :key="i"
                       @play-file="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
                       :class="{shake: replyShake.includes(i)}" />
         </div>
+
         <AudioPlayer :audio="audio" v-if="audio"
                      @prev="audioNext(-1)" @next="audioNext(1)"/>
         <ImageViewer :imgs="imgList" v-model:index="img" />
@@ -39,6 +46,8 @@ export default class TgBlog extends Vue
     @Prop({default: true}) margins: boolean
 
     get purl() { return new URL(this.postsUrl, document.location.href).href }
+
+    search: string = ""
 
     // Loaded posts
     posts: Post[] = []
@@ -208,6 +217,23 @@ export default class TgBlog extends Vue
 <style lang="sass" scoped>
 @import "src/css/colors"
 @import "src/css/global"
+
+.search
+    margin-bottom: 20px
+    width: 100%
+
+    display: flex
+
+    input
+        flex: 1
+        border: none
+        background: $color-bg-4
+        border-radius: 999px
+        padding: 0.5em 1em
+        box-shadow: var(--tgb-shadow)
+
+    input:focus-visible
+        outline: none
 
 .tg-blog.margins
     margin-top: 20px
