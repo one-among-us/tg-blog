@@ -15,6 +15,7 @@ You can also check out [Azalea's Blog](https://aza.moe/life) for a demo.
 - [x] Maps! (location sharing)
 - [x] Polls (show result only, unable to vote)
 - [x] Contacts
+- [x] Search, hashtag search
 
 ### Media Support
 
