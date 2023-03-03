@@ -3,7 +3,7 @@
         <slot></slot>
 
         <div class="search">
-            <input v-model="search" placeholder="Search...">
+            <input v-model="search" ref="searchEl" placeholder="Search...">
             <i-ic-round-search />
         </div>
 
@@ -27,7 +27,7 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import moment from "moment";
-import {Prop} from "vue-property-decorator";
+import {Prop, Ref} from "vue-property-decorator";
 import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import { initSpoilers } from '@/logic/spoilers';
@@ -45,6 +45,8 @@ export default class TgBlog extends Vue
 
     // Whether to add margins
     @Prop({default: true}) margins: boolean
+
+    @Ref('searchEl') searchEl: HTMLInputElement
 
     get purl() { return new URL(this.postsUrl, document.location.href).href }
 
@@ -74,6 +76,11 @@ export default class TgBlog extends Vue
     get audios(): TGFile[]
     {
         return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
+    }
+
+    audioNext(off: number)
+    {
+        this.audio = this.audios.at(this.audios.indexOf(this.audio) + off)
     }
 
     get searchedPosts(): Post[]
@@ -125,11 +132,29 @@ export default class TgBlog extends Vue
         return Math.min(this.count, this.searchedPosts.length)
     }
 
-    audioNext(off: number)
+    onKey(e: KeyboardEvent)
     {
-        this.audio = this.audios.at(this.audios.indexOf(this.audio) + off)
+        // Ctrl+F to search
+        if ((e.ctrlKey || e.metaKey) && e.code == 'KeyF')
+        {
+            this.searchEl.focus()
+            this.searchEl.scrollIntoView({block: 'center'})
+
+            e.stopPropagation()
+            e.preventDefault()
+        }
     }
-    
+
+    mounted()
+    {
+        document.addEventListener('keydown', this.onKey)
+    }
+
+    unmounted()
+    {
+        document.removeEventListener('keydown', this.onKey)
+    }
+
     replaceUrl(url: string): string
     {
         return new URL(url, this.purl).toString();
