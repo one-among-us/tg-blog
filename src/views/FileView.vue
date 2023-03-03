@@ -29,11 +29,16 @@
         <img v-else :src="f.url" alt=""/>
     </div>
 
-    <!-- Videos / GIF -->
-    <div class="video no-head" v-if="f.media_type === 'video_file' || f.media_type === 'animation'"
-         :class="{'has-head': hasHead}">
-        <video :src="f.url"
-               preload="auto" muted autoplay loop playsinline disablepictureinpicture>
+    <!-- Videos -->
+    <div class="video no-head" v-if="f.media_type === 'video_file'" :class="{'has-head': hasHead}">
+        <video ref="vid" :src="f.url" preload="auto" loop playsinline>
+            <img v-if="f.thumb" :src="f.thumb" alt="">
+        </video>
+    </div>
+
+    <!-- GIFs -->
+    <div class="video no-head" v-if="f.media_type === 'animation'" :class="{'has-head': hasHead}">
+        <video :src="f.url" preload="auto" muted autoplay loop playsinline disablepictureinpicture>
             <img v-if="f.thumb" :src="f.thumb" alt="">
         </video>
     </div>
@@ -49,7 +54,7 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {TGFile, TGPollFile, TGLocationFile} from "@/logic/models";
-import {Emit, Prop} from "vue-property-decorator";
+import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import fileDownload from "js-file-download"
 
@@ -61,6 +66,7 @@ export default class FileView extends Vue
 {
     @Prop({required: true}) f: TGFile
     @Prop({required: true}) hasHead: boolean
+    @Ref("vid") vid: HTMLVideoElement
 
     get pollFile() { return this.f as unknown as TGPollFile }
     get locationFile() { return this.f as unknown as TGLocationFile }
