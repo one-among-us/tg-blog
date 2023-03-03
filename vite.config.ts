@@ -35,7 +35,7 @@ const autoImport: PluginOption[] = [
       // 自动注册图标组件
       IconsResolver({
         prefix: 'i',
-        enabledCollections: ['ep', 'fa6-solid'],
+        enabledCollections: ['ep', 'fa6-solid', 'ic'],
         alias: {
           fas: 'fa6-solid',
         }

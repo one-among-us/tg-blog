@@ -4,6 +4,7 @@
 
         <div class="search">
             <input v-model="search" placeholder="Search...">
+            <i-ic-round-search />
         </div>
 
         <div class="error tgb-card" v-if="fail">

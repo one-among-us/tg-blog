@@ -20,6 +20,7 @@ declare module '@vue/runtime-core' {
     IFasForward: typeof import('~icons/fa6-solid/forward')['default']
     IFasPause: typeof import('~icons/fa6-solid/pause')['default']
     IFasPlay: typeof import('~icons/fa6-solid/play')['default']
+    IIcRoundSearch: typeof import('~icons/ic/round-search')['default']
   }
   export interface ComponentCustomProperties {
     vInfiniteScroll: typeof import('element-plus/es')['ElInfiniteScroll']
