@@ -13,7 +13,7 @@
         </div>
 
         <div v-infinite-scroll="infiniteScroll" v-if="posts.length !== 0">
-            <PostView :p="posts[i]" :postsUrl="purl" v-for="(n, i) in count" :key="i"
+            <PostView :p="searchedPosts[i]" :postsUrl="purl" v-for="(n, i) in searchedCount" :key="searchedPosts[i].id"
                       @play-file="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
                       :class="{shake: replyShake.includes(i)}" />
         </div>
@@ -74,6 +74,16 @@ export default class TgBlog extends Vue
     get audios(): TGFile[]
     {
         return this.posts.filter(p => p.files?.at(0)?.media_type == "audio_file").flatMap(p => p.files)
+    }
+
+    get searchedPosts(): Post[]
+    {
+        if (!this.search) return this.posts
+        return this.posts.filter(p => (p.author + p.date + p.id + p.text).includes(this.search))
+    }
+
+    get searchedCount(): number {
+        return Math.min(this.count, this.searchedPosts.length)
     }
 
     audioNext(off: number)
