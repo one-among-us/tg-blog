@@ -145,14 +145,31 @@ export default class TgBlog extends Vue
         }
     }
 
+    onHashChange(e: HashChangeEvent)
+    {
+        const h = window.location.hash
+        console.log("Hash change", e.newURL, h)
+
+        if (!h) return;
+
+        // Search for hashtag
+        this.search = h
+        window.location.hash = ""
+        this.searchEl.scrollIntoView({block: 'center'})
+        e.preventDefault()
+        e.stopPropagation()
+    }
+
     mounted()
     {
         document.addEventListener('keydown', this.onKey)
+        window.addEventListener('hashchange', this.onHashChange)
     }
 
     unmounted()
     {
         document.removeEventListener('keydown', this.onKey)
+        window.removeEventListener('hashchange', this.onHashChange)
     }
 
     replaceUrl(url: string): string
