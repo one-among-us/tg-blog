@@ -58,6 +58,7 @@ import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import fileDownload from "js-file-download"
 import Plyr from "plyr";
+import 'plyr/dist/plyr.css'
 
 @Options({components: {
     Location: defineAsyncComponent(() => import("./Location.vue")),
