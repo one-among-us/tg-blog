@@ -31,9 +31,7 @@
 
     <!-- Videos -->
     <div class="video no-head" v-if="f.media_type === 'video_file'" :class="{'has-head': hasHead}">
-        <video ref="vid" :src="f.url" preload="auto" loop playsinline>
-            <img v-if="f.thumb" :src="f.thumb" alt="">
-        </video>
+        <VideoPlayer :f="f"/>
     </div>
 
     <!-- GIFs -->
@@ -57,12 +55,11 @@ import {TGFile, TGPollFile, TGLocationFile} from "@/logic/models";
 import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import fileDownload from "js-file-download"
-import Plyr from "plyr";
-import 'plyr/dist/plyr.css'
 
 @Options({components: {
     Location: defineAsyncComponent(() => import("./Location.vue")),
-    Poll: defineAsyncComponent(() => import("./Poll.vue"))
+    Poll: defineAsyncComponent(() => import("./Poll.vue")),
+    VideoPlayer: defineAsyncComponent(() => import("./VideoPlayer.vue"))
 }})
 export default class FileView extends Vue
 {
