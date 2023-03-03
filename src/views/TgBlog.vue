@@ -220,18 +220,24 @@ export default class TgBlog extends Vue
 @import "src/css/global"
 
 .search
-    margin-bottom: 20px
     width: 100%
+    margin-bottom: 20px
+    padding: 0.5em 1em
+    box-sizing: border-box
 
     display: flex
+    align-items: center
+
+    border-radius: 999px
+    background: $color-bg-card
+    box-shadow: var(--tgb-shadow)
+    overflow: hidden
 
     input
         flex: 1
         border: none
-        background: $color-bg-4
-        border-radius: 999px
-        padding: 0.5em 1em
-        box-shadow: var(--tgb-shadow)
+        background: transparent
+        color: inherit
 
     input:focus-visible
         outline: none
