@@ -85,7 +85,7 @@ export default class TgBlog extends Vue
 
     get searchedPosts(): Post[]
     {
-        let q = this.search
+        let q = this.search.toLowerCase()
         if (!q) return this.posts
         let res = this.posts
 
@@ -110,7 +110,7 @@ export default class TgBlog extends Vue
             if (q.startsWith("author:"))
             {
                 let author = take(7)
-                res = res.filter(p => p.author.startsWith(author))
+                res = res.filter(p => p.author.toLowerCase().startsWith(author))
                 continue
             }
 
@@ -125,7 +125,7 @@ export default class TgBlog extends Vue
         }
 
         if (!q) return res
-        return res.filter(p => p.text && p.text.includes(q))
+        return res.filter(p => p.text && p.text.toLowerCase().includes(q))
     }
 
     get searchedCount(): number {
