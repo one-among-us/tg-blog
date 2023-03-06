@@ -12,7 +12,7 @@
             {{fail}}
         </div>
 
-        <div v-infinite-scroll="infiniteScroll" v-if="posts.length !== 0">
+        <div v-infinite-scroll="infiniteScroll" :infinite-scroll-distance="50" v-if="posts.length !== 0">
             <PostView :p="searchedPosts[i]" :postsUrl="purl" v-for="(n, i) in searchedCount" :key="searchedPosts[i].id"
                       @play-file="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
                       :class="{shake: replyShake.includes(i)}" />
