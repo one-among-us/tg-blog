@@ -153,7 +153,7 @@ export default class TgBlog extends Vue
         if (!h) return;
 
         // Search for hashtag
-        this.search = h
+        this.search = decodeURIComponent(h)
         window.location.hash = ""
         this.searchEl.scrollIntoView({block: 'center'})
         e.preventDefault()
