@@ -165,8 +165,11 @@ export default class FileView extends Vue
         opacity: 0.8
 
 .sticker
+    display: flex
+    justify-content: center
+
     > *
-        width: 120px
+        width: 180px
 
 .no-head.has-head
     margin-top: 0

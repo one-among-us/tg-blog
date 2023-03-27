@@ -250,7 +250,12 @@ export default class PostView extends Vue
 // Custom emojis
 i.custom-emoji
     video, img
-        height: 1em
-        transform: translateY(0.125em)
+        $size-incr: 0.3em
+        height: 1em + $size-incr
+        margin-top: calc($size-incr / -2)
+        margin-bottom: calc($size-incr / -2)
+        //transform: translateY(0.125em)
+        transform: translateZ(1em)
         pointer-events: none
+        image-rendering: optimizeQuality
 </style>
