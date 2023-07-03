@@ -83,10 +83,39 @@ export default class TgBlog extends Vue
         this.audio = this.audios.at(this.audios.indexOf(this.audio) + off)
     }
 
+    /**
+     * Index images and update postImgIndex. This will run every time search updates
+     */
+    updatePostsIndex(posts: Post[])
+    {
+        if (!posts) return posts
+
+        console.log("Updating posts index")
+
+        // Index images
+        this.imgList = posts.flatMap((post, pi) => (post.images ?? []).map(img => {
+            return {
+                url: img.url,
+                text: post.text,
+                author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from?.name),
+                date: post.date,
+                postIndex: pi
+            }
+        }))
+
+        this.postImgIndex = new Array(posts.length).fill(null)
+        this.imgList.forEach((img, i) => {
+            if (this.postImgIndex[img.postIndex] === null)
+                this.postImgIndex[img.postIndex] = i
+        })
+
+        return posts
+    }
+
     get searchedPosts(): Post[]
     {
         let q = this.search.toLowerCase()
-        if (!q) return this.posts
+        if (!q) return this.updatePostsIndex(this.posts)
         let res = this.posts
 
         function take(len: number): string
@@ -124,8 +153,8 @@ export default class TgBlog extends Vue
             break
         }
 
-        if (!q) return res
-        return res.filter(p => p.text && p.text.toLowerCase().includes(q))
+        if (q) res = res.filter(p => p.text && p.text.toLowerCase().includes(q))
+        return this.updatePostsIndex(res)
     }
 
     get searchedCount(): number {
@@ -272,23 +301,8 @@ export default class TgBlog extends Vue
                 })
             })
 
-            // Index images
-            this.imgList = this.posts.flatMap((post, pi) => (post.images ?? []).map(img => {
-                return {
-                    url: img.url,
-                    text: post.text,
-                    author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from?.name),
-                    date: post.date,
-                    postIndex: pi
-                }
-            }))
-            this.postImgIndex = new Array(this.posts.length).fill(null)
-            this.imgList.forEach((img, i) => {
-                if (this.postImgIndex[img.postIndex] === null)
-                    this.postImgIndex[img.postIndex] = i
-            })
-            console.log(this.imgList)
-            console.log(this.postImgIndex)
+            // DO NOT DELETE THIS! This is used to initialize the image index arrays.
+            console.log(this.searchedPosts)
 
             setTimeout(() => initSpoilers(), 100);
         }
