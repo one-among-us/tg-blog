@@ -20,7 +20,7 @@
 
         <AudioPlayer :audio="audio" v-if="audio"
                      @prev="audioNext(-1)" @next="audioNext(1)"/>
-        <ImageViewer :imgs="imgList" v-model:index="img" />
+        <ImageViewer :imgs="searchedImages" v-model:index="img" />
     </div>
 </template>
 
@@ -57,6 +57,7 @@ export default class TgBlog extends Vue
 
     // Constants: imgList and postImgIndex are computed based on posts
     imgList: TrackedImage[] = null
+    searchedImages: TrackedImage[] = null
     postImgIndex: number[]
 
     // Currently shown number of posts (used for infinite scroll)
@@ -90,21 +91,11 @@ export default class TgBlog extends Vue
     {
         if (!posts) return posts
 
-        console.log("Updating posts index")
-
         // Index images
-        this.imgList = posts.flatMap((post, pi) => (post.images ?? []).map(img => {
-            return {
-                url: img.url,
-                text: post.text,
-                author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from?.name),
-                date: post.date,
-                postIndex: pi
-            }
-        }))
-
+        const pi = posts.map(p => this.posts.indexOf(p))
+        this.searchedImages = this.imgList.filter(i => pi.includes(i.postIndex))
         this.postImgIndex = new Array(posts.length).fill(null)
-        this.imgList.forEach((img, i) => {
+        this.searchedImages.forEach((img, i) => {
             if (this.postImgIndex[img.postIndex] === null)
                 this.postImgIndex[img.postIndex] = i
         })
@@ -157,7 +148,8 @@ export default class TgBlog extends Vue
         return this.updatePostsIndex(res)
     }
 
-    get searchedCount(): number {
+    get searchedCount(): number
+    {
         return Math.min(this.count, this.searchedPosts.length)
     }
 
@@ -300,6 +292,17 @@ export default class TgBlog extends Vue
                     if (f.thumb) f.thumb = this.replaceUrl(f.thumb)
                 })
             })
+
+            // Convert images
+            this.imgList = this.posts.flatMap((post, pi) => (post.images ?? []).map(img => {
+                return {
+                    url: img.url,
+                    text: post.text,
+                    author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from?.name),
+                    date: post.date,
+                    postIndex: pi
+                }
+            }))
 
             // DO NOT DELETE THIS! This is used to initialize the image index arrays.
             console.log(this.searchedPosts)
