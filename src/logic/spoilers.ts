@@ -41,7 +41,7 @@ export function initSpoilers()
 
     // Toggle all spoilers at once if they are in the same post
     const post = findParent("post", spoiler)
-    const siblingSpoilers = post.querySelectorAll(".spoiler")
+    const siblingSpoilers = post?.querySelectorAll(".spoiler")
 
     function handleSpoiler()
     {
@@ -49,7 +49,7 @@ export function initSpoilers()
       console.log(`Spoiler clicked: ${spoiler}`);
 
       // Toggle sibling spoilers if they are in the same post
-      if (post) siblingSpoilers.forEach(it =>
+      if (post) siblingSpoilers?.forEach(it =>
       {
         if (it != spoiler) it.classList.toggle("spoiler-visible")
       })
