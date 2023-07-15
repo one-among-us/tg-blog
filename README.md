@@ -26,7 +26,7 @@ You can also check out [Azalea's Blog](https://aza.moe/life) for a demo.
 - [x] Audio, voice message (Including an audio player)
 - [x] Media groups
 - [x] Image viewing & tiling
-- [x] Media spoilers
+- [x] Media spoilers (image, video, gif)
 
 ## Getting Started
 
