@@ -31,7 +31,9 @@
 
     <!-- Videos -->
     <div class="video no-head" v-if="f.media_type === 'video_file'" :class="{'has-head': hasHead}">
-        <VideoPlayer :f="f"/>
+        <div @click="f.spoiler = false" :class="{clickable: f.spoiler}">
+            <VideoPlayer :f="f" :class="spoilerClasses"/>
+        </div>
     </div>
 
     <!-- GIFs -->
@@ -182,9 +184,12 @@ export default class FileView extends Vue
     margin-top: -22px
 
 .video
-    overflow-y: hidden
     margin: -22px 0 10px
     width: 100%
+
+    // For spoilers
+    overflow-y: hidden
+    background: gray
 
     video
         max-height: 500px
