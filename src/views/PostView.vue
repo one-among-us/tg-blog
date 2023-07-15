@@ -17,7 +17,7 @@
         <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from}"
              :style="containerStyle">
             <img v-for="(img, i) in p.images" :key="i" :src="img.url" alt="image" loading="lazy"
-                 class="clickable" @click="clickImg(i)"
+                 class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(i)"
                  :style="getImageStyle(i)">
         </div>
         <div class="files" v-if="p.files">
