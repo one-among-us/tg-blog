@@ -221,10 +221,11 @@ export default class PostView extends Vue
             width: 100%
             height: 100%
             object-fit: cover
+            transition: filter 1s ease
 
     .media_spoiler
         // Hide content with blur
-        filter: blur(15px)
+        filter: blur(18px)
 
     .text
         white-space: pre-line
