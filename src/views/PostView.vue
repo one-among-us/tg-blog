@@ -18,7 +18,7 @@
              :style="containerStyle">
             <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
                 <img :src="img.url" alt="image" loading="lazy"
-                     class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(i)" style="inset: 0">
+                     class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(img, i)" style="inset: 0">
             </div>
         </div>
         <div class="files" v-if="p.files">
@@ -39,7 +39,7 @@
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
 import {Emit, Prop, Ref} from "vue-property-decorator";
-import {Post} from "@/logic/models";
+import {Image, Post} from "@/logic/models";
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {StyleValue} from "vue";
@@ -132,10 +132,17 @@ export default class PostView extends Vue
         })
     }
 
-    @Emit("click-img")
-    clickImg(i: number)
+    clickImg(img: Image, i: number)
     {
-        return i
+        // Show spoiler if not already shown
+        if (img.spoiler)
+        {
+            img.spoiler = false
+            return
+        }
+
+        // Open image if spoiler is already shown
+        this.$emit('click-img', i);
     }
 }
 </script>
