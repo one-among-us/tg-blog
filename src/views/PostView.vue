@@ -16,9 +16,10 @@
         </div>
         <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from}"
              :style="containerStyle">
-            <img v-for="(img, i) in p.images" :key="i" :src="img.url" alt="image" loading="lazy"
-                 class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(i)"
-                 :style="getImageStyle(i)">
+            <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
+                <img :src="img.url" alt="image" loading="lazy"
+                     class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(i)" style="inset: 0">
+            </div>
         </div>
         <div class="files" v-if="p.files">
             <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
@@ -203,9 +204,20 @@ export default class PostView extends Vue
         display: flex
         position: relative
 
-        img
+        .image_container
+            overflow: hidden
             position: absolute
+            // Gray bg is needed to fix the white infix vignette effect from the spoiler blur
+            background: gray
+
+        img
+            width: 100%
+            height: 100%
             object-fit: cover
+
+    .media_spoiler
+        // Hide content with blur
+        filter: blur(15px)
 
     .text
         white-space: pre-line
