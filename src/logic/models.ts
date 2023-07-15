@@ -7,7 +7,13 @@ export interface Dimension {
   height: number
 }
 
-export interface Image extends Dimension {
+export interface _Media {
+  spoiler?: boolean
+  size: number // Bytes
+  thumb?: string
+}
+
+export interface Image extends Dimension, _Media {
   url: string
 }
 
@@ -17,12 +23,10 @@ export interface PollOption {
   data: string
 }
 
-export interface TGFile {
+export interface TGFile extends _Media {
   url: string
   mime_type: string
   media_type?: MediaType // If media_type is null, then it's not a media, just a regular file
-  size: number // Bytes
-  thumb?: string
   original_name?: string
 
   duration?: number
