@@ -36,7 +36,8 @@
 
     <!-- GIFs -->
     <div class="video no-head" v-if="f.media_type === 'animation'" :class="{'has-head': hasHead}">
-        <video :src="f.url" preload="auto" muted autoplay loop playsinline disablepictureinpicture>
+        <video :src="f.url" preload="auto" muted loop playsinline disablepictureinpicture ref="gif"
+               :class="spoilerClasses" @click="f.spoiler = false; gif.play()">
             <img v-if="f.thumb" :src="f.thumb" alt="">
         </video>
     </div>
@@ -66,8 +67,11 @@ export default class FileView extends Vue
     @Prop({required: true}) f: TGFile
     @Prop({required: true}) hasHead: boolean
 
+    @Ref() readonly gif!: HTMLVideoElement
+
     get pollFile() { return this.f as unknown as TGPollFile }
     get locationFile() { return this.f as unknown as TGLocationFile }
+    get spoilerClasses() { return {media_spoiler: this.f.spoiler, clickable: this.f.spoiler} }
 
     fileThumbClick()
     {
@@ -178,6 +182,7 @@ export default class FileView extends Vue
     margin-top: -22px
 
 .video
+    overflow-y: hidden
     margin: -22px 0 10px
     width: 100%
 

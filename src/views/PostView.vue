@@ -223,10 +223,6 @@ export default class PostView extends Vue
             object-fit: cover
             transition: filter 1s ease
 
-    .media_spoiler
-        // Hide content with blur
-        filter: blur(18px)
-
     .text
         white-space: pre-line
         overflow-wrap: break-word
@@ -256,11 +252,14 @@ export default class PostView extends Vue
         // Margin between files in a file group
         > * + *
             margin-top: 10px
-
 </style>
 
 <style lang="sass">
 @import "src/css/colors"
+
+.media_spoiler
+    // Hide content with blur
+    filter: blur(18px)
 
 .post
     a
