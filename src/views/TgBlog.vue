@@ -30,7 +30,7 @@ import moment from "moment";
 import {Prop, Ref} from "vue-property-decorator";
 import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
-import { initSpoilers } from '@/logic/spoilers';
+import {initSpoilers} from '@/logic/spoilers';
 import ImageViewer, {TrackedImage} from "@/views/ImageViewer.vue";
 
 @Options({components: {

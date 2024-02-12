@@ -20,7 +20,7 @@
 import {Options, Vue} from 'vue-class-component';
 import "leaflet/dist/leaflet.css";
 import "leaflet"
-import { LMap, LTileLayer, LMarker } from "@vue-leaflet/vue-leaflet";
+import {LMap, LMarker, LTileLayer} from "@vue-leaflet/vue-leaflet";
 import {Prop} from "vue-property-decorator";
 import {TGLocationFile} from "@/logic";
 

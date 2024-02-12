@@ -54,10 +54,9 @@
 
 <script lang="ts">
 import {Options, Vue} from 'vue-class-component';
-import {TGFile, TGPollFile, TGLocationFile} from "@/logic/models";
+import {TGFile, TGLocationFile, TGPollFile} from "@/logic/models";
 import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
-import fileDownload from "js-file-download"
 
 function downloadURI(uri: string, name: string) {
   let link = document.createElement("a");
