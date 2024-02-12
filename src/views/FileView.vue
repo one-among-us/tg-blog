@@ -59,6 +59,15 @@ import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import fileDownload from "js-file-download"
 
+function downloadURI(uri: string, name: string) {
+  let link = document.createElement("a");
+  link.download = name;
+  link.href = uri;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 @Options({components: {
     Location: defineAsyncComponent(() => import("./Location.vue")),
     Poll: defineAsyncComponent(() => import("./Poll.vue")),
@@ -78,9 +87,12 @@ export default class FileView extends Vue
     fileThumbClick()
     {
         // Is regular file, download
-        if (!this.f.media_type)
-            return fileDownload(this.f.url, this.f.url.split("/").slice(-1)[0])
-
+        if (!this.f.media_type) {
+          console.log(`Downloading file: ${this.f.url}`)
+          return downloadURI(this.f.url, this.f.url.split("/").slice(-1)[0])
+          // fileDownload downloads content directly, not URL
+          // return fileDownload(this.f.url, this.f.url.split("/").slice(-1)[0])
+        }
         // Is audio, emit event
         this.play()
     }
