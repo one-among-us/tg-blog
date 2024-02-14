@@ -255,7 +255,7 @@ export default class TgBlog extends Vue
         {
             if (this.postsData) this.posts = this.postsData
             else this.posts = await (await fetch(this.purl)).json()
-            this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD h:mm'))
+            this.posts.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD H:mm'))
             this.posts.reverse()
             this.posts = this.posts.filter(it => it.type !== 'service')
             this.count = Math.min(this.count, this.posts.length)
