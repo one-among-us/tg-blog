@@ -24,7 +24,29 @@ const spoilerExtension = {
   }
 };
 
-marked.use({extensions: [spoilerExtension]})
+const underlineExtension = {
+  name: 'underline',
+  level: 'inline',
+  start(src) {
+    return src.match(/--(?!\s)/)?.index;
+  },
+  tokenizer(src) {
+    const rule = /^--(?!\s)([^\n]+)(?!\s)--/;
+    const match = rule.exec(src);
+    if (match) {
+      return {
+        type: 'underline',
+        raw: match[0],
+        inner: this.lexer.inlineTokens(match[1].trim())
+      }
+    }
+  },
+  renderer(token) {
+    return `<u><span>${this.parser.parseInline(token.inner)}</span></u>`;
+  }
+}
+
+marked.use({extensions: [spoilerExtension, underlineExtension]});
 
 /**
  * SanitizeHTML options
@@ -37,7 +59,7 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
     "ul", "a", "abbr", "b", "bdi", "bdo", "br", "cite", "code", "data", "dfn",
     "em", "i", "kbd", "mark", "q", "rb", "rp", "rt", "rtc", "ruby", "s", "samp",
     "small", "span", "strong", "sub", "sup", "time", "u", "var", "wbr", "caption",
-    "col", "colgroup", "table", "tbody", "td", "tfoot", "th", "thead", "tr",
+    "col", "colgroup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "u",
 
     "img", "del"
   ],
