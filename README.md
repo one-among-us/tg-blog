@@ -40,9 +40,9 @@ You can use it in plain HTML without a modern web build tool:
   <title>My Blog</title>
 
   <!-- Import Libraries -->
-  <script src="https://unpkg.com/vue@3"></script>
-  <script src="https://unpkg.com/tg-blog"></script>
-  <link rel="stylesheet" href="https://unpkg.com/tg-blog/dist/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tg-blog"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tg-blog/dist/style.css">
 
   <!-- Styles -->
   <style>
@@ -80,9 +80,9 @@ date: 2023-01-13
 {% raw %}
 
 <!-- Import Libraries -->
-<script src="https://unpkg.com/vue@3"></script>
-<script src="https://unpkg.com/tg-blog"></script>
-<link rel="stylesheet" href="https://unpkg.com/tg-blog/dist/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tg-blog"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tg-blog/dist/style.css">
 
 <!-- Styles & Patches -->
 <style>
