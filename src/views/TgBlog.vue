@@ -225,15 +225,15 @@ function jumpToReply(id: number, index: number)
 
     // The below code doesn't work when the post is already at the scrolled position.
     // So we have to set another timeout: If nothing moves in 1 second, shake it
-    let sh: (e: Event) => void;
+    let scrollHandler: (e: Event) => void;
     const fallback = setTimeout(() => {
         shake()
-        window.removeEventListener('scroll', sh)
+        window.removeEventListener('scroll', scrollHandler)
     }, 1000)
 
     // Try to listen to scroll events
     let scrollTimeout;
-    sh = () => {
+    scrollHandler = () => {
         // Still scrolling, reset the timeout to 100ms
         clearTimeout(scrollTimeout);
         scrollTimeout = setTimeout(() => {
@@ -242,10 +242,10 @@ function jumpToReply(id: number, index: number)
             shake()
 
             // Remove listener
-            window.removeEventListener('scroll', sh)
+            window.removeEventListener('scroll', scrollHandler)
         }, 100);
     }
-    window.addEventListener('scroll', sh);
+    window.addEventListener('scroll', scrollHandler);
 }
 
 onBeforeMount(async (): Promise<void> =>

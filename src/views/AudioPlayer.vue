@@ -7,7 +7,7 @@
                 <span class="f-grow1"></span>
                 <i-fas-backward class="clickable" @click="prev" />
 
-                <i-fas-play v-if="isPaused" @click="play" />
+                <i-fas-play v-if="isPlayerPaused" @click="play" />
                 <i-fas-pause v-else @click="pause" />
 
                 <i-fas-forward class="clickable" @click="next" />
@@ -38,7 +38,7 @@ const playing = ref<HTMLAudioElement | null>(null)
 const duration = ref("00:00")
 const time = ref("00:00")
 const playbackTick = ref(0)
-const isPaused = computed(() => {
+const isPlayerPaused = computed(() => {
     void playbackTick.value
     return playing.value?.paused ?? true
 })
