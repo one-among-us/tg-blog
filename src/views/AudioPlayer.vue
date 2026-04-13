@@ -21,7 +21,7 @@
 <script lang="ts" setup>
 import {TGFile} from "@/logic/models";
 import {durationFmt} from "@/logic/formatter";
-import {onUnmounted, ref, watch} from "vue";
+import {computed, onUnmounted, ref, watch} from "vue";
 
 const props = defineProps<{
     audio: TGFile
@@ -37,19 +37,23 @@ const emit = defineEmits<{
 const playing = ref<HTMLAudioElement | null>(null)
 const duration = ref("00:00")
 const time = ref("00:00")
-const isPaused = ref(true)
+const playbackTick = ref(0)
+const isPaused = computed(() => {
+    void playbackTick.value
+    return playing.value?.paused ?? true
+})
 
 function pause() {
     if (!playing.value) return
     playing.value.pause()
-    isPaused.value = true
+    playbackTick.value++
     emit("pause")
 }
 
 function play() {
     if (!playing.value) return
     void playing.value.play()
-    isPaused.value = false
+    playbackTick.value++
     emit("play")
 }
 
@@ -69,7 +73,7 @@ function init() {
     playing.value = player
     duration.value = "00:00"
     time.value = "00:00"
-    isPaused.value = false
+    playbackTick.value++
 
     // On initial loading, initialize duration
     player.onloadedmetadata = () => {
@@ -82,16 +86,16 @@ function init() {
     }
 
     player.onplay = () => {
-        isPaused.value = false
+        playbackTick.value++
     }
 
     player.onpause = () => {
-        isPaused.value = true
+        playbackTick.value++
     }
 
     // Ended, next song
     player.onended = () => {
-        isPaused.value = true
+        playbackTick.value++
         next()
     }
 
