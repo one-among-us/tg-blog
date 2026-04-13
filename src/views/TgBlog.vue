@@ -225,7 +225,7 @@ function jumpToReply(id: number, index: number)
 
     // The below code doesn't work when the post is already at the scrolled position.
     // So we have to set another timeout: If nothing moves in 1 second, shake it
-    let sh: (Event) => void;
+    let sh: (e: Event) => void;
     const fallback = setTimeout(() => {
         shake()
         window.removeEventListener('scroll', sh)
