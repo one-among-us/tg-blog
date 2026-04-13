@@ -26,7 +26,6 @@ import {onUnmounted, ref, watch} from "vue";
 const props = defineProps<{
     audio: TGFile
 }>()
-const audio = ref<TGFile>(props.audio)
 
 const emit = defineEmits<{
     (e: "pause"): void
@@ -66,7 +65,7 @@ function init() {
     if (playing.value && !playing.value.paused) playing.value.pause()
 
     const player = new Audio()
-    player.src = audio.value.url
+    player.src = props.audio.url
     playing.value = player
     duration.value = "00:00"
     time.value = "00:00"
@@ -99,10 +98,7 @@ function init() {
     void player.play()
 }
 
-watch(() => props.audio, (nextAudio) => {
-    audio.value = nextAudio
-    init()
-}, {immediate: true})
+watch(() => props.audio, init, {immediate: true})
 
 onUnmounted(() => {
     if (playing.value) playing.value.pause()
