@@ -22,7 +22,7 @@
             </div>
         </div>
         <div class="files" v-if="p.files">
-            <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
+            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
                       @play-file="onPlayFile" />
         </div>
         <div class="text" v-html="text"></div>

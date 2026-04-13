@@ -3,7 +3,7 @@
         <div class="question">{{f.question}}</div>
         <div class="subtitle">{{subtitle}}</div>
 
-        <div class="options" v-for="o of f.options" :class="{dominant: o.voter_count === max && max !== 0}">
+        <div class="options" v-for="o of f.options" :key="o.data" :class="{dominant: o.voter_count === max && max !== 0}">
             <span class="text">{{o.text}}</span>
             <span class="f-grow1"></span>
             <span class="percentage">{{percent(o)}}</span>

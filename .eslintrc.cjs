@@ -28,6 +28,7 @@ module.exports = {
     'node_modules/**',
   ],
   rules: {
+    'no-undef': 'off',
     'no-console': 'off',
     'vue/multi-word-component-names': 'off',
     '@typescript-eslint/no-explicit-any': 'off',

@@ -10,7 +10,7 @@ import 'plyr/dist/plyr.css'
 import {TGFile} from "@/logic";
 import {Ref} from "vue";
 
-const p = defineProps<{
+defineProps<{
     f: TGFile
 }>()
 

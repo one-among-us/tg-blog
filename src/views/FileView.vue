@@ -137,6 +137,8 @@ const fileTitle = computed((): string | undefined =>
         if (file.last_name) name += ' ' + file.last_name
         return name
     }
+
+    return undefined
 })
 
 const duration = computed(() => durationFmt(f.value.duration))

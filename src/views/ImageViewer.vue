@@ -65,6 +65,7 @@ const zoom = ref(1)
 
 const img = computed(() => {
     if (imgs.value) return imgs.value[index.value]
+    return undefined
 })
 const isOpen = computed(() => !!img.value)
 const hasPrev = computed(() => index.value > 0)
