@@ -30,11 +30,10 @@
     </div>
 </template>
 
-<script lang="ts">
-import {Options, Vue} from 'vue-class-component';
-import {Emit, Prop} from "vue-property-decorator";
+<script lang="ts" setup>
 import * as KeyCode from 'keycode-js';
 import fileDownload from "js-file-download";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 
 export interface ViewedImage
 {
@@ -49,87 +48,98 @@ export interface TrackedImage extends ViewedImage
     postIndex: number
 }
 
-@Options({components: {}})
-export default class ImageViewer extends Vue
-{
-    @Prop({required: true}) imgs: ViewedImage[]
-    @Prop({required: true}) index: number
+const props = defineProps<{
+    imgs: ViewedImage[]
+    index: number
+}>()
+const imgs = computed(() => props.imgs)
+const index = computed(() => props.index)
 
-    ctrlDown: boolean = false
-    zoom: number = 1
+const emit = defineEmits<{
+    (e: "close"): void
+    (e: "update:index", value: number): void
+}>()
 
-    get img() { if (this.imgs) return this.imgs[this.index] }
-    get isOpen() { return !!this.img }
-    get hasPrev() { return this.index > 0 }
-    get hasNext() { return this.index + 1 < this.imgs.length }
-    get textHtml() { if (this.img.text) return this.img.text }
+const ctrlDown = ref(false)
+const zoom = ref(1)
 
-    async download() {
-        fileDownload(await (await fetch(this.img.url)).blob(), this.img.fileName ?? this.img.url.split("/").slice(-1)[0])
-    }
+const img = computed(() => {
+    if (imgs.value) return imgs.value[index.value]
+})
+const isOpen = computed(() => !!img.value)
+const hasPrev = computed(() => index.value > 0)
+const hasNext = computed(() => index.value + 1 < imgs.value.length)
+const textHtml = computed(() => img.value?.text)
 
-    @Emit("close")
-    close() { this._rawUpdateIndex(-1) }
-
-    updateIndex(offset: number)
-    {
-        const ni = this.index + offset
-        if (ni < 0 || ni >= this.imgs.length) return
-        this.zoom = 1
-        this._rawUpdateIndex(ni)
-    }
-
-    @Emit("update:index")
-    _rawUpdateIndex(index: number) { return index }
-
-    keydown(e: KeyboardEvent)
-    {
-        if (!this.isOpen) return
-        if (e.code === KeyCode.CODE_ESCAPE) return this.close()
-        if (e.code === KeyCode.CODE_LEFT) return this.updateIndex(-1)
-        if (e.code === KeyCode.CODE_RIGHT) return this.updateIndex(1)
-        if (e.key == KeyCode.VALUE_CONTROL || e.key === KeyCode.VALUE_META) return this.ctrlDown = true
-    }
-
-    keyup(e: KeyboardEvent)
-    {
-        if (e.key == KeyCode.VALUE_CONTROL || e.key === KeyCode.VALUE_META) return this.ctrlDown = false
-    }
-
-    wheel(e: WheelEvent)
-    {
-        if (!this.isOpen) return
-
-        // Prevent page scroll
-        e.preventDefault()
-
-        // Get scroll direction
-        const dir = Math.sign(e.deltaY)
-
-        // Regular scroll: switch photos, Ctrl scroll: zoom
-        if (!this.ctrlDown) this.updateIndex(dir)
-        else this.zoom = Math.min(Math.max(this.zoom *= 1 + (dir * -0.1), 0.1), 5.0)
-    }
-
-    get imgStyle()
-    {
-        return {transform: `scale(${this.zoom.toFixed(2)})`}
-    }
-
-    mounted()
-    {
-        document.addEventListener('keydown', this.keydown)
-        document.addEventListener('keyup', this.keyup)
-        document.addEventListener("wheel", this.wheel, { passive: false })
-    }
-
-    unmounted()
-    {
-        document.removeEventListener('keydown', this.keydown)
-        document.removeEventListener('keyup', this.keyup)
-        document.removeEventListener("wheel", this.wheel)
-    }
+async function download() {
+    if (!img.value) return
+    fileDownload(await (await fetch(img.value.url)).blob(), img.value.fileName ?? img.value.url.split("/").slice(-1)[0])
 }
+
+function close() {
+    emit("close")
+    rawUpdateIndex(-1)
+}
+
+function updateIndex(offset: number)
+{
+    const ni = index.value + offset
+    if (ni < 0 || ni >= imgs.value.length) return
+    zoom.value = 1
+    rawUpdateIndex(ni)
+}
+
+function rawUpdateIndex(index: number) {
+    emit("update:index", index)
+}
+
+function keydown(e: KeyboardEvent)
+{
+    if (!isOpen.value) return
+    if (e.code === KeyCode.CODE_ESCAPE) return close()
+    if (e.code === KeyCode.CODE_LEFT) return updateIndex(-1)
+    if (e.code === KeyCode.CODE_RIGHT) return updateIndex(1)
+    if (e.key == KeyCode.VALUE_CONTROL || e.key === KeyCode.VALUE_META) return ctrlDown.value = true
+}
+
+function keyup(e: KeyboardEvent)
+{
+    if (e.key == KeyCode.VALUE_CONTROL || e.key === KeyCode.VALUE_META) return ctrlDown.value = false
+}
+
+function wheel(e: WheelEvent)
+{
+    if (!isOpen.value) return
+
+    // Prevent page scroll
+    e.preventDefault()
+
+    // Get scroll direction
+    const dir = Math.sign(e.deltaY)
+
+    // Regular scroll: switch photos, Ctrl scroll: zoom
+    if (!ctrlDown.value) updateIndex(dir)
+    else zoom.value = Math.min(Math.max(zoom.value *= 1 + (dir * -0.1), 0.1), 5.0)
+}
+
+const imgStyle = computed(() =>
+{
+    return {transform: `scale(${zoom.value.toFixed(2)})`}
+})
+
+onMounted(() =>
+{
+    document.addEventListener('keydown', keydown)
+    document.addEventListener('keyup', keyup)
+    document.addEventListener("wheel", wheel, {passive: false})
+})
+
+onUnmounted(() =>
+{
+    document.removeEventListener('keydown', keydown)
+    document.removeEventListener('keyup', keyup)
+    document.removeEventListener("wheel", wheel)
+})
 </script>
 
 <style lang="sass" scoped>

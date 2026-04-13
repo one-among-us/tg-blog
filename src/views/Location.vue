@@ -16,30 +16,23 @@
     </div>
 </template>
 
-<script lang="ts">
-import {Options, Vue} from 'vue-class-component';
+<script lang="ts" setup>
 import "leaflet/dist/leaflet.css";
 import "leaflet"
 import {LMap, LMarker, LTileLayer} from "@vue-leaflet/vue-leaflet";
-import {Prop} from "vue-property-decorator";
 import {TGLocationFile} from "@/logic";
+import {computed} from "vue";
 
-@Options({components: {LMap, LTileLayer, LMarker}})
-export default class Location extends Vue
-{
-    @Prop({required: true}) f: TGLocationFile
-    marker: number[]
+const props = defineProps<{
+    f: TGLocationFile
+}>()
+const f = computed(() => props.f)
 
-    get options() { return {scrollWheelZoom: false} }
-    get center() { return [this.f.latitude, this.f.longitude] }
+const options = {scrollWheelZoom: false}
+const center = computed(() => [f.value.latitude, f.value.longitude])
+const marker = computed(() => center.value)
 
-    created()
-    {
-        this.marker = this.center
-    }
-
-    zoom = 14
-}
+const zoom = 14
 </script>
 
 <style lang="sass" scoped>

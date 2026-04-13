@@ -52,11 +52,10 @@
               :f="locationFile" v-if="f.media_type === 'location'"></Location>
 </template>
 
-<script lang="ts">
-import {Options, Vue} from 'vue-class-component';
+<script lang="ts" setup>
 import {TGFile, TGLocationFile, TGPollFile} from "@/logic/models";
-import {Emit, Prop, Ref} from "vue-property-decorator";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
+import {computed, defineAsyncComponent, ref} from "vue";
 
 function downloadURI(uri: string, name: string) {
   let link = document.createElement("a");
@@ -67,76 +66,81 @@ function downloadURI(uri: string, name: string) {
   document.body.removeChild(link);
 }
 
-@Options({components: {
-    Location: defineAsyncComponent(() => import("./Location.vue")),
-    Poll: defineAsyncComponent(() => import("./Poll.vue")),
-    VideoPlayer: defineAsyncComponent(() => import("./VideoPlayer.vue"))
-}})
-export default class FileView extends Vue
+const Location = defineAsyncComponent(() => import("./Location.vue"))
+const Poll = defineAsyncComponent(() => import("./Poll.vue"))
+const VideoPlayer = defineAsyncComponent(() => import("./VideoPlayer.vue"))
+
+const props = defineProps<{
+    f: TGFile
+    hasHead: boolean
+}>()
+const f = computed(() => props.f)
+const hasHead = computed(() => props.hasHead)
+
+const emit = defineEmits<{
+    (e: "play-file", file: TGFile): void
+}>()
+
+const gif = ref<HTMLVideoElement>()
+
+const pollFile = computed(() => f.value as unknown as TGPollFile)
+const locationFile = computed(() => f.value as unknown as TGLocationFile)
+const spoilerClasses = computed(() => ({media_spoiler: f.value.spoiler, clickable: f.value.spoiler}))
+
+function fileThumbClick()
 {
-    @Prop({required: true}) f: TGFile
-    @Prop({required: true}) hasHead: boolean
-
-    @Ref() readonly gif!: HTMLVideoElement
-
-    get pollFile() { return this.f as unknown as TGPollFile }
-    get locationFile() { return this.f as unknown as TGLocationFile }
-    get spoilerClasses() { return {media_spoiler: this.f.spoiler, clickable: this.f.spoiler} }
-
-    fileThumbClick()
-    {
-        // Is regular file, download
-        if (!this.f.media_type) {
-          console.log(`Downloading file: ${this.f.url}`)
-          return downloadURI(this.f.url, this.f.url.split("/").slice(-1)[0])
-          // fileDownload downloads content directly, not URL
-          // return fileDownload(this.f.url, this.f.url.split("/").slice(-1)[0])
-        }
-        // Is audio, emit event
-        this.play()
+    // Is regular file, download
+    if (!f.value.media_type) {
+      console.log(`Downloading file: ${f.value.url}`)
+      return downloadURI(f.value.url, f.value.url.split("/").slice(-1)[0])
+      // fileDownload downloads content directly, not URL
+      // return fileDownload(this.f.url, this.f.url.split("/").slice(-1)[0])
     }
-
-    @Emit('play-file')
-    play() { return this.f }
-
-    get shouldDisplayDetail(): boolean
-    {
-        return !this.f.media_type || this.isAudioOrVoice || this.f.media_type == 'contact'
-    }
-
-    get isAudioOrVoice(): boolean
-    {
-        return this.f.media_type == 'audio_file' || this.f.media_type == 'voice_message'
-    }
-
-    get fileTitle(): string | undefined
-    {
-        const f = this.f
-        if (!f.media_type)
-            return f.original_name ?? f.url.split("/").slice(-1)[0]
-
-        if (f.media_type == 'voice_message')
-            return "Voice Message"
-
-        if (f.media_type == "audio_file")
-        {
-            let ret = ""
-            if (f.performer) ret += f.performer + " - "
-            if (f.title) ret += f.title
-            return ret
-        }
-
-        if (f.media_type == 'contact')
-        {
-            let name = f.first_name ?? ''
-            if (f.last_name) name += ' ' + f.last_name
-            return name
-        }
-    }
-
-    get duration(): string { return durationFmt(this.f.duration) }
-    get size(): string { return sizeFmt(this.f.size) }
+    // Is audio, emit event
+    play()
 }
+
+function play() {
+    emit('play-file', f.value)
+}
+
+const shouldDisplayDetail = computed((): boolean =>
+{
+    return !f.value.media_type || isAudioOrVoice.value || f.value.media_type == 'contact'
+})
+
+const isAudioOrVoice = computed((): boolean =>
+{
+    return f.value.media_type == 'audio_file' || f.value.media_type == 'voice_message'
+})
+
+const fileTitle = computed((): string | undefined =>
+{
+    const file = f.value
+    if (!file.media_type)
+        return file.original_name ?? file.url.split("/").slice(-1)[0]
+
+    if (file.media_type == 'voice_message')
+        return "Voice Message"
+
+    if (file.media_type == "audio_file")
+    {
+        let ret = ""
+        if (file.performer) ret += file.performer + " - "
+        if (file.title) ret += file.title
+        return ret
+    }
+
+    if (file.media_type == 'contact')
+    {
+        let name = file.first_name ?? ''
+        if (file.last_name) name += ' ' + file.last_name
+        return name
+    }
+})
+
+const duration = computed(() => durationFmt(f.value.duration))
+const size = computed(() => sizeFmt(f.value.size))
 </script>
 
 <style lang="sass" scoped>

@@ -153,9 +153,8 @@ export default defineConfig({
 ```ts
 import { TgBlog } from 'tg-blog';
 
-// If you're using Vue-TS Class Component, then add this:
-@Options({components: { TgBlog }})
-export default class ...
+// Register/use in Composition API:
+// <TgBlog posts-url="..." />
 ```
 
 ## Component Documentation
@@ -181,4 +180,3 @@ You can generate `posts.json` using [TelegramBackup](https://github.com/one-amon
 If you only want the image viewer functionality, you can import this module.
 
 TODO: Write more documentation
-

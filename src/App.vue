@@ -1,5 +1,5 @@
 <template>
-    <TgBlog v-if="this.url" :postsUrl="url"></TgBlog>
+    <TgBlog v-if="url" :postsUrl="url"></TgBlog>
     <div v-else class="tgb-card">
         <h2>Please specify demo path</h2>
         Available paths:
@@ -14,40 +14,35 @@
     </div>
 </template>
 
-<script lang="ts">
-import {Options, Vue} from "vue-class-component";
+<script lang="ts" setup>
 import TgBlog from "@/views/TgBlog.vue";
 import urlJoin from "url-join";
+import {onMounted, ref} from "vue";
 
 const backendHost = "https://test-tg-data.hydev.org"
 
-@Options({components: {TgBlog}})
-export default class App extends Vue
+const url = ref<string | null>(null)
+const keyboard = ref("")
+
+function switchUrl()
 {
-    url: string = null
-
-    keyboard: string = ""
-
-    switchUrl()
-    {
-        window.location.replace('/custom?url=' + encodeURIComponent(this.keyboard))
-    }
-
-    mounted()
-    {
-        let p = window.location.pathname
-        if (p == '/custom')
-        {
-            let params = (new URL(document.location.toString())).searchParams;
-            this.url = params.get("url")
-        }
-        else
-        {
-            while (p.startsWith('/')) p = p.substring(1)
-            if (p) this.url = urlJoin(backendHost, p, '/posts.json')
-        }
-    }
+    window.location.replace('/custom?url=' + encodeURIComponent(keyboard.value))
 }
+
+onMounted(() =>
+{
+    let p = window.location.pathname
+    if (p == '/custom')
+    {
+        let params = (new URL(document.location.toString())).searchParams;
+        url.value = params.get("url")
+    }
+    else
+    {
+        while (p.startsWith('/')) p = p.substring(1)
+        if (p) url.value = urlJoin(backendHost, p, '/posts.json')
+    }
+})
 </script>
 
 <style lang="sass">

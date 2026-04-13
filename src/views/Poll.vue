@@ -14,35 +14,30 @@
     </div>
 </template>
 
-<script lang="ts">
-import {Options, Vue} from 'vue-class-component';
-import {Prop} from "vue-property-decorator";
+<script lang="ts" setup>
 import {PollOption, TGPollFile} from "@/logic";
+import {computed} from "vue";
 
-@Options({components: {}})
-export default class Poll extends Vue
+const props = defineProps<{
+    f: TGPollFile
+}>()
+const f = computed(() => props.f)
+
+const max = computed(() => Math.max(...f.value.options.map(it => it.voter_count)))
+
+function percent(o: PollOption)
 {
-    @Prop({required: true}) f: TGPollFile
-
-    get max()
-    {
-        return Math.max(...this.f.options.map(it => it.voter_count))
-    }
-
-    percent(o: PollOption)
-    {
-        if (this.f.total_voter_count == 0) return "0%"
-        return (o.voter_count / this.f.total_voter_count * 100).toFixed(0) + '%'
-    }
-
-    get subtitle()
-    {
-        let txt = this.f.type == 'REGULAR' ? 'Poll' : 'Quiz'
-        if (this.f.is_anonymous)
-            txt = 'Anonymous ' + txt
-        return txt
-    }
+    if (f.value.total_voter_count == 0) return "0%"
+    return (o.voter_count / f.value.total_voter_count * 100).toFixed(0) + '%'
 }
+
+const subtitle = computed(() =>
+{
+    let txt = f.value.type == 'REGULAR' ? 'Poll' : 'Quiz'
+    if (f.value.is_anonymous)
+        txt = 'Anonymous ' + txt
+    return txt
+})
 </script>
 
 <style lang="sass" scoped>
