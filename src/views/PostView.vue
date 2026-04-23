@@ -22,8 +22,8 @@
             </div>
         </div>
         <div class="files" v-if="p.files">
-            <FileView v-for="f in p.files" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
-                      @play-file="e => $emit('play-file', e)" />
+            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
+                      @play-file="onPlayFile" />
         </div>
         <div class="text" v-html="text"></div>
         <div class="info font-code unselectable">
@@ -36,114 +36,123 @@
     </div>
 </template>
 
-<script lang="ts">
-import {Options, Vue} from 'vue-class-component';
-import {Emit, Prop, Ref} from "vue-property-decorator";
-import {Image, Post} from "@/logic/models";
+<script lang="ts" setup>
+import {Image, Post, TGFile} from "@/logic/models";
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
-import {StyleValue} from "vue";
+import {computed, onMounted, onUnmounted, ref, StyleValue} from "vue";
 
-@Options({components: {FileView}})
-export default class PostView extends Vue
+const props = defineProps<{
+    p: Post
+    postsUrl: string
+}>()
+const p = computed(() => props.p)
+
+const emit = defineEmits<{
+    (e: "click-reply", id: number): void
+    (e: "click-img", index: number): void
+    (e: "play-file", file: TGFile): void
+}>()
+
+const el = ref<HTMLDivElement>()
+const sizeScale = ref(1)
+
+const text = computed(() => p.value.text)
+const fwdUrl = computed(() => typeof p.value.forwarded_from == 'string' ? undefined : p.value.forwarded_from.url)
+const fwdName = computed(() => typeof p.value.forwarded_from == 'string' ? p.value.forwarded_from : p.value.forwarded_from.name)
+
+const dims = computed(() =>
 {
-    @Prop({required: true}) p!: Post
-    @Prop({required: true}) postsUrl: string
+    console.log(`Calculating dimensions for ${p.value.id}...`)
+    return calculateAlbumLayout(p.value.images, 450, 450)
+})
 
-    @Ref("post") el: HTMLDivElement
+const containerStyle = computed(() =>
+{
+    const ss = sizeScale.value
+    const dm = dims.value.containerStyle
+    return {width: dm.width * ss + "px", height: dm.height * ss + "px"}
+})
 
-    sizeScale: number = 1
-
-    get text() { if (this.p.text) return this.p.text }
-    get fwdUrl() { return typeof this.p.forwarded_from == 'string' ? undefined : this.p.forwarded_from.url }
-    get fwdName() { return typeof this.p.forwarded_from == 'string' ? this.p.forwarded_from : this.p.forwarded_from.name }
-
-    get dims()
-    {
-        console.log(`Calculating dimensions for ${this.p.id}...`)
-        return calculateAlbumLayout(this.p.images, 450, 450)
+function getImageStyle(i: number): StyleValue
+{
+    const ss = sizeScale.value
+    const dm = dims.value.layout[i].dimensions
+    return {
+        left: dm.x * ss + "px", top: dm.y * ss + "px",
+        width: dm.width * ss + "px", height: dm.height * ss + "px"
     }
+}
 
-    get containerStyle()
-    {
-        const ss = this.sizeScale
-        const dm = this.dims.containerStyle
-        return { width: dm.width * ss + "px", height: dm.height * ss + "px" }
-    }
+function onPlayFile(file: TGFile) {
+    emit("play-file", file)
+}
 
-    getImageStyle(i: number): StyleValue
-    {
-        const ss = this.sizeScale
-        const dm = this.dims.layout[i].dimensions
-        return {
-            left: dm.x * ss + "px", top: dm.y * ss + "px",
-            width: dm.width * ss + "px", height: dm.height * ss + "px"
-        }
-    }
+function clickReply() {
+    emit("click-reply", p.value.reply.id)
+}
 
-    @Emit("click-reply")
-    clickReply() { return this.p.reply.id }
+function refreshSize() {
+    if (!el.value) return
+    sizeScale.value = el.value.clientWidth / 450
+}
 
-    refreshSize() { this.sizeScale = this.el.clientWidth / 450 }
-
-    mounted()
-    {
-        this.initEmoji()
-        this.refreshSize()
-
-        window.addEventListener('resize', this.refreshSize)
-    }
-
-    unmounted()
-    {
-        window.removeEventListener('resize', this.refreshSize)
-    }
-
-    replaceUrl(url: string): string
-    {
-        return new URL(url, this.postsUrl).toString();
-    }
-
-    /**
-     * Initialize custom emojis
-     */
+onMounted(() =>
+{
     initEmoji()
-    {
-        // Find all non-initialized emojis
-        document.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
-            // Read attributes
-            const src = this.replaceUrl(it.getAttribute("emoji-src"))
-            // const orig = it.getAttribute("emoji-orig")
+    refreshSize()
+    window.addEventListener('resize', refreshSize)
+})
 
-            // Set initialized
-            it.classList.add("init")
+onUnmounted(() =>
+{
+    window.removeEventListener('resize', refreshSize)
+})
 
-            // Video
-            if (src.endsWith("webm"))
-            {
-                it.innerHTML = `<video src="${src}" preload="auto" muted autoplay loop playsinline disablepictureinpicture></video>`
-            }
+function replaceUrl(url: string): string
+{
+    return new URL(url, props.postsUrl).toString();
+}
 
-            // Image
-            else
-            {
-                it.innerHTML = `<img src="${src}" alt="">`
-            }
-        })
-    }
+/**
+ * Initialize custom emojis
+ */
+function initEmoji()
+{
+    // Find all non-initialized emojis
+    document.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
+        // Read attributes
+        const src = replaceUrl(it.getAttribute("emoji-src"))
+        // const orig = it.getAttribute("emoji-orig")
 
-    clickImg(img: Image, i: number)
-    {
-        // Show spoiler if not already shown
-        if (img.spoiler)
+        // Set initialized
+        it.classList.add("init")
+
+        // Video
+        if (src.endsWith("webm"))
         {
-            img.spoiler = false
-            return
+            it.innerHTML = `<video src="${src}" preload="auto" muted autoplay loop playsinline disablepictureinpicture></video>`
         }
 
-        // Open image if spoiler is already shown
-        this.$emit('click-img', i);
+        // Image
+        else
+        {
+            it.innerHTML = `<img src="${src}" alt="">`
+        }
+    })
+}
+
+function clickImg(img: Image, i: number)
+{
+    // Show spoiler if not already shown
+    if (img.spoiler)
+    {
+        img.spoiler = false
+        return
     }
+
+    // Open image if spoiler is already shown
+    emit('click-img', i)
 }
 </script>
 
