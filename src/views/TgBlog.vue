@@ -146,7 +146,7 @@ const searchedImageContext = computed((): {imgs: TrackedImage[], postImgIndexByI
         if (!post.images?.length) return
         const pi = postIdIndex.value[post.id]
         const start = postImgIndex.value[pi]
-        if (start === undefined || start === null) return
+        if (start === undefined) return
         filteredPostImgIndexById[post.id] = imgs.length
         imgs.push(...imgList.value.slice(start, start + post.images.length))
     })
@@ -164,7 +164,8 @@ watch(activeImgList, (newImgs, oldImgs) =>
         img.value = -1
         return
     }
-    img.value = newImgs.findIndex(it => it.url === current.url)
+    const nextIndex = newImgs.findIndex(it => it.url === current.url)
+    img.value = nextIndex < 0 ? -1 : nextIndex
 })
 
 function openImage(post: Post, imageOffset: number)
