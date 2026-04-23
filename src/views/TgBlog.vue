@@ -145,6 +145,7 @@ const searchedImageContext = computed((): {imgs: TrackedImage[], postImgIndexByI
     {
         if (!post.images?.length) return
         const pi = postIdIndex.value[post.id]
+        if (pi === undefined) return
         const start = postImgIndex.value[pi]
         if (start === undefined) return
         filteredPostImgIndexById[post.id] = imgs.length
@@ -158,10 +159,11 @@ const activeImgList = computed(() => searchedImageContext.value.imgs)
 watch(activeImgList, (newImgs, oldImgs) =>
 {
     if (img.value < 0) return
-    const current = oldImgs?.[img.value]
+    if (!oldImgs) return
+    const current = oldImgs[img.value]
     if (!current)
     {
-        img.value = -1
+        if (img.value >= newImgs.length) img.value = -1
         return
     }
     const nextIndex = newImgs.findIndex(it => it.url === current.url)
