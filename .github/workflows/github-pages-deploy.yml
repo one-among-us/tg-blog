@@ -12,17 +12,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 18
-          cache: 'npm'
+          bun-version: latest
 
-      - name: Install and build
+      - name: Install, lint and build
         run: |
-          yarn install
+          bun install --frozen-lockfile
+          bun run lint
           # pass --base if CNAME is not used
-          # npm run build -- --base=/${{ github.event.repository.name }}/
-          yarn build.demo
+          # bun run build -- --base=/${{ github.event.repository.name }}/
+          bun run build.demo
           
           # Enable Vue Router history mode with 404.html hack for Github Pages
           cd dist
