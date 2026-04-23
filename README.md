@@ -126,7 +126,7 @@ You can also use import it into your project using modern build tools like vite:
 #### 1. Install dependencies
 
 ```
-yarn add tg-blog
+bun add tg-blog
 ```
 
 #### 2. Import CSS in your `main.ts`
