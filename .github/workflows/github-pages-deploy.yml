@@ -16,9 +16,10 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install and build
+      - name: Install, lint and build
         run: |
           bun install --frozen-lockfile
+          bun run lint
           # pass --base if CNAME is not used
           # bun run build -- --base=/${{ github.event.repository.name }}/
           bun run build.demo
