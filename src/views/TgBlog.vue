@@ -14,13 +14,13 @@
 
         <div v-infinite-scroll="infiniteScroll" :infinite-scroll-distance="50" v-if="posts.length !== 0">
             <PostView :p="searchedPosts[i]" :postsUrl="purl" v-for="(n, i) in searchedCount" :key="searchedPosts[i].id"
-                      @play-file="a => audio = a" @click-img="ii => img = postImgIndex[i] + ii" @click-reply="clickReply"
+                      @play-file="a => audio = a" @click-img="ii => openImage(searchedPosts[i], ii)" @click-reply="clickReply"
                       :class="{shake: replyShake.includes(i)}" />
         </div>
 
         <AudioPlayer :audio="audio" v-if="audio"
                      @prev="audioNext(-1)" @next="audioNext(1)"/>
-        <ImageViewer :imgs="imgList" v-model:index="img" />
+        <ImageViewer :imgs="activeImgList" v-model:index="img" />
     </div>
 </template>
 
@@ -30,7 +30,7 @@ import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import {initSpoilers} from '@/logic/spoilers';
 import ImageViewer, {TrackedImage} from "@/views/ImageViewer.vue";
-import {computed, defineAsyncComponent, onBeforeMount, onMounted, onUnmounted, onUpdated, ref} from "vue";
+import {computed, defineAsyncComponent, onBeforeMount, onMounted, onUnmounted, onUpdated, ref, watch} from "vue";
 
 const AudioPlayer = defineAsyncComponent(() => import("./AudioPlayer.vue"))
 
@@ -129,6 +129,50 @@ const searchedCount = computed((): number =>
 {
     return Math.min(count.value, searchedPosts.value.length)
 })
+
+const globalPostImgIndexById = computed((): {[postId: number]: number} =>
+{
+    return Object.fromEntries(posts.value.map((post, i) => [post.id, postImgIndex.value[i]]))
+})
+
+const searchedImageContext = computed((): {imgs: TrackedImage[], postImgIndexById: {[postId: number]: number}} =>
+{
+    if (!search.value) return {imgs: imgList.value, postImgIndexById: globalPostImgIndexById.value}
+
+    const imgs: TrackedImage[] = []
+    const filteredPostImgIndexById: {[postId: number]: number} = {}
+    searchedPosts.value.forEach(post =>
+    {
+        if (!post.images?.length) return
+        const pi = postIdIndex.value[post.id]
+        const start = postImgIndex.value[pi]
+        if (start === undefined || start === null) return
+        filteredPostImgIndexById[post.id] = imgs.length
+        imgs.push(...imgList.value.slice(start, start + post.images.length))
+    })
+    return {imgs, postImgIndexById: filteredPostImgIndexById}
+})
+
+const activeImgList = computed(() => searchedImageContext.value.imgs)
+
+watch(activeImgList, (newImgs, oldImgs) =>
+{
+    if (img.value < 0) return
+    const current = oldImgs?.[img.value]
+    if (!current)
+    {
+        img.value = -1
+        return
+    }
+    img.value = newImgs.findIndex(it => it.url === current.url)
+})
+
+function openImage(post: Post, imageOffset: number)
+{
+    const start = searchedImageContext.value.postImgIndexById[post.id]
+    if (start === undefined) return
+    img.value = start + imageOffset
+}
 
 function onKey(e: KeyboardEvent)
 {
