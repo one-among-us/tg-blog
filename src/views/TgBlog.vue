@@ -159,11 +159,10 @@ const activeImgList = computed(() => searchedImageContext.value.imgs)
 watch(activeImgList, (newImgs, oldImgs) =>
 {
     if (img.value < 0) return
-    if (!oldImgs) return
-    const current = oldImgs[img.value]
+    const current = oldImgs?.[img.value]
     if (!current)
     {
-        if (img.value >= newImgs.length) img.value = -1
+        img.value = -1
         return
     }
     const nextIndex = newImgs.findIndex(it => it.url === current.url)
