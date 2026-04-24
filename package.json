@@ -8,7 +8,7 @@
     "serve": "vite",
     "build": "rimraf dist && vue-tsc && vite build && UMD=1 vite build",
     "build.demo": "rimraf dist && vue-tsc && BUILD_DEMO=1 vite build",
-    "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src"
+    "lint": "eslint --fix src"
   },
   "dependencies": {
     "@vue-leaflet/vue-leaflet": "0.10.1",
@@ -25,22 +25,22 @@
     "vue": "^3.5.33"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@iconify/json": "^2.2.465",
     "@types/marked": "^4.3.2",
     "@types/node": "^25.6.0",
-    "@typescript-eslint/eslint-plugin": "8.59.0",
-    "@typescript-eslint/parser": "8.59.0",
     "@vitejs/plugin-vue": "^6.0.6",
-    "eslint": "8.57.0",
-    "eslint-plugin-vue": "9.33.0",
-    "rimraf": "^5.0.10",
+    "eslint": "10.2.1",
+    "eslint-plugin-vue": "10.9.0",
+    "rimraf": "^6.1.3",
     "sass": "^1.99.0",
-    "typescript": "^5.9.3",
-    "unplugin-auto-import": "^0.16.7",
-    "unplugin-icons": "^0.16.6",
-    "unplugin-vue-components": "^0.25.2",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.0",
+    "unplugin-auto-import": "^21.0.0",
+    "unplugin-icons": "^23.0.1",
+    "unplugin-vue-components": "^32.0.0",
     "vite": "^8.0.10",
-    "vue-eslint-parser": "9.4.3",
+    "vue-eslint-parser": "10.4.0",
     "vue-tsc": "^3.2.7"
   },
   "files": [

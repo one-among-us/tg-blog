@@ -88,7 +88,6 @@ const cfg: UserConfigExport = {
         globals: {
           vue: 'Vue',
         },
-        inlineDynamicImports: umd,
       },
     },
     sourcemap: true,
