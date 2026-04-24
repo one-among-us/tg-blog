@@ -82,5 +82,5 @@ const sanitizeOptions: sanitizeHtml.IOptions = {
 }
 
 export function sanitize(html: string) { return sanitizeHtml(html, sanitizeOptions) }
-export function mdParseInline(s: string) { return sanitize(marked.parseInline(s)) }
-export function mdParse(s: string) { return sanitize(marked.parse(s)) }
+export function mdParseInline(s: string) { return sanitize(marked.parseInline(s) as string) }
+export function mdParse(s: string) { return sanitize(marked.parse(s) as string) }
