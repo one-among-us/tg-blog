@@ -76,6 +76,7 @@ const cfg: UserConfigExport = {
       name: 'TgBlog',
       formats: umd ? ['umd'] : ['es', 'cjs'],
       fileName: (format) => `tg-blog.${format}.js`,
+      cssFileName: 'style',
     },
     rollupOptions: {
       // external modules won't be bundled into your library
