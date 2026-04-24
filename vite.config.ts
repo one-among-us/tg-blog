@@ -62,6 +62,14 @@ const cfg: UserConfigExport = {
   resolve: {
     alias: {'@': src},
   },
+  css: {
+    preprocessorOptions: {
+      sass: {
+        api: 'modern-compiler',
+        loadPaths: [src],
+      },
+    },
+  },
   build: demo ? {} : {
     lib: {
       entry: path.resolve(src, 'index.ts'),

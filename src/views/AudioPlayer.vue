@@ -110,7 +110,7 @@ onUnmounted(() => {
 </script>
 
 <style lang="sass" scoped>
-@import "src/css/colors"
+@use "css/colors" as *
 
 #AudioPlayer
     position: fixed

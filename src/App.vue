@@ -46,8 +46,8 @@ onMounted(() =>
 </script>
 
 <style lang="sass">
-@import "css/colors"
-@import "css/global"
+@use "css/colors" as *
+@use "css/global" as *
 
 #app
   font-family: Avenir, Helvetica, Arial, sans-serif

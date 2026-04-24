@@ -41,7 +41,7 @@ const subtitle = computed(() =>
 </script>
 
 <style lang="sass" scoped>
-@import "src/css/colors"
+@use "css/colors" as *
 
 #Poll
     margin-left: 20px

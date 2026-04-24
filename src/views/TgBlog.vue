@@ -351,8 +351,8 @@ onUpdated((): void =>
 </script>
 
 <style lang="sass" scoped>
-@import "src/css/colors"
-@import "src/css/global"
+@use "css/colors" as *
+@use "css/global" as *
 
 .search
     width: 100%

@@ -157,8 +157,9 @@ function clickImg(img: Image, i: number)
 </script>
 
 <style lang="sass" scoped>
-@import "src/css/global"
-@import "src/css/colors"
+@use "sass:color"
+@use "css/global" as *
+@use "css/colors" as *
 @import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@500&family=Shadows+Into+Light&display=swap')
 
 .font-code
@@ -208,7 +209,7 @@ function clickImg(img: Image, i: number)
 
     .reply:before
         content: " "
-        border: 2px solid lighten($color-text-main, 20)
+        border: 2px solid color.adjust($color-text-main, $lightness: 20%)
         border-radius: 2px
         background: $color-text-main
 
@@ -238,7 +239,7 @@ function clickImg(img: Image, i: number)
 
     .info
         display: flex
-        color: lighten($color-text-main, 40)
+        color: color.adjust($color-text-main, $lightness: 40%)
         white-space: nowrap
         overflow: hidden
         font-size: 0.9em
@@ -264,7 +265,7 @@ function clickImg(img: Image, i: number)
 </style>
 
 <style lang="sass">
-@import "src/css/colors"
+@use "css/colors" as *
 
 .media_spoiler
     // Hide content with blur

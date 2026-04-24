@@ -146,7 +146,7 @@ const size = computed(() => sizeFmt(f.value.size))
 </script>
 
 <style lang="sass" scoped>
-@import "src/css/colors"
+@use "css/colors" as *
 
 // Normal margin files
 .file, .sticker

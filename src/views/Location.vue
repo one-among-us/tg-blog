@@ -36,7 +36,7 @@ const zoom = 14
 </script>
 
 <style lang="sass" scoped>
-@import "src/css/colors"
+@use "css/colors" as *
 
 .map
     height: 400px
