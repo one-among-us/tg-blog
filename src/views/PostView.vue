@@ -27,7 +27,13 @@
         </div>
         <div class="text" v-html="text"></div>
         <div class="info font-code unselectable">
-            <div class="id">#{{p.id}}</div>
+            <div class="id">
+                <span class="share clickable" @click="share" :title="shareLabel">
+                    <i-fas-check v-if="shared" />
+                    <i-fas-link v-else />
+                </span>
+                #{{p.id}}
+            </div>
             <div class="f-grow1"></div>
             <div class="author" v-if="p.author">{{p.author}}</div>
             <div class="date">{{p.date}}</div>
@@ -154,6 +160,40 @@ function clickImg(img: Image, i: number)
     // Open image if spoiler is already shown
     emit('click-img', i)
 }
+
+const shared = ref(false)
+const shareLabel = computed(() => shared.value ? "Link copied!" : "Copy share link")
+
+function buildShareUrl(): string
+{
+    const url = new URL(window.location.href)
+    url.searchParams.set('shared', String(p.value.id))
+    url.hash = ""
+    return url.toString()
+}
+
+async function share()
+{
+    const link = buildShareUrl()
+    try
+    {
+        await navigator.clipboard.writeText(link)
+    }
+    catch
+    {
+        // Fallback for non-secure contexts: temporary textarea
+        const ta = document.createElement('textarea')
+        ta.value = link
+        ta.style.position = 'fixed'
+        ta.style.opacity = '0'
+        document.body.appendChild(ta)
+        ta.select()
+        try { document.execCommand('copy') } catch { /* ignore */ }
+        document.body.removeChild(ta)
+    }
+    shared.value = true
+    setTimeout(() => shared.value = false, 1500)
+}
 </script>
 
 <style lang="sass" scoped>
@@ -244,6 +284,18 @@ function clickImg(img: Image, i: number)
         overflow: hidden
         font-size: 0.9em
         gap: 10px
+
+        .id
+            display: flex
+            align-items: center
+            gap: 5px
+
+        .share
+            display: flex
+            align-items: center
+
+            &:hover
+                color: $color-text-special
 
         .views
             display: flex

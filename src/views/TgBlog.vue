@@ -12,10 +12,15 @@
             {{fail}}
         </div>
 
-        <div v-infinite-scroll="infiniteScroll" :infinite-scroll-distance="50" v-if="posts.length !== 0">
-            <PostView :p="searchedPosts[i]" :postsUrl="purl" v-for="(n, i) in searchedCount" :key="searchedPosts[i].id"
-                      @play-file="a => audio = a" @click-img="ii => openImage(searchedPosts[i], ii)" @click-reply="clickReply"
-                      :class="{shake: replyShake.includes(i)}" />
+        <div v-infinite-scroll="loadBelow" :infinite-scroll-distance="50"
+             :infinite-scroll-disabled="endIdx >= searchedPosts.length"
+             v-if="posts.length !== 0">
+            <div ref="topSentinel" class="top-sentinel" v-if="startIdx > 0"></div>
+            <PostView :p="searchedPosts[startIdx + i]" :postsUrl="purl"
+                      v-for="(_, i) in (endIdx - startIdx)" :key="searchedPosts[startIdx + i].id"
+                      @play-file="a => audio = a" @click-img="ii => openImage(searchedPosts[startIdx + i], ii)"
+                      @click-reply="clickReply"
+                      :class="{shake: replyShake.includes(startIdx + i)}" />
         </div>
 
         <AudioPlayer :audio="audio" v-if="audio"
@@ -30,7 +35,7 @@ import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import {initSpoilers} from '@/logic/spoilers';
 import ImageViewer, {TrackedImage} from "@/views/ImageViewer.vue";
-import {computed, defineAsyncComponent, onBeforeMount, onMounted, onUnmounted, onUpdated, ref, watch} from "vue";
+import {computed, defineAsyncComponent, nextTick, onBeforeMount, onMounted, onUnmounted, onUpdated, ref, watch} from "vue";
 
 const AudioPlayer = defineAsyncComponent(() => import("./AudioPlayer.vue"))
 
@@ -56,8 +61,17 @@ const posts = ref<Post[]>([])
 const imgList = ref<TrackedImage[]>([])
 const postImgIndex = ref<number[]>([])
 
-// Currently shown number of posts (used for infinite scroll)
-const count = ref(20)
+// Bi-directional infinite scroll window over searchedPosts: [startIdx, endIdx)
+const PAGE_SIZE = 20
+const LOAD_STEP = 10
+const startIdx = ref(0)
+const endIdx = ref(PAGE_SIZE)
+
+// Sentinel for upward scroll
+const topSentinel = ref<HTMLElement | null>(null)
+let topObserver: IntersectionObserver | null = null
+// Suppress upward-load observer until initial scroll (e.g. for ?shared) settles.
+const upwardScrollReady = ref(false)
 
 // Audio player will be open when audio != null, and image viewer will be open when img != -1
 const audio = ref<TGFile | null>(null)
@@ -125,9 +139,13 @@ const searchedPosts = computed((): Post[] =>
     return res.filter(p => p.text && p.text.toLowerCase().includes(q))
 })
 
-const searchedCount = computed((): number =>
+// Reset window when the searched set changes (e.g., user types in search box).
+// We don't reset on initial post load — that path is handled in onBeforeMount.
+watch(searchedPosts, (n, o) =>
 {
-    return Math.min(count.value, searchedPosts.value.length)
+    if (!o || o.length === 0) return
+    startIdx.value = 0
+    endIdx.value = Math.min(PAGE_SIZE, n.length)
 })
 
 const globalPostImgIndexById = computed((): {[postId: number]: number} =>
@@ -215,6 +233,7 @@ onUnmounted(() =>
 {
     document.removeEventListener('keydown', onKey)
     window.removeEventListener('hashchange', onHashChange)
+    topObserver?.disconnect()
 })
 
 function replaceUrl(url: string): string
@@ -222,11 +241,55 @@ function replaceUrl(url: string): string
     return new URL(url, purl.value).toString();
 }
 
-function infiniteScroll()
+function parseSharedId(): number | null
 {
-    console.log("Infinite Scroll - Load more")
-    count.value = Math.min(count.value + 10, posts.value.length)
+    const raw = new URL(window.location.href).searchParams.get('shared')
+    if (raw === null) return null
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : null
 }
+
+function loadBelow()
+{
+    const n = searchedPosts.value.length
+    if (endIdx.value >= n) return
+    endIdx.value = Math.min(endIdx.value + LOAD_STEP, n)
+}
+
+function loadAbove()
+{
+    if (!upwardScrollReady.value) return
+    if (startIdx.value <= 0) return
+
+    // Preserve scroll position when prepending posts above the viewport.
+    // Anchor on the first post currently rendered: record its viewport offset
+    // before, then scroll so it lands at the same offset after the prepend.
+    const anchorPost = searchedPosts.value[startIdx.value]
+    const anchorEl = anchorPost ? document.getElementById(`message-${anchorPost.id}`) : null
+    const beforeTop = anchorEl ? anchorEl.getBoundingClientRect().top : 0
+
+    startIdx.value = Math.max(0, startIdx.value - LOAD_STEP)
+
+    nextTick(() =>
+    {
+        if (!anchorEl) return
+        const afterTop = anchorEl.getBoundingClientRect().top
+        window.scrollBy({top: afterTop - beforeTop, behavior: 'auto'})
+    })
+}
+
+function setupTopObserver()
+{
+    topObserver?.disconnect()
+    if (!topSentinel.value) return
+    topObserver = new IntersectionObserver(entries =>
+    {
+        if (entries.some(e => e.isIntersecting)) loadAbove()
+    }, {rootMargin: '200px 0px 0px 0px'})
+    topObserver.observe(topSentinel.value)
+}
+
+watch(topSentinel, () => setupTopObserver())
 
 const postIdIndex = computed((): {[index: number]: number} =>
 {
@@ -238,12 +301,20 @@ function clickReply(id: number)
 {
     if (replyLoading.value) return
 
-    // Check if reply message is loaded, if not, load
-    const index = postIdIndex.value[id]
-    if (index > count.value)
+    const list = searchedPosts.value
+    const index = list.findIndex(p => p.id === id)
+    if (index < 0) return
+
+    // If the target is outside the rendered window, extend the window toward it.
+    if (index < startIdx.value)
     {
         replyLoading.value = true
-        count.value = Math.min(index + 10, posts.value.length)
+        startIdx.value = Math.max(0, index - LOAD_STEP)
+    }
+    else if (index >= endIdx.value)
+    {
+        replyLoading.value = true
+        endIdx.value = Math.min(list.length, index + LOAD_STEP)
     }
 
     jumpToReply(id, index)
@@ -303,7 +374,23 @@ onBeforeMount(async (): Promise<void> =>
         posts.value.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD H:mm'))
         posts.value.reverse()
         posts.value = posts.value.filter(it => it.type !== 'service')
-        count.value = Math.min(count.value, posts.value.length)
+
+        // Initial window: try ?shared={id}, otherwise top of feed.
+        const sharedId = parseSharedId()
+        let anchor = -1
+        if (sharedId !== null) anchor = posts.value.findIndex(p => p.id === sharedId)
+
+        if (anchor >= 0)
+        {
+            const half = Math.floor(PAGE_SIZE / 2)
+            startIdx.value = Math.max(0, anchor - half)
+            endIdx.value = Math.min(posts.value.length, anchor + half)
+        }
+        else
+        {
+            startIdx.value = 0
+            endIdx.value = Math.min(PAGE_SIZE, posts.value.length)
+        }
 
         // Replace URLs
         posts.value.forEach(it =>
@@ -336,6 +423,24 @@ onBeforeMount(async (): Promise<void> =>
         console.log(postImgIndex.value)
 
         setTimeout(() => initSpoilers(), 100);
+
+        // Jump to shared post if requested.
+        const sid = parseSharedId()
+        if (sid !== null)
+        {
+            const idx = posts.value.findIndex(p => p.id === sid)
+            if (idx >= 0)
+            {
+                // Wait for DOM to render the windowed posts before scrolling.
+                setTimeout(() => jumpToReply(sid, idx), 50)
+                // Allow upward loading once the user has had a moment to land at
+                // the shared post — otherwise the observer fires immediately and
+                // prepends posts before the scroll-to-shared completes.
+                setTimeout(() => upwardScrollReady.value = true, 1500)
+            }
+            else upwardScrollReady.value = true
+        }
+        else upwardScrollReady.value = true
     }
     catch (e)
     {
@@ -379,6 +484,10 @@ onUpdated((): void =>
 
     input:focus-visible
         outline: none
+
+.top-sentinel
+    height: 1px
+    width: 100%
 
 .tg-blog.margins
     margin-top: 20px
