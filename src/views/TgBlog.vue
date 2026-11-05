@@ -385,7 +385,11 @@ function replacePostUrls(posts: Post[]): void
 {
     posts.forEach(it =>
     {
-        it.images?.forEach(img => img.url = replaceUrl(img.url))
+        it.images?.forEach(img =>
+        {
+            img.url = replaceUrl(img.url)
+            if (img.thumb) img.thumb = replaceUrl(img.thumb)
+        })
         if (it.reply?.thumb) it.reply.thumb = replaceUrl(it.reply.thumb)
         it.files?.forEach(f =>
         {

@@ -50,13 +50,42 @@
     <!-- Location -->
     <Location class="location no-head" :class="{'has-head': hasHead}"
               :f="locationFile" v-if="f.media_type === 'location'"></Location>
+
+    <!-- Dice -->
+    <div class="dice clickable" v-if="f.media_type === 'dice'" ref="diceEl" @click="replayDice" title="Click to replay">
+        <img v-if="f.url && isVisible" :src="diceSrc" class="dice-anim" alt="dice" />
+        <template v-else-if="!f.url">
+            <span class="dice-emoji">{{ f.emoji ?? '🎲' }}</span>
+            <span class="dice-val" v-if="f.value !== undefined">{{ f.value }}</span>
+        </template>
+    </div>
+
+    <!-- Giveaway -->
+    <div class="giveaway-card" v-if="f.media_type === 'giveaway' || f.media_type === 'giveaway_winners'">
+        <div class="giveaway-icon">🎁</div>
+        <div class="giveaway-detail">
+            <div class="title">{{ f.media_type === 'giveaway' ? 'Giveaway' : 'Giveaway Winners' }}</div>
+            <div class="file-detail">
+                <span v-if="f.quantity">{{ f.quantity }} prizes</span>
+                <span v-if="f.winner_count">{{ f.winner_count }} winners</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Story -->
+    <div class="story-card" v-if="f.media_type === 'story'">
+        <div class="story-icon">📖</div>
+        <div class="story-detail">
+            <div class="title">Telegram Story</div>
+        </div>
+    </div>
 </template>
 
 <script lang="ts" setup>
 import {TGFile, TGLocationFile, TGPollFile} from "@/logic/models";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import {useTgbMessages} from "@/logic/messages";
-import {computed, defineAsyncComponent, ref} from "vue";
+import {computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch} from "vue";
 
 const msg = useTgbMessages()
 
@@ -85,6 +114,52 @@ const emit = defineEmits<{
 }>()
 
 const gif = ref<HTMLVideoElement>()
+const diceEl = ref<HTMLElement>()
+const isVisible = ref(false)
+const diceSrc = ref('')
+let diceObserver: IntersectionObserver | null = null
+
+function updateDiceSrc() {
+    if (f.value.url) {
+        diceSrc.value = f.value.url
+    }
+}
+
+function replayDice() {
+    if (!f.value.url) return
+    const base = f.value.url.split('?')[0]
+    diceSrc.value = `${base}?t=${Date.now()}`
+}
+
+watch(() => f.value.url, () => {
+    if (isVisible.value) {
+        updateDiceSrc()
+    }
+})
+
+onMounted(() => {
+    if (f.value.media_type === 'dice') {
+        if (typeof window === 'undefined' || !window.IntersectionObserver) {
+            isVisible.value = true
+            updateDiceSrc()
+            return
+        }
+        diceObserver = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                isVisible.value = true
+                updateDiceSrc()
+                diceObserver?.disconnect()
+            }
+        }, { threshold: 0.1 })
+        if (diceEl.value) {
+            diceObserver.observe(diceEl.value)
+        }
+    }
+})
+
+onUnmounted(() => {
+    diceObserver?.disconnect()
+})
 
 const pollFile = computed(() => f.value as unknown as TGPollFile)
 const locationFile = computed(() => f.value as unknown as TGLocationFile)
@@ -217,4 +292,43 @@ const size = computed(() => sizeFmt(f.value.size))
 
     .plyr:fullscreen video
         max-height: unset
+
+.dice
+    display: flex
+    align-items: center
+    justify-content: center
+    padding: 6px 20px
+    cursor: pointer
+    user-select: none
+
+    .dice-anim
+        width: 140px
+        height: 140px
+        object-fit: contain
+
+    .dice-emoji
+        font-size: 2em
+
+    .dice-val
+        font-size: 1.5em
+        font-weight: bold
+
+.giveaway-card, .story-card
+    display: flex
+    align-items: center
+    gap: 12px
+    margin: 0 20px
+    padding: 10px 14px
+    border-radius: 8px
+    background: rgba(0, 0, 0, 0.04)
+
+    .giveaway-icon, .story-icon
+        font-size: 1.8em
+
+    .title
+        font-weight: bold
+
+    .file-detail
+        color: $color-text-light
+        font-size: 0.9em
 </style>

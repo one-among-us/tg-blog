@@ -1,5 +1,7 @@
 export type MediaType = "audio_file" | "animation" | "video_file" | "sticker" | "voice_message"
-  | "contact" | "poll" | "location"
+  | "contact" | "poll" | "location" | "web_page"
+  | "live_photo" | "dice" | "game" | "story" | "giveaway" | "giveaway_winners"
+  | "invoice" | "paid_media" | "checklist"
 
 
 export interface Dimension {
@@ -9,7 +11,7 @@ export interface Dimension {
 
 export interface _Media {
   spoiler?: boolean
-  size: number // Bytes
+  size?: number // Bytes
   thumb?: string
 }
 
@@ -40,6 +42,14 @@ export interface TGFile extends _Media {
   phone_number?: string
   first_name?: string
   last_name?: string
+
+  // For dice
+  emoji?: string
+  value?: number
+
+  // For giveaway
+  quantity?: number
+  winner_count?: number
 }
 
 export interface TGPollFile {
@@ -71,6 +81,17 @@ export interface ForwardFrom {
   url?: string
 }
 
+export interface PostQuote {
+  text: string
+  position?: number
+}
+
+export interface PostReaction {
+  emoji?: string
+  custom_emoji_id?: string
+  count: number
+}
+
 export interface Post {
   id: number
   date: string
@@ -82,11 +103,15 @@ export interface Post {
   author?: string
   reply?: {
     id: number
-    text: string
+    text?: string
     thumb?: string
   }
   images?: Image[]
   files?: TGFile[]
+  quote?: PostQuote
+  reactions?: PostReaction[]
+  show_caption_above_media?: boolean
+  has_media_spoiler?: boolean
 }
 // TODO: Other files types (i.e. pdf)
 // TODO: Video

@@ -1,5 +1,5 @@
 <template>
-    <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}" ref="post">
+    <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}" ref="el">
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">
                 {{msg.forwardedFrom}} <a :href="fwdUrl">{{fwdName}}</a>
@@ -11,21 +11,33 @@
             </div>
             <div class="mtext">
                 <div class="reply-to">{{msg.replyTo}}</div>
-                <div class="reply-text" v-html="p.reply.text"></div>
+                <div class="reply-quote" v-if="p.quote?.text" v-html="p.quote.text"></div>
+                <div class="reply-text" v-else-if="p.reply.text" v-html="p.reply.text"></div>
             </div>
         </div>
-        <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from}"
+        <div class="quote-container" v-if="p.quote && !p.reply">
+            <blockquote v-html="p.quote.text"></blockquote>
+        </div>
+        <div class="text" v-if="p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
+        <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from || (p.show_caption_above_media && text)}"
              :style="containerStyle">
             <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
-                <img :src="img.url" alt="image" loading="lazy"
+                <img :src="img.thumb || img.url" alt="image" loading="lazy"
                      class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(img, i)" style="inset: 0">
             </div>
         </div>
         <div class="files" v-if="p.files">
-            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f" :has-head="!!(p.reply || p.forwarded_from || p.images)"
+            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f" :has-head="!!(p.reply || p.forwarded_from || (p.show_caption_above_media && text) || p.images)"
                       @play-file="onPlayFile" />
         </div>
-        <div class="text" v-html="text"></div>
+        <div class="text" v-if="!p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
+        <div class="reactions" v-if="p.reactions && p.reactions.length">
+            <span class="reaction" v-for="(r, idx) in p.reactions" :key="idx">
+                <i v-if="r.custom_emoji_id" class="custom-emoji" :emoji-src="`emoji/${r.custom_emoji_id}`"></i>
+                <span v-else class="reaction-emoji">{{r.emoji}}</span>
+                <span class="reaction-count" v-if="r.count">{{r.count}}</span>
+            </span>
+        </div>
         <div class="info font-code unselectable">
             <div class="id">
                 <span class="share clickable" @click="share" :title="shareLabel">
@@ -47,7 +59,9 @@ import {Image, Post, TGFile} from "@/logic/models";
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {useTgbMessages} from "@/logic/messages";
-import {computed, onMounted, onUnmounted, ref, StyleValue} from "vue";
+import {computed, onMounted, onUnmounted, onUpdated, ref, StyleValue} from "vue";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 const msg = useTgbMessages()
 
@@ -101,6 +115,49 @@ function clickReply() {
     emit("click-reply", p.value.reply.id)
 }
 
+function onTextClick(e: MouseEvent) {
+    const target = (e.target as HTMLElement).closest('blockquote[expandable], blockquote.expandable') as HTMLElement | null
+    if (target) {
+        target.classList.toggle('expanded')
+        target.toggleAttribute('open')
+    }
+}
+
+function initRichContent()
+{
+    if (!el.value) return
+    // Absolutize rich photo URLs and add click to view full image
+    el.value.querySelectorAll<HTMLImageElement>("figure.rich-photo img:not(.init)").forEach(img => {
+        img.classList.add("init")
+        const rawSrc = img.getAttribute("data-src") || img.getAttribute("src")
+        if (rawSrc) {
+            img.src = replaceUrl(rawSrc)
+        }
+        const full = img.getAttribute("data-full")
+        if (full) {
+            img.setAttribute("data-full", replaceUrl(full))
+        }
+        img.classList.add("clickable")
+        img.addEventListener("click", () => {
+            const targetUrl = img.getAttribute("data-full") || img.src
+            window.open(targetUrl, "_blank")
+        })
+    })
+
+    // Render KaTeX for math formulas
+    el.value.querySelectorAll<HTMLElement>("code.math:not(.katex-rendered)").forEach(node => {
+        node.classList.add("katex-rendered")
+        const expr = node.textContent?.trim() || ""
+        if (expr) {
+            try {
+                katex.render(expr, node, { throwOnError: false, displayMode: false })
+            } catch (e) {
+                console.error("KaTeX render error:", e)
+            }
+        }
+    })
+}
+
 function refreshSize() {
     if (!el.value) return
     sizeScale.value = el.value.clientWidth / 450
@@ -109,8 +166,15 @@ function refreshSize() {
 onMounted(() =>
 {
     initEmoji()
+    initRichContent()
     refreshSize()
     window.addEventListener('resize', refreshSize)
+})
+
+onUpdated(() =>
+{
+    initEmoji()
+    initRichContent()
 })
 
 onUnmounted(() =>
@@ -228,6 +292,17 @@ async function share()
     .reply
         display: flex
         gap: 10px
+        padding: 4px 10px 4px 12px
+        border-radius: 4px
+        background: linear-gradient(45deg, $color-text-main, $color-text-main), rgba(112, 81, 42, 0.08)
+        background-size: 2.8px 100%
+        background-repeat: no-repeat
+        transition: background 0.2s ease
+
+        &:hover
+            background: linear-gradient(45deg, $color-text-main, $color-text-main), rgba(112, 81, 42, 0.14)
+            background-size: 2.8px 100%
+            background-repeat: no-repeat
 
         .thumb-wrap
             display: flex
@@ -250,11 +325,43 @@ async function share()
             overflow: hidden
             text-overflow: ellipsis
 
-    .reply:before
-        content: " "
-        border: 2px solid color.adjust($color-text-main, $lightness: 20%)
-        border-radius: 2px
-        background: $color-text-main
+        .reply-quote
+            position: relative
+            font-style: italic
+            display: -webkit-box
+            -webkit-line-clamp: 5
+            -webkit-box-orient: vertical
+            overflow: hidden
+            white-space: pre-wrap
+            word-break: break-word
+            max-height: 7.5em
+
+    .quote-container
+        margin: 6px 0
+
+    .reactions
+        display: flex
+        flex-wrap: wrap
+        gap: 6px
+        margin-top: 6px
+
+        .reaction
+            display: inline-flex
+            align-items: center
+            gap: 4px
+            background: rgba(0, 0, 0, 0.05)
+            border-radius: 12px
+            padding: 2px 8px
+            font-size: 0.85em
+            user-select: none
+
+            .reaction-emoji
+                font-size: 1.1em
+
+            .reaction-count
+                color: $color-text-light
+                font-size: 0.9em
+                font-weight: 500
 
     .images.has-head
         margin: 0 -20px 10px
@@ -320,6 +427,7 @@ async function share()
 </style>
 
 <style lang="sass">
+@use "sass:color"
 @use "css/colors" as *
 
 .media_spoiler
@@ -330,6 +438,178 @@ async function share()
     a
         color: $color-text-special
         text-decoration: none
+
+    blockquote
+        display: inline-block
+        width: fit-content
+        max-width: 100%
+        box-sizing: border-box
+        margin: 4px 0
+        padding: 3px 34px 3px 12px
+        position: relative
+        border-radius: 4px
+        background: linear-gradient(45deg, $color-text-special, $color-text-special), rgba(255, 131, 115, 0.12)
+        background-size: 2.8px 100%
+        background-repeat: no-repeat
+        white-space: pre-wrap
+        word-break: break-word
+        color: inherit
+
+        &::after
+            content: ""
+            position: absolute
+            width: 12px
+            height: 12px
+            top: 6px
+            right: 6px
+            background: $color-text-special
+            -webkit-mask: no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 366.3018'%3E%3Cpath d='M3 101q0-18 9-33t24-23.5T68.5 36t32.5 8.5T125 68t9 33v19q0 54-24 102l-12 24q-6 12-19 16t-25-2-16.5-18.5T39 217l12-24q7-13 11-27-25-3-42-21.5T3 101zm163 0q0-18 9-33t24-23.5 32.5-8.5 32.5 8.5T288 68t9 33v19q0 54-24 102l-12 24q-6 12-19 16t-25-2-16.5-18.5T202 217l12-24q7-13 11-27-25-3-42-21.5T166 101z'/%3E%3C/svg%3E")
+            mask: no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 366.3018'%3E%3Cpath d='M3 101q0-18 9-33t24-23.5T68.5 36t32.5 8.5T125 68t9 33v19q0 54-24 102l-12 24q-6 12-19 16t-25-2-16.5-18.5T39 217l12-24q7-13 11-27-25-3-42-21.5T3 101zm163 0q0-18 9-33t24-23.5 32.5-8.5 32.5 8.5T288 68t9 33v19q0 54-24 102l-12 24q-6 12-19 16t-25-2-16.5-18.5T202 217l12-24q7-13 11-27-25-3-42-21.5T166 101z'/%3E%3C/svg%3E")
+            -webkit-mask-size: 100%
+            mask-size: 100%
+
+    blockquote[expandable], blockquote.expandable
+        position: relative
+        cursor: pointer
+        transition: all 0.2s ease
+
+        &::before
+            content: ""
+            position: absolute
+            background: $color-text-special
+            width: 16px
+            height: 16px
+            bottom: 4px
+            right: 5px
+            -webkit-mask: no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 366.3018'%3E%3Cpath d='M150 182l79-78q3-4 8.5-4t9 3.5 3.5 9-4 8.5l-87 88q-4 4-9 4t-9-4l-87-88q-4-3-4-8.5t3.5-9 9-3.5 8.5 4z'/%3E%3C/svg%3E")
+            mask: no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 366.3018'%3E%3Cpath d='M150 182l79-78q3-4 8.5-4t9 3.5 3.5 9-4 8.5l-87 88q-4 4-9 4t-9-4l-87-88q-4-3-4-8.5t3.5-9 9-3.5 8.5 4z'/%3E%3C/svg%3E")
+            -webkit-mask-size: 100%
+            mask-size: 100%
+            transition: transform 0.2s ease
+
+        &:not([open]):not(.expanded)
+            display: -webkit-box
+            -webkit-box-orient: vertical
+            -webkit-line-clamp: 3
+            line-clamp: 3
+            max-height: 4.5em
+            text-overflow: ellipsis
+            overflow: hidden
+
+        &[open]::before, &.expanded::before
+            transform: rotate(180deg)
+
+        &[open], &.expanded
+            display: block
+            -webkit-line-clamp: none
+            line-clamp: none
+            max-height: none
+
+    .rich-photo
+        margin: 10px 0
+        img
+            width: 100%
+            border-radius: 6px
+            object-fit: cover
+        figcaption
+            font-size: 0.85em
+            color: $color-text-light
+            text-align: center
+            margin-top: 4px
+
+    .rich-table
+        width: 100%
+        border-collapse: collapse
+        margin: 10px 0
+        font-size: 0.9em
+
+        caption
+            font-weight: bold
+            margin-bottom: 6px
+            text-align: left
+
+        th, td
+            border: 1px solid rgba(0, 0, 0, 0.12)
+            padding: 6px 10px
+            text-align: left
+
+        th
+            background: rgba(0, 0, 0, 0.05)
+            font-weight: bold
+
+    ul.checklist
+        list-style: none
+        padding-left: 0
+
+        li.check-item
+            display: flex
+            align-items: center
+            gap: 8px
+            margin: 4px 0
+
+            input[type="checkbox"]
+                cursor: pointer
+
+    details
+        margin: 8px 0
+        padding: 6px 10px
+        background: rgba(0, 0, 0, 0.03)
+        border-radius: 6px
+
+        summary
+            cursor: pointer
+            font-weight: bold
+
+    .rich-button
+        display: inline-block
+        padding: 6px 14px
+        margin: 4px 4px 4px 0
+        border-radius: 6px
+        background: $color-text-special
+        color: white !important
+        font-weight: 500
+        font-size: 0.9em
+        text-align: center
+
+        &.success
+            background: #34c759
+        &.primary
+            background: $color-text-special
+        &.danger
+            background: #ff3b30
+
+    .rich-footer
+        font-size: 0.85em
+        color: $color-text-light
+        margin-top: 10px
+        font-style: italic
+
+    .pullquote
+        border-left: none
+        border-top: 2px solid $color-text-special
+        border-bottom: 2px solid $color-text-special
+        text-align: center
+        padding: 10px
+        font-style: italic
+
+    cite
+        display: block
+        font-size: 0.85em
+        color: $color-text-light
+        margin-top: 4px
+        font-style: normal
+
+    hr
+        border: none
+        border-top: 1px solid rgba(0, 0, 0, 0.1)
+        margin: 12px 0
+
+    code.math
+        font-family: serif
+        font-style: italic
+        background: rgba(0, 0, 0, 0.04)
+        padding: 2px 4px
+        border-radius: 3px
 
 // Custom emojis
 i.custom-emoji

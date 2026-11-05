@@ -3,6 +3,7 @@
     <div v-else class="tgb-card">
         <h2>Please specify demo path</h2>
         Available paths:
+        <div><a href="/custom?url=/data/posts.json"><b>Local Test Channel (-1001564142575)</b></a></div>
         <div><a href="/liaotalk">无聊的话</a></div>
         <div><a href="/test">Testing Channel</a></div>
         <div><a href="/Uekawakuyuurei">秋雲</a></div>
