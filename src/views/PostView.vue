@@ -505,111 +505,281 @@ async function share()
             line-clamp: none
             max-height: none
 
+    h1, h2, h3, h4, h5, h6
+        font-family: inherit
+        font-weight: bold
+        margin: 0
+        padding: 0.6rem 0 0.4rem 0
+        line-height: 1.3
+        color: inherit
+
+    h1
+        font-size: 1.25em
+    h2
+        font-size: 1.15em
+    h3
+        font-size: 1.05em
+    h4, h5, h6
+        font-size: 1em
+
+    ol, ul
+        margin: 6px 0
+        padding-left: 24px
+
+    li
+        margin: 3px 0
+        > p
+            margin: 0
+            display: inline
+
+    pre
+        background: rgba(0, 0, 0, 0.05)
+        padding: 8px 12px
+        border-radius: 6px
+        margin: 8px 0
+        overflow-x: auto
+        font-size: 0.9em
+
+        code
+            font-family: monospace
+            background: none
+            padding: 0
+            border-radius: 0
+
     .rich-photo
         margin: 10px 0
+        text-align: center
         img
-            width: 100%
+            max-width: 100%
+            height: auto
             border-radius: 6px
-            object-fit: cover
+            display: block
+            margin: 0 auto
         figcaption
             font-size: 0.85em
             color: $color-text-light
             text-align: center
-            margin-top: 4px
+            margin-top: 6px
 
     .rich-table
         width: 100%
         border-collapse: collapse
-        margin: 10px 0
+        margin: 12px 0
         font-size: 0.9em
+        border-radius: 8px
+        overflow: hidden
 
         caption
             font-weight: bold
-            margin-bottom: 6px
-            text-align: left
+            font-size: 0.95em
+            padding: 6px 0
+            text-align: center
+            color: inherit
 
         th, td
-            border: 1px solid rgba(0, 0, 0, 0.12)
-            padding: 6px 10px
+            padding: 8px 12px
             text-align: left
+            vertical-align: top
+            overflow-wrap: anywhere
 
         th
             background: rgba(0, 0, 0, 0.05)
             font-weight: bold
 
+        &.bordered
+            border: 1px solid rgba(0, 0, 0, 0.1)
+
+            th, td
+                border: 1px solid rgba(0, 0, 0, 0.1)
+
+        &.striped tbody tr:nth-child(odd)
+            background: rgba(0, 0, 0, 0.02)
+
     ul.checklist
         list-style: none
-        padding-left: 0
+        padding-left: 2px
+        margin: 6px 0
 
         li.check-item
             display: flex
             align-items: center
             gap: 8px
             margin: 4px 0
+            line-height: 1.4
 
             input[type="checkbox"]
-                cursor: pointer
+                appearance: none
+                -webkit-appearance: none
+                width: 16px
+                height: 16px
+                border: 1.5px solid rgba(0, 0, 0, 0.25)
+                border-radius: 3px
+                margin: 0
+                cursor: default
+                position: relative
+                flex-shrink: 0
+
+                &:checked
+                    background-color: $color-text-special
+                    border-color: $color-text-special
+
+                    &::after
+                        content: ""
+                        position: absolute
+                        left: 4px
+                        top: 1px
+                        width: 4px
+                        height: 8px
+                        border: solid white
+                        border-width: 0 2px 2px 0
+                        transform: rotate(45deg)
+
+            p
+                margin: 0
 
     details
         margin: 8px 0
-        padding: 6px 10px
-        background: rgba(0, 0, 0, 0.03)
-        border-radius: 6px
 
         summary
             cursor: pointer
             font-weight: bold
+            display: flex
+            align-items: center
+            gap: 6px
+            padding: 6px 0
+            user-select: none
+            list-style: none
+            outline: none
+
+            &::-webkit-details-marker
+                display: none
+
+            &::before
+                content: ""
+                display: inline-block
+                width: 14px
+                height: 14px
+                background: currentColor
+                -webkit-mask: no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z'/%3E%3C/svg%3E")
+                mask: no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z'/%3E%3C/svg%3E")
+                -webkit-mask-size: 100%
+                mask-size: 100%
+                transition: transform 0.2s ease-in-out
+
+        &[open] > summary::before
+            transform: rotate(90deg)
+
+        > *:not(summary)
+            margin: 4px 0 6px 20px
+
+    .rich-button-row
+        display: flex
+        gap: 8px
+        margin: 8px 0
+        flex-wrap: wrap
+
+        &.align-center
+            justify-content: center
+        &.align-right
+            justify-content: flex-end
 
     .rich-button
-        display: inline-block
-        padding: 6px 14px
-        margin: 4px 4px 4px 0
-        border-radius: 6px
-        background: $color-text-special
-        color: white !important
-        font-weight: 500
-        font-size: 0.9em
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        padding: 6px 18px
+        margin: 4px 6px 4px 0
+        min-height: 32px
+        box-sizing: border-box
+        border-radius: 1000px
+        font-weight: 600
+        font-size: 0.88em
         text-align: center
+        text-decoration: none !important
+        transition: background-color 0.2s ease, opacity 0.2s ease
+        line-height: 1.2
 
-        &.success
-            background: #34c759
+        &.default
+            color: inherit
+            background: rgba(0, 0, 0, 0.08)
+            &:hover
+                background: rgba(0, 0, 0, 0.14)
+
         &.primary
             background: $color-text-special
+            color: white !important
+            &:hover
+                opacity: 0.9
+
+        &.success
+            background: rgba(47, 174, 73, 0.12)
+            color: #2fae49 !important
+            &:hover
+                background: rgba(47, 174, 73, 0.2)
+
         &.danger
-            background: #ff3b30
+            background: rgba(223, 63, 64, 0.12)
+            color: #df3f40 !important
+            &:hover
+                background: rgba(223, 63, 64, 0.2)
 
     .rich-footer
-        font-size: 0.85em
+        font-size: 0.88em
         color: $color-text-light
-        margin-top: 10px
-        font-style: italic
+        margin: 12px 0
+        font-style: normal
+        line-height: 1.4
 
     .pullquote
-        border-left: none
-        border-top: 2px solid $color-text-special
-        border-bottom: 2px solid $color-text-special
+        display: flex
+        flex-direction: column
+        align-items: center
+        justify-content: center
+        margin: 14px auto
+        padding: 10px 28px
+        width: fit-content
+        max-width: 90%
+        border-radius: 6px
+        background: rgba(255, 131, 115, 0.12)
+        background-size: auto
+        border: none
         text-align: center
-        padding: 10px
         font-style: italic
+        position: relative
+
+        &::before, &::after
+            display: none
+
+        cite
+            display: block
+            font-style: normal
+            font-weight: bold
+            font-size: 0.88em
+            color: $color-text-special
+            margin-top: 4px
+            text-align: center
 
     cite
         display: block
-        font-size: 0.85em
-        color: $color-text-light
+        font-size: 0.88em
+        font-weight: bold
+        color: $color-text-special
         margin-top: 4px
         font-style: normal
 
     hr
         border: none
-        border-top: 1px solid rgba(0, 0, 0, 0.1)
-        margin: 12px 0
+        height: 1px
+        background: rgba(0, 0, 0, 0.12)
+        width: 33.333%
+        margin: 16px auto
 
     code.math
-        font-family: serif
-        font-style: italic
-        background: rgba(0, 0, 0, 0.04)
-        padding: 2px 4px
-        border-radius: 3px
+        background: transparent !important
+        border: none
+        padding: 0 2px
+        font-size: 1.15em
+        color: inherit
 
 // Custom emojis
 i.custom-emoji
