@@ -10,22 +10,28 @@ You can also check out [Azalea's Blog](https://aza.moe/life) for a demo.
 ### Feature Support
 
 - [x] All text formatting (including spoilers)
+- [x] Blockquotes and expandable blockquotes
 - [x] @username, #hashtag
-- [x] Forwarded from, reply to (clickable)
+- [x] Forwarded from, reply to (clickable), quote replies
+- [x] Reactions (emoji & custom emoji)
+- [x] Rich formatting (tables, checklists, details, buttons, pull quotes, math formulas)
 - [x] Maps! (location sharing)
 - [x] Polls (show result only, unable to vote)
 - [x] Contacts
+- [x] Giveaways
 - [x] Search, hashtag search
 
 ### Media Support
 
 - [x] Stickers, Animated stickers (webm & tgs)
+- [x] Animated dice & slot machines (apng)
 - [x] Custom emojis, animated custom emojis
 - [x] Videos, gif animations
 - [x] Files
 - [x] Audio, voice message (Including an audio player)
 - [x] Media groups
 - [x] Image viewing & tiling
+- [x] WebP thumbnails & image optimization
 - [x] Media spoilers (image, video, gif)
 
 ## Getting Started
