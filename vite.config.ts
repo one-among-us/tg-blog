@@ -8,7 +8,7 @@ import IconsResolver from 'unplugin-icons/resolver'
 import {ElementPlusResolver} from "unplugin-vue-components/resolvers";
 
 
-const src = path.resolve(__dirname, 'src')
+const src = path.resolve(import.meta.dirname, 'src')
 
 const autoImport: PluginOption[] = [
   AutoImport({
