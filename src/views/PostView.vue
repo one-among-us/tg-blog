@@ -62,6 +62,8 @@ import {useTgbMessages} from "@/logic/messages";
 import {computed, onMounted, onUnmounted, onUpdated, ref, StyleValue} from "vue";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import hljs from "highlight.js";
+import "highlight.js/styles/github.css";
 
 const msg = useTgbMessages()
 
@@ -154,6 +156,109 @@ function initRichContent()
             } catch (e) {
                 console.error("KaTeX render error:", e)
             }
+        }
+    })
+
+    // Syntax highlighting for code blocks
+    el.value.querySelectorAll<HTMLElement>("pre:not(.hljs-rendered)").forEach(pre => {
+        pre.classList.add("hljs-rendered")
+        let codeEl = pre.querySelector("code")
+        const rawCode = (codeEl ? codeEl.textContent : pre.textContent) || ""
+        let lang = pre.getAttribute("language") || ""
+        if (!lang && codeEl) {
+            const classLang = Array.from(codeEl.classList).find(c => c.startsWith("language-") || c.startsWith("lang-"))
+            if (classLang) {
+                lang = classLang.replace(/^language-|^lang-/, "")
+            }
+        }
+
+        let highlighted = ""
+        let detectedLang = lang
+        if (lang && hljs.getLanguage(lang)) {
+            try {
+                const res = hljs.highlight(rawCode, { language: lang })
+                highlighted = res.value
+                detectedLang = lang
+            } catch (e) {
+                console.warn(`Failed to highlight with language ${lang}:`, e)
+            }
+        }
+
+        if (!highlighted && rawCode.trim()) {
+            try {
+                const res = hljs.highlightAuto(rawCode)
+                highlighted = res.value
+                detectedLang = res.language || lang || ""
+            } catch {
+                highlighted = ""
+            }
+        }
+
+        if (!codeEl) {
+            codeEl = document.createElement("code")
+            pre.innerHTML = ""
+            pre.appendChild(codeEl)
+        }
+
+        if (highlighted) {
+            codeEl.innerHTML = highlighted
+            codeEl.classList.add("hljs")
+        } else {
+            codeEl.textContent = rawCode
+        }
+
+        // Add code header with language and copy button if not already present
+        if (!pre.querySelector(".code-header")) {
+            const header = document.createElement("div")
+            header.className = "code-header"
+
+            const langSpan = document.createElement("span")
+            langSpan.className = "code-lang"
+            langSpan.textContent = detectedLang || "code"
+
+            const copyBtn = document.createElement("button")
+            copyBtn.className = "code-copy-btn"
+            copyBtn.setAttribute("type", "button")
+            copyBtn.setAttribute("title", "Copy code")
+            copyBtn.innerHTML = `<span>Copy</span>`
+            copyBtn.addEventListener("click", async (e) => {
+                e.stopPropagation()
+                let success = false
+                if (navigator.clipboard?.writeText) {
+                    try {
+                        await navigator.clipboard.writeText(rawCode)
+                        success = true
+                    } catch {
+                        success = false
+                    }
+                }
+                if (!success) {
+                    const ta = document.createElement("textarea")
+                    ta.value = rawCode
+                    ta.style.position = "fixed"
+                    ta.style.opacity = "0"
+                    document.body.appendChild(ta)
+                    ta.select()
+                    try {
+                        success = document.execCommand("copy")
+                    } catch {
+                        success = false
+                    }
+                    document.body.removeChild(ta)
+                }
+                if (success) {
+                    copyBtn.innerHTML = `<span>Copied!</span>`
+                    copyBtn.classList.add("copied")
+                    setTimeout(() => {
+                        copyBtn.innerHTML = `<span>Copy</span>`
+                        copyBtn.classList.remove("copied")
+                    }, 2000)
+                }
+            })
+
+            header.appendChild(langSpan)
+            header.appendChild(copyBtn)
+            pre.insertBefore(header, pre.firstChild)
         }
     })
 }
@@ -279,6 +384,7 @@ async function share()
 .post
     padding: 12px 20px 8px
     text-align: left
+    overflow: hidden
 
     > *
         margin-bottom: 10px
@@ -534,32 +640,87 @@ async function share()
 
     pre
         background: rgba(0, 0, 0, 0.05)
-        padding: 8px 12px
-        border-radius: 6px
-        margin: 8px 0
-        overflow-x: auto
+        border-radius: 8px
+        margin: 12px 0
+        overflow: hidden
         font-size: 0.9em
+        position: relative
+        box-sizing: border-box
+
+        .code-header
+            display: flex
+            justify-content: space-between
+            align-items: center
+            padding: 5px 12px
+            background: rgba(0, 0, 0, 0.03)
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06)
+            font-size: 0.75em
+            font-weight: 600
+            color: $color-text-light
+            text-transform: uppercase
+            letter-spacing: 0.5px
+            user-select: none
+
+            .code-lang
+                font-family: inherit
+
+            .code-copy-btn
+                background: none
+                border: none
+                color: $color-text-light
+                cursor: pointer
+                font-size: 0.85em
+                display: flex
+                align-items: center
+                gap: 4px
+                padding: 2px 8px
+                border-radius: 4px
+                font-family: inherit
+                font-weight: 600
+                transition: color 0.2s ease, background 0.2s ease
+
+                &:hover
+                    color: $color-text-special
+                    background: rgba(0, 0, 0, 0.06)
+
+                &.copied
+                    color: #34c759
 
         code
+            display: block
             font-family: monospace
+            padding: 10px 14px
+            overflow-x: auto
             background: none
-            padding: 0
             border-radius: 0
+            line-height: 1.45
+
+        code.hljs
+            background: transparent !important
+            color: inherit
+            padding: 10px 14px
 
     .rich-photo
-        margin: 10px 0
+        margin: 14px -20px
         text-align: center
+
+        &:first-child
+            margin-top: -12px
+
         img
+            width: 100%
             max-width: 100%
             height: auto
-            border-radius: 6px
+            border-radius: 0
             display: block
             margin: 0 auto
+
         figcaption
             font-size: 0.85em
             color: $color-text-light
             text-align: center
             margin-top: 6px
+            padding: 0 20px
 
     .rich-table
         width: 100%
