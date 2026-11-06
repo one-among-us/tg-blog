@@ -128,6 +128,22 @@ function onTextClick(e: MouseEvent) {
 function initRichContent()
 {
     if (!el.value) return
+    // Remove empty newline text nodes around block-level elements in .text
+    const textEl = el.value.querySelector(".text")
+    if (textEl) {
+        const isBlock = (n: ChildNode | null) =>
+            n && n.nodeType === Node.ELEMENT_NODE &&
+            ['P', 'FIGURE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'DETAILS', 'HR', 'PRE', 'TABLE', 'UL', 'OL', 'FOOTER'].includes((n as Element).tagName)
+
+        Array.from(textEl.childNodes).forEach(node => {
+            if (node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()) {
+                if (isBlock(node.previousSibling) || isBlock(node.nextSibling)) {
+                    node.remove()
+                }
+            }
+        })
+    }
+
     // Absolutize rich photo URLs and add click to view full image
     el.value.querySelectorAll<HTMLImageElement>("figure.rich-photo img:not(.init)").forEach(img => {
         img.classList.add("init")
@@ -611,6 +627,13 @@ async function share()
             line-clamp: none
             max-height: none
 
+    p
+        margin: 4px 0
+        &:first-child
+            margin-top: 0
+        &:last-child
+            margin-bottom: 0
+
     h1, h2, h3, h4, h5, h6
         font-family: inherit
         font-weight: bold
@@ -701,11 +724,14 @@ async function share()
             padding: 10px 14px
 
     .rich-photo
-        margin: 14px -20px
+        margin: 6px -20px 8px
         text-align: center
 
         &:first-child
             margin-top: -12px
+
+        &:last-child
+            margin-bottom: -8px
 
         img
             width: 100%
@@ -719,7 +745,7 @@ async function share()
             font-size: 0.85em
             color: $color-text-light
             text-align: center
-            margin-top: 6px
+            margin-top: 4px
             padding: 0 20px
 
     .rich-table
