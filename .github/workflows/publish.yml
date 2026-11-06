@@ -29,8 +29,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          registry-url: 'https://registry.npmjs.org/'
+          node-version: 22
+
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -41,14 +43,13 @@ jobs:
           bun run build
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --access public --provenance
 
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          tar -czf tg-blog-dist.tar.gz -C dist .
           PREV_TAG=$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || echo "")
           echo "## What's Changed" > release_notes.md
           echo "" >> release_notes.md
@@ -59,4 +60,4 @@ jobs:
           else
             git log -1 "${{ github.ref_name }}" --pretty=format:"### %s (%h)%n%n%b" >> release_notes.md
           fi
-          gh release create "${{ github.ref_name }}" dist/* --title "${{ github.ref_name }}" --notes-file release_notes.md
+          gh release create "${{ github.ref_name }}" tg-blog-dist.tar.gz --title "${{ github.ref_name }}" --notes-file release_notes.md
