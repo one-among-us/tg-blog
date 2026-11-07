@@ -1,5 +1,5 @@
 <template>
-    <video ref="vid" :src="f.url" preload="auto" loop playsinline>
+    <video ref="vid" :src="f.url" preload="metadata" loop playsinline>
         <img v-if="f.thumb" :src="f.thumb" alt="">
     </video>
 </template>

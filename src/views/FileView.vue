@@ -23,7 +23,7 @@
     <!-- Stickers -->
     <div class="sticker" v-if="f.media_type === 'sticker'">
         <video v-if="f.url.toLowerCase().endsWith('webm')" :src="f.url"
-               preload="auto" muted autoplay loop playsinline disablepictureinpicture>
+               preload="metadata" muted autoplay loop playsinline disablepictureinpicture>
             <img v-if="f.thumb" :src="f.thumb" alt="">
         </video>
         <img v-else :src="f.url" alt=""/>
@@ -38,7 +38,7 @@
 
     <!-- GIFs -->
     <div class="video no-head" v-if="f.media_type === 'animation'" :class="{'has-head': hasHead}">
-        <video :src="f.url" preload="auto" muted loop playsinline disablepictureinpicture ref="gif"
+        <video :src="f.url" preload="metadata" muted loop playsinline disablepictureinpicture ref="gif"
                :class="spoilerClasses" @click="f.spoiler = false; gif.play()">
             <img v-if="f.thumb" :src="f.thumb" alt="">
         </video>
