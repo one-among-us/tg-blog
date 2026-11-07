@@ -7,7 +7,7 @@
         </div>
         <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
             <div class="thumb-wrap" v-if="p.reply.thumb">
-                <img class="thumb" :src="p.reply.thumb" alt="" loading="lazy">
+                <img class="thumb" :src="p.reply.thumb" alt="">
             </div>
             <div class="mtext">
                 <div class="reply-to">{{msg.replyTo}}</div>
@@ -22,7 +22,7 @@
         <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from || (p.show_caption_above_media && text)}"
              :style="containerStyle">
             <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
-                <img :src="img.thumb || img.url" alt="image" loading="lazy"
+                <img :src="img.thumb || img.url" alt="image"
                      class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(img, i)" style="inset: 0">
             </div>
         </div>
