@@ -31,8 +31,6 @@ export function initSpoilers()
 {
   const spoilers = document.querySelectorAll('.spoiler')
 
-  console.log("Spoilers initialized.")
-
   spoilers.forEach(spoiler =>
   {
     // Already initialized
@@ -46,7 +44,6 @@ export function initSpoilers()
     function handleSpoiler()
     {
       spoiler.classList.toggle("spoiler-visible")
-      console.log(`Spoiler clicked: ${spoiler}`);
 
       // Toggle sibling spoilers if they are in the same post
       if (post) siblingSpoilers?.forEach(it =>

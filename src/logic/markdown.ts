@@ -15,7 +15,6 @@ const spoilerExtension = {
     const match = rule.exec(src);
 
     if (match) {
-      // console.log(src, match)
       return {type: 'spoiler', raw: match[0], inner: this.lexer.inlineTokens(match[1].trim())};
     }
   },

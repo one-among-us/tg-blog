@@ -123,7 +123,6 @@ const searchedPosts = computed((): Post[] =>
         if (q.startsWith("id:"))
         {
             let id = take(3)
-            console.log(id)
             res = res.filter(p => p.id + "" == id)
             continue
         }
@@ -221,7 +220,6 @@ function onKey(e: KeyboardEvent)
 function onHashChange(e: HashChangeEvent)
 {
     const h = window.location.hash
-    console.log("Hash change", e.newURL, h)
 
     if (!h) return;
 
@@ -463,8 +461,6 @@ onBeforeMount(async (): Promise<void> =>
             if (postImgIndex.value[img.postIndex] === null)
                 postImgIndex.value[img.postIndex] = i
         })
-        console.log(imgList.value)
-        console.log(postImgIndex.value)
 
         setTimeout(() => initSpoilers(), 100);
 
@@ -488,7 +484,7 @@ onBeforeMount(async (): Promise<void> =>
     }
     catch (e)
     {
-        console.log(e)
+        console.error(e)
         fail.value = e as string
     }
 })

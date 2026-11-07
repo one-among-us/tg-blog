@@ -169,7 +169,6 @@ function fileThumbClick()
 {
     // Is regular file, download
     if (!f.value.media_type) {
-      console.log(`Downloading file: ${f.value.url}`)
       return downloadURI(f.value.url, f.value.url.split("/").slice(-1)[0])
       // fileDownload downloads content directly, not URL
       // return fileDownload(this.f.url, this.f.url.split("/").slice(-1)[0])

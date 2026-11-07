@@ -86,11 +86,7 @@ const text = computed(() => p.value.text)
 const fwdUrl = computed(() => typeof p.value.forwarded_from == 'string' ? undefined : p.value.forwarded_from.url)
 const fwdName = computed(() => typeof p.value.forwarded_from == 'string' ? p.value.forwarded_from : p.value.forwarded_from.name)
 
-const dims = computed(() =>
-{
-    console.log(`Calculating dimensions for ${p.value.id}...`)
-    return calculateAlbumLayout(p.value.images, 450, 450)
-})
+const dims = computed(() => calculateAlbumLayout(p.value.images, 450, 450))
 
 const containerStyle = computed(() =>
 {
