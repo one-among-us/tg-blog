@@ -2,7 +2,9 @@
 
 import {Dimension, Image} from "@/logic";
 
-export const REM = parseInt(getComputedStyle(document.documentElement).fontSize, 10);
+export const REM = typeof document !== 'undefined' && typeof getComputedStyle !== 'undefined'
+  ? parseInt(getComputedStyle(document.documentElement).fontSize, 10) || 16
+  : 16;
 export const clamp = (num: number, min: number, max: number) => (Math.min(max, Math.max(min, num)));
 
 export const AlbumRectPart = {

@@ -29,6 +29,7 @@ function findParentByTag(tag: string, el: Element): Element | null
  */
 export function initSpoilers()
 {
+  if (typeof document === 'undefined') return
   const spoilers = document.querySelectorAll('.spoiler')
 
   spoilers.forEach(spoiler =>

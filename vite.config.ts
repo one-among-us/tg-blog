@@ -71,6 +71,7 @@ const cfg: UserConfigExport = {
     },
   },
   build: demo ? {} : {
+    copyPublicDir: false,
     lib: {
       entry: path.resolve(src, 'index.ts'),
       name: 'TgBlog',

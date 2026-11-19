@@ -17,6 +17,9 @@ export interface _Media {
 
 export interface Image extends Dimension, _Media {
   url: string
+  original_url?: string
+  original_size?: number
+  original_name?: string
 }
 
 export interface PollOption {
@@ -116,3 +119,176 @@ export interface Post {
 // TODO: Other files types (i.e. pdf)
 // TODO: Video
 // TODO: Author
+
+// --- Interactive Mode (/life v2 API Contract) ---
+
+export type AuthProvider = 'github' | 'google' | 'telegram' | 'email' | 'anonymous' | string
+
+export interface UserDTO {
+  id: number
+  display_name: string
+  role: 'owner' | 'user' | string
+  avatar_url?: string | null
+  provider?: AuthProvider | null
+  email_verified?: boolean
+  notify_replies?: boolean
+}
+
+export interface MergedReactionPublic {
+  reaction_key: string
+  emoji?: string | null
+  custom_emoji_id?: string | null
+  tg_count: number
+  web_count: number
+  count: number
+}
+
+export interface MergedReaction extends MergedReactionPublic {
+  reacted: boolean
+}
+
+export interface MergedPollOption {
+  idx: number
+  text: string
+  tg_voter_count: number
+  web_voter_count: number
+  voter_count: number
+}
+
+export interface MergedPollPublic {
+  id: string
+  question: string
+  is_closed: boolean
+  is_anonymous: boolean
+  type: 'REGULAR' | 'QUIZ'
+  allow_multiple_answers: boolean
+  total_voter_count: number
+  correct_option_idx?: number | null
+  explanation?: string | null
+  options: MergedPollOption[]
+}
+
+export interface MergedPoll extends MergedPollPublic {
+  my_votes: number[]
+}
+
+export interface PostInteractionState {
+  reactions: MergedReaction[]
+  poll?: MergedPoll | null
+  comment_count: number
+}
+
+export interface InteractionsResponse {
+  allow_anon_comments: boolean
+  captcha_provider?: string | null
+  me: UserDTO | null
+  posts: Record<string, PostInteractionState>
+}
+
+export interface CommentAuthorDTO {
+  display_name: string
+  avatar_url?: string | null
+  role: 'owner' | 'user' | 'telegram' | 'anonymous' | string
+  provider?: AuthProvider | null
+  username?: string | null
+  verified: boolean
+}
+
+export interface CommentDTO {
+  id: number
+  post_id: number
+  parent_id: number | null
+  source: 'web' | 'telegram' | string
+  author: CommentAuthorDTO
+  body_text: string
+  body_html: string
+  media?: any | null
+  created_at: string
+  edited_at?: string | null
+  deleted: boolean
+  is_mine: boolean
+  can_delete: boolean
+}
+
+export interface CommentsResponse {
+  post_id: number
+  comments: CommentDTO[]
+}
+
+export interface ReactionTogglePayload {
+  emoji?: string
+  custom_emoji_id?: string
+}
+
+export interface ReactionToggleResponse {
+  post_id: number
+  reactions: MergedReaction[]
+}
+
+export interface PollVoteResponse {
+  post_id: number
+  poll: MergedPoll
+}
+
+export interface CreateCommentPayload {
+  body: string
+  parent_id?: number | null
+  as_anonymous?: boolean
+  altcha_payload?: string | null
+}
+
+export interface AuthMeResponse {
+  user: UserDTO | null
+  providers: string[]
+  allow_anon_comments: boolean
+  telegram_bot_username?: string | null
+}
+
+export interface UpdateProfilePayload {
+  display_name?: string
+  notify_replies?: boolean
+}
+
+export interface MagicLinkRequestPayload {
+  email: string
+  display_name?: string
+  altcha_payload: string
+}
+
+export interface AltchaChallenge {
+  algorithm: string
+  challenge: string
+  maxnumber?: number
+  salt: string
+  signature: string
+}
+
+export interface AltchaSolution {
+  algorithm: string
+  challenge: string
+  number: number
+  salt: string
+  signature: string
+  took: number
+}
+
+export interface StreamReactionUpdatedEvent {
+  post_id: number
+  reactions: MergedReactionPublic[]
+}
+
+export interface StreamPollUpdatedEvent {
+  post_id: number
+  poll: MergedPollPublic
+}
+
+export interface StreamCommentDeletedEvent {
+  post_id: number
+  comment_id: number
+}
+
+export interface StreamPostDeletedEvent {
+  post_id: number
+}
+
+export type PostDeletedEvent = StreamPostDeletedEvent

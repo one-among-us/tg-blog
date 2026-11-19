@@ -32,7 +32,7 @@
     <!-- Videos -->
     <div class="video no-head" v-if="f.media_type === 'video_file'" :class="{'has-head': hasHead}">
         <div @click="f.spoiler = false" :class="{clickable: f.spoiler}">
-            <VideoPlayer :f="f" :class="spoilerClasses"/>
+            <VideoPlayer v-if="isMounted" :f="f" :class="spoilerClasses"/>
         </div>
     </div>
 
@@ -45,11 +45,13 @@
     </div>
 
     <!-- Poll -->
-    <Poll :f="pollFile" v-if="f.media_type === 'poll'"></Poll>
+    <Poll :f="pollFile" :interactive="interactive" :poll-state="pollState" :voting="pollVoting"
+          @vote="(pollId, indices) => emit('vote-poll', pollId, indices)"
+          v-if="f.media_type === 'poll'"></Poll>
 
     <!-- Location -->
     <Location class="location no-head" :class="{'has-head': hasHead}"
-              :f="locationFile" v-if="f.media_type === 'location'"></Location>
+              :f="locationFile" v-if="f.media_type === 'location' && isMounted"></Location>
 
     <!-- Dice -->
     <div class="dice clickable" v-if="f.media_type === 'dice'" ref="diceEl" @click="replayDice" title="Click to replay">
@@ -82,7 +84,7 @@
 </template>
 
 <script lang="ts" setup>
-import {TGFile, TGLocationFile, TGPollFile} from "@/logic/models";
+import {MergedPoll, TGFile, TGLocationFile, TGPollFile} from "@/logic/models";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
 import {useTgbMessages} from "@/logic/messages";
 import {computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch} from "vue";
@@ -105,16 +107,21 @@ const VideoPlayer = defineAsyncComponent(() => import("./VideoPlayer.vue"))
 const props = defineProps<{
     f: TGFile
     hasHead: boolean
+    interactive?: boolean
+    pollState?: MergedPoll | null
+    pollVoting?: boolean
 }>()
 const f = computed(() => props.f)
 const hasHead = computed(() => props.hasHead)
 
 const emit = defineEmits<{
     (e: "play-file", file: TGFile): void
+    (e: "vote-poll", pollId: string, optionIndices: number[]): void
 }>()
 
 const gif = ref<HTMLVideoElement>()
 const diceEl = ref<HTMLElement>()
+const isMounted = ref(false)
 const isVisible = ref(false)
 const diceSrc = ref('')
 let diceObserver: IntersectionObserver | null = null
@@ -138,6 +145,7 @@ watch(() => f.value.url, () => {
 })
 
 onMounted(() => {
+    isMounted.value = true
     if (f.value.media_type === 'dice') {
         if (typeof window === 'undefined' || !window.IntersectionObserver) {
             isVisible.value = true

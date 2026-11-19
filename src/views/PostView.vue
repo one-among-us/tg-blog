@@ -19,7 +19,7 @@
             <blockquote v-html="p.quote.text"></blockquote>
         </div>
         <div class="text" v-if="p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
-        <div class="images" v-if="p.images" :class="{'has-head': p.reply || p.forwarded_from || (p.show_caption_above_media && text)}"
+        <div class="images" v-if="p.images?.length" :class="{'has-head': p.reply || p.forwarded_from || (p.show_caption_above_media && text)}"
              :style="containerStyle">
             <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
                 <img :src="img.thumb || img.url" alt="image"
@@ -27,17 +27,55 @@
             </div>
         </div>
         <div class="files" v-if="p.files">
-            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f" :has-head="!!(p.reply || p.forwarded_from || (p.show_caption_above_media && text) || p.images)"
-                      @play-file="onPlayFile" />
+            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f"
+                      :has-head="!!(p.reply || p.forwarded_from || (p.show_caption_above_media && text) || p.images?.length)"
+                      :interactive="interactive"
+                      :poll-state="f.media_type === 'poll' ? (interaction?.poll ?? null) : null"
+                      :poll-voting="pollVoting"
+                      @play-file="onPlayFile"
+                      @vote-poll="onVotePoll" />
         </div>
         <div class="text" v-if="!p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
-        <div class="reactions" v-if="p.reactions && p.reactions.length">
+
+        <!-- Interactive reactions (when apiUrl is provided) -->
+        <div class="reactions-wrap" v-if="interactive" ref="reactionsWrapEl">
+            <div class="reactions interactive-reactions">
+                <button type="button" class="reaction reaction-btn"
+                        v-for="r in displayReactions" :key="r.reaction_key"
+                        :class="{ reacted: r.reacted }"
+                        @click="onToggleReaction(r)">
+                    <i v-if="r.custom_emoji_id" class="custom-emoji" :emoji-src="`emoji/${r.custom_emoji_id}`"></i>
+                    <span v-else class="reaction-emoji">{{r.emoji}}</span>
+                    <span class="reaction-count" v-if="r.count">{{r.count}}</span>
+                </button>
+                <button type="button" class="reaction reaction-btn add-reaction-btn"
+                        :class="{ open: showEmojiPicker }"
+                        :title="msg.addReaction"
+                        :aria-label="msg.addReaction"
+                        :aria-expanded="showEmojiPicker"
+                        @click.stop="showEmojiPicker = !showEmojiPicker">
+                    +
+                </button>
+            </div>
+            <div v-if="showEmojiPicker" class="emoji-picker" @click.stop>
+                <button type="button" class="emoji-opt"
+                        v-for="em in QUICK_EMOJIS" :key="em"
+                        :class="{ active: isEmojiReacted(em) }"
+                        @click="pickEmoji(em)">
+                    {{ em }}
+                </button>
+            </div>
+        </div>
+
+        <!-- Static read-only reactions (100% v1.2.1 behavior when apiUrl is not provided) -->
+        <div class="reactions" v-else-if="p.reactions && p.reactions.length">
             <span class="reaction" v-for="(r, idx) in p.reactions" :key="idx">
                 <i v-if="r.custom_emoji_id" class="custom-emoji" :emoji-src="`emoji/${r.custom_emoji_id}`"></i>
                 <span v-else class="reaction-emoji">{{r.emoji}}</span>
                 <span class="reaction-count" v-if="r.count">{{r.count}}</span>
             </span>
         </div>
+
         <div class="info font-code unselectable">
             <div class="id">
                 <span class="share clickable" @click="share" :title="shareLabel">
@@ -46,30 +84,53 @@
                 </span>
                 #{{p.id}}
             </div>
+            <button v-if="interactive" type="button" class="comment-toggle clickable"
+                    :class="{ active: commentsOpen }"
+                    :aria-expanded="commentsOpen"
+                    @click="commentsOpen = !commentsOpen">
+                <svg class="comment-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3v3l4.2-3H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm0 15h-9.4L9 18.2V17H4V4h16v13Z"/>
+                </svg>
+                <span>{{ commentCount > 0 ? msg.commentsCount(commentCount) : msg.reply }}</span>
+            </button>
             <div class="f-grow1"></div>
             <div class="author" v-if="p.author">{{p.author}}</div>
             <div class="date">{{p.date}}</div>
             <div class="views" v-if="p.views">{{p.views}} <i-fas-eye /></div>
         </div>
+
+        <CommentThread v-if="interactive && commentsOpen" :post-id="p.id" />
     </div>
 </template>
 
 <script lang="ts" setup>
-import {Image, Post, TGFile} from "@/logic/models";
+import {Image, MergedReaction, Post, PostInteractionState, ReactionTogglePayload, TGFile} from "@/logic/models";
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {useTgbMessages} from "@/logic/messages";
-import {computed, onMounted, onUnmounted, onUpdated, ref, StyleValue} from "vue";
+import {resolveRelativeUrl} from "@/logic/url";
+import {computed, defineAsyncComponent, onMounted, onUnmounted, onUpdated, ref, StyleValue, watch} from "vue";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
+
+const CommentThread = defineAsyncComponent(() => import("@/views/CommentThread.vue"))
+
+const QUICK_EMOJIS = [
+    '❤️', '👍', '🔥', '🥰', '👏', '😂',
+    '😮', '😢', '🎉', '🙏', '💯', '🤩',
+    '🤔', '👀', '🫡', '🤗', '✨', '☕',
+]
 
 const msg = useTgbMessages()
 
 const props = defineProps<{
     p: Post
     postsUrl: string
+    interactive?: boolean
+    interaction?: PostInteractionState | null
+    pollVoting?: boolean
 }>()
 const p = computed(() => props.p)
 
@@ -77,19 +138,77 @@ const emit = defineEmits<{
     (e: "click-reply", id: number): void
     (e: "click-img", index: number): void
     (e: "play-file", file: TGFile): void
+    (e: "toggle-reaction", postId: number, payload: ReactionTogglePayload): void
+    (e: "vote-poll", postId: number, pollId: string, optionIndices: number[]): void
 }>()
 
 const el = ref<HTMLDivElement>()
+const reactionsWrapEl = ref<HTMLDivElement>()
 const sizeScale = ref(1)
+const showEmojiPicker = ref(false)
+const commentsOpen = ref(false)
+
+const displayReactions = computed((): MergedReaction[] => {
+    if (props.interaction?.reactions) {
+        return props.interaction.reactions
+    }
+    return (p.value.reactions ?? []).map(r => ({
+        reaction_key: r.custom_emoji_id ? `c:${r.custom_emoji_id}` : `e:${r.emoji ?? ''}`,
+        emoji: r.emoji ?? null,
+        custom_emoji_id: r.custom_emoji_id ?? null,
+        tg_count: r.count,
+        web_count: 0,
+        count: r.count,
+        reacted: false,
+    }))
+})
+
+const commentCount = computed(() => props.interaction?.comment_count ?? 0)
+
+function isEmojiReacted(emoji: string): boolean {
+    return displayReactions.value.some(r => r.emoji === emoji && r.reacted)
+}
+
+function onToggleReaction(r: MergedReaction) {
+    if (r.custom_emoji_id) {
+        emit('toggle-reaction', p.value.id, {custom_emoji_id: r.custom_emoji_id})
+    } else if (r.emoji) {
+        emit('toggle-reaction', p.value.id, {emoji: r.emoji})
+    }
+}
+
+function pickEmoji(emoji: string) {
+    showEmojiPicker.value = false
+    emit('toggle-reaction', p.value.id, {emoji})
+}
+
+function onVotePoll(pollId: string, optionIndices: number[]) {
+    emit('vote-poll', p.value.id, pollId, optionIndices)
+}
+
+function onDocumentClick(e: MouseEvent) {
+    if (!showEmojiPicker.value) return
+    if (reactionsWrapEl.value && reactionsWrapEl.value.contains(e.target as Node)) return
+    showEmojiPicker.value = false
+}
+
+function onDocumentKeydown(e: KeyboardEvent) {
+    if (showEmojiPicker.value && e.key === 'Escape') {
+        showEmojiPicker.value = false
+    }
+}
 
 const text = computed(() => p.value.text)
 const fwdUrl = computed(() => typeof p.value.forwarded_from == 'string' ? undefined : p.value.forwarded_from.url)
 const fwdName = computed(() => typeof p.value.forwarded_from == 'string' ? p.value.forwarded_from : p.value.forwarded_from.name)
 
-const dims = computed(() => calculateAlbumLayout(p.value.images, 450, 450))
+const dims = computed(() =>
+    p.value.images?.length ? calculateAlbumLayout(p.value.images, 450, 450) : null
+)
 
 const containerStyle = computed(() =>
 {
+    if (!dims.value) return {}
     const ss = sizeScale.value
     const dm = dims.value.containerStyle
     return {width: dm.width * ss + "px", height: dm.height * ss + "px"}
@@ -97,6 +216,7 @@ const containerStyle = computed(() =>
 
 function getImageStyle(i: number): StyleValue
 {
+    if (!dims.value?.layout[i]) return {}
     const ss = sizeScale.value
     const dm = dims.value.layout[i].dimensions
     return {
@@ -280,6 +400,26 @@ function refreshSize() {
     sizeScale.value = el.value.clientWidth / 450
 }
 
+let pickerListenersAttached = false
+
+function detachPickerListeners() {
+    if (!pickerListenersAttached || typeof document === 'undefined') return
+    document.removeEventListener('click', onDocumentClick)
+    document.removeEventListener('keydown', onDocumentKeydown)
+    pickerListenersAttached = false
+}
+
+watch(showEmojiPicker, (open) => {
+    if (typeof document === 'undefined') return
+    if (open && !pickerListenersAttached) {
+        document.addEventListener('click', onDocumentClick)
+        document.addEventListener('keydown', onDocumentKeydown)
+        pickerListenersAttached = true
+    } else if (!open) {
+        detachPickerListeners()
+    }
+})
+
 onMounted(() =>
 {
     initEmoji()
@@ -297,11 +437,12 @@ onUpdated(() =>
 onUnmounted(() =>
 {
     window.removeEventListener('resize', refreshSize)
+    detachPickerListeners()
 })
 
 function replaceUrl(url: string): string
 {
-    return new URL(url, props.postsUrl).toString();
+    return resolveRelativeUrl(url, props.postsUrl);
 }
 
 /**
@@ -309,25 +450,34 @@ function replaceUrl(url: string): string
  */
 function initEmoji()
 {
-    // Find all non-initialized emojis
-    document.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
-        // Read attributes
-        const src = replaceUrl(it.getAttribute("emoji-src"))
-        // const orig = it.getAttribute("emoji-orig")
+    if (!el.value || typeof document === 'undefined') return
+    // Scope strictly to this post element and build media nodes via DOM APIs (never innerHTML)
+    el.value.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
+        const rawSrc = it.getAttribute("emoji-src")
+        if (!rawSrc) return
+        const src = replaceUrl(rawSrc)
 
-        // Set initialized
         it.classList.add("init")
+        it.textContent = ""
 
-        // Video
-        if (src.endsWith("webm"))
+        if (src.toLowerCase().split("?")[0].endsWith(".webm"))
         {
-            it.innerHTML = `<video src="${src}" preload="auto" muted autoplay loop playsinline disablepictureinpicture></video>`
+            const video = document.createElement("video")
+            video.src = src
+            video.preload = "auto"
+            video.muted = true
+            video.autoplay = true
+            video.loop = true
+            video.playsInline = true
+            video.setAttribute("disablepictureinpicture", "")
+            it.appendChild(video)
         }
-
-        // Image
         else
         {
-            it.innerHTML = `<img src="${src}" alt="">`
+            const img = document.createElement("img")
+            img.src = src
+            img.alt = ""
+            it.appendChild(img)
         }
     })
 }
@@ -457,11 +607,18 @@ async function share()
     .quote-container
         margin: 6px 0
 
+    .reactions-wrap
+        position: relative
+        margin-top: 6px
+
     .reactions
         display: flex
         flex-wrap: wrap
         gap: 6px
         margin-top: 6px
+
+        &.interactive-reactions
+            margin-top: 0
 
         .reaction
             display: inline-flex
@@ -480,6 +637,71 @@ async function share()
                 color: $color-text-light
                 font-size: 0.9em
                 font-weight: 500
+
+        .reaction-btn
+            border: 1px solid transparent
+            font-family: inherit
+            color: inherit
+            cursor: pointer
+            transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.12s ease
+
+            &:hover
+                background: rgba(255, 131, 115, 0.12)
+                border-color: rgba(255, 131, 115, 0.35)
+
+            &:active
+                transform: scale(0.95)
+
+            &.reacted
+                background: rgba(255, 131, 115, 0.18)
+                border-color: rgba(255, 131, 115, 0.65)
+
+                .reaction-count
+                    color: $color-text-special-dark
+                    font-weight: 600
+
+        .add-reaction-btn
+            min-width: 26px
+            justify-content: center
+            font-weight: 600
+            color: $color-text-light
+            padding: 2px 7px
+
+            &.open, &:hover
+                color: $color-text-special-dark
+
+    .emoji-picker
+        display: flex
+        flex-wrap: wrap
+        gap: 4px
+        margin-top: 6px
+        padding: 6px 8px
+        border-radius: 12px
+        background: $color-bg-4
+        border: 1px solid rgba(112, 81, 42, 0.14)
+        box-shadow: 0 4px 12px rgba(112, 81, 42, 0.08)
+
+        .emoji-opt
+            background: transparent
+            border: 1px solid transparent
+            border-radius: 8px
+            width: 30px
+            height: 30px
+            padding: 0
+            font-size: 1.05em
+            display: inline-flex
+            align-items: center
+            justify-content: center
+            cursor: pointer
+            transition: background-color 0.14s ease, transform 0.12s ease, border-color 0.14s ease
+
+            &:hover
+                background: rgba(255, 131, 115, 0.14)
+                transform: scale(1.12)
+
+            &.active
+                background: rgba(255, 131, 115, 0.2)
+                border-color: rgba(255, 131, 115, 0.55)
 
     .images.has-head
         margin: 0 -20px 10px
@@ -507,11 +729,12 @@ async function share()
 
     .info
         display: flex
+        flex-wrap: wrap
+        align-items: center
         color: color.adjust($color-text-main, $lightness: 40%)
         white-space: nowrap
-        overflow: hidden
         font-size: 0.9em
-        gap: 10px
+        gap: 4px 10px
 
         .id
             display: flex
@@ -524,6 +747,29 @@ async function share()
 
             &:hover
                 color: $color-text-special
+
+        .comment-toggle
+            display: inline-flex
+            align-items: center
+            gap: 4px
+            background: none
+            border: none
+            padding: 1px 6px
+            border-radius: 999px
+            color: inherit
+            font-family: inherit
+            font-size: 0.95em
+            line-height: 1.2
+            transition: color 0.16s ease, background-color 0.16s ease
+
+            .comment-icon
+                width: 12px
+                height: 12px
+                flex-shrink: 0
+
+            &:hover, &.active
+                color: $color-text-special
+                background: rgba(255, 131, 115, 0.1)
 
         .views
             display: flex
