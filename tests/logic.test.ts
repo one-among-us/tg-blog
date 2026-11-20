@@ -483,6 +483,27 @@ describe('reactions.ts — custom emoji discovery & available reactions merging'
     for (const em of TELEGRAM_CHANNEL_REACTIONS) expect(canonicalKeys).toContain(canonicalReactionKey({emoji: em}))
   })
 
+  test('buildAvailableReactions strictly follows backend allowedReactions order when provided', () => {
+    const postReactions: MergedReaction[] = [
+      {reaction_key: 'e:💩', emoji: '💩', custom_emoji_id: null, tg_count: 9, web_count: 0, count: 9, reacted: false},
+    ]
+    const choices = buildAvailableReactions(
+      postReactions,
+      {'111': '/api/life/media/epochs/2/emoji/111.webp'},
+      '/api/life/exports/posts.json',
+      '/api/life/media/epochs/2/emoji/',
+      [
+        {reaction_key: 'e:🔥', emoji: '🔥', custom_emoji_id: null},
+        {reaction_key: 'c:111', emoji: null, custom_emoji_id: '111'},
+        {reaction_key: 'e:❤', emoji: '❤️', custom_emoji_id: null},
+        // Duplicate ❤ without FE0F should be deduplicated
+        {reaction_key: 'e:❤', emoji: '\u2764', custom_emoji_id: null},
+      ]
+    )
+    expect(choices.map(c => c.canonical_key)).toEqual(['e:🔥', 'c:111', 'e:\u2764'])
+    expect(choices[1].custom_emoji_src).toBe('/api/life/media/epochs/2/emoji/111.webp')
+  })
+
   test('applyOptimisticReactionToggle & mergePublicReactions match ❤ and ❤️ via variation-selector normalization', () => {
     const existing: MergedReaction[] = [
       {reaction_key: 'e:\u2764', emoji: '\u2764', custom_emoji_id: null, tg_count: 4, web_count: 0, count: 4, reacted: false},

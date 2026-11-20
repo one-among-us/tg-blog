@@ -2,6 +2,7 @@ import type {ComputedRef, InjectionKey, Ref} from 'vue'
 import {inject} from 'vue'
 import type {LifeApiClient} from './api'
 import type {
+  AllowedReactionItem,
   CommentDTO,
   StreamCommentDeletedEvent,
   StreamCommentReactionUpdatedEvent,
@@ -25,6 +26,7 @@ export interface TgBlogInteractiveContext {
   authLoaded: Ref<boolean>
   channelCustomEmojis: ComputedRef<Record<string, string>>
   epochEmojiBase: ComputedRef<string | null>
+  allowedReactions: Ref<AllowedReactionItem[] | null>
   openAuthModal: () => void
   ensureAuthInfo: () => Promise<void>
   refreshAuthAndInteractions: () => Promise<void>

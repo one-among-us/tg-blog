@@ -45,11 +45,13 @@
 
 <script lang="ts" setup>
 import {
+    AllowedReactionItem,
     CommentDTO,
     MergedReaction,
     Post,
     PostInteractionState,
     ReactionTogglePayload,
+    StreamAllowedReactionsUpdatedEvent,
     StreamCommentDeletedEvent,
     StreamCommentReactionUpdatedEvent,
     StreamPollUpdatedEvent,
@@ -156,6 +158,7 @@ const authProviders = ref<string[]>([])
 const apiTelegramBotUsername = ref<string | null>(null)
 const oidcProviderName = ref<string | null>(null)
 const allowAnonComments = ref(false)
+const allowedReactions = ref<AllowedReactionItem[] | null>(null)
 const authLoaded = ref(false)
 const authModalOpen = ref(false)
 
@@ -231,6 +234,9 @@ async function hydrateInteractions(ids: number[], force = false): Promise<void> 
             if (apiClient.value !== client) return
             allowAnonComments.value = !!res.allow_anon_comments
             me.value = res.me ?? null
+            if (Array.isArray(res.allowed_reactions)) {
+                allowedReactions.value = res.allowed_reactions
+            }
             if (res.posts) {
                 for (const [idStr, state] of Object.entries(res.posts)) {
                     const pid = Number(idStr)
@@ -351,6 +357,7 @@ const interactiveCtx: TgBlogInteractiveContext = {
     authLoaded,
     channelCustomEmojis,
     epochEmojiBase,
+    allowedReactions,
     openAuthModal,
     ensureAuthInfo: () => ensureAuthInfo(false),
     refreshAuthAndInteractions,
@@ -552,6 +559,11 @@ function startStream(): void {
             onCommentCreated: handleStreamCommentCreated,
             onCommentDeleted: handleStreamCommentDeleted,
             onCommentReactionUpdated: handleStreamCommentReactionUpdated,
+            onAllowedReactionsUpdated: (ev: StreamAllowedReactionsUpdatedEvent) => {
+                if (Array.isArray(ev?.allowed_reactions)) {
+                    allowedReactions.value = ev.allowed_reactions
+                }
+            },
             onReconnect: () => {
                 void hydrateInteractions(visiblePostIds.value, true)
             },
@@ -582,6 +594,7 @@ function resetInteractiveCaches(): void {
     apiTelegramBotUsername.value = null
     oidcProviderName.value = null
     allowAnonComments.value = false
+    allowedReactions.value = null
     authLoaded.value = false
     authModalOpen.value = false
 }

@@ -12,6 +12,7 @@ import type {
   Post,
   ReactionTogglePayload,
   ReactionToggleResponse,
+  StreamAllowedReactionsUpdatedEvent,
   StreamCommentDeletedEvent,
   StreamCommentReactionUpdatedEvent,
   StreamPollUpdatedEvent,
@@ -205,6 +206,7 @@ export interface LifeStreamHandlers {
   onCommentCreated?: (comment: CommentDTO) => void
   onCommentDeleted?: (event: StreamCommentDeletedEvent) => void
   onCommentReactionUpdated?: (event: StreamCommentReactionUpdatedEvent) => void
+  onAllowedReactionsUpdated?: (event: StreamAllowedReactionsUpdatedEvent) => void
   onReconnect?: () => void
   onError?: (err: Event) => void
 }
@@ -313,6 +315,7 @@ export class LifeStreamClient {
     bindJson<CommentDTO>('comment.created', this.handlers.onCommentCreated)
     bindJson<StreamCommentDeletedEvent>('comment.deleted', this.handlers.onCommentDeleted)
     bindJson<StreamCommentReactionUpdatedEvent>('comment.reaction.updated', this.handlers.onCommentReactionUpdated)
+    bindJson<StreamAllowedReactionsUpdatedEvent>('reactions.allowed_updated', this.handlers.onAllowedReactionsUpdated)
 
     es.onerror = (err) => {
       this.handlers.onError?.(err)

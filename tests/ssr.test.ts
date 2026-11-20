@@ -94,7 +94,7 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
       })
     )
     expect(interactiveHtml).not.toContain('add-reaction-btn')
-    expect(interactiveHtml).toContain('quick-reaction')
+    expect(interactiveHtml).not.toContain('quick-reaction')
     expect(interactiveHtml).toContain('interactive-reactions')
     expect(interactiveHtml).toContain('comment-toggle')
   })

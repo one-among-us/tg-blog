@@ -43,53 +43,46 @@
                     </div>
 
                     <!-- Bubble content + exact Telegram Web A SVG appendix -->
-                    <div class="message-content-wrapper">
+                    <div class="message-content-wrapper"
+                         :class="{ 'is-swiping': swipeState?.id === item.comment.id && swipeState.locked === 'h' }"
+                         :style="swipeWrapperStyle(item.comment.id)">
                         <div class="message-content has-solid-background"
                              :class="{ 'has-appendix': item.lastInGroup }"
                              @dblclick="canCompose && startReply(item.comment)"
                              @click.capture="onBubbleClickCapture"
                              @contextmenu="onBubbleContextMenu(item.comment, $event)"
-                             @pointerdown="onBubblePointerDown(item.comment, $event)"
-                             @pointermove="onBubblePointerMove"
-                             @pointerup="cancelBubbleLongPress"
-                             @pointercancel="cancelBubbleLongPress">
-                            <!-- Header row on firstInGroup: sender + badge (incoming) + date/hover-time timestamp -->
-                            <div v-if="item.firstInGroup" class="message-title" :class="{ 'own-title': item.isOwn }">
-                                <template v-if="!item.isOwn">
-                                    <span class="sender-title" :style="{ color: senderColor(item.comment) }">
-                                        {{ item.comment.author.display_name }}
-                                    </span>
-                                    <span v-if="item.comment.author.role === 'owner'" class="badge badge-owner">
-                                        {{ msg.badgeOwner }}
-                                    </span>
-                                    <span v-if="isTelegramSynced(item.comment)" class="badge badge-telegram"
-                                          :title="msg.badgeTelegram">
-                                        <svg class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path fill="currentColor" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
-                                        </svg>
-                                    </span>
-                                    <span v-else-if="item.comment.author.verified" class="badge badge-verified"
-                                          :title="providerLabel(item.comment.author.provider)">
-                                        <svg v-if="item.comment.author.provider === 'github'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49v-1.72c-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.55-1.14-4.55-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05a9.38 9.38 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.26 10.26 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/>
-                                        </svg>
-                                        <svg v-else-if="item.comment.author.provider === 'google'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path fill="currentColor" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.7-5.4 3.7-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/>
-                                        </svg>
-                                        <svg v-else-if="item.comment.author.provider === 'telegram'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
-                                            <path fill="currentColor" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
-                                        </svg>
-                                        <svg v-else class="badge-svg" viewBox="0 0 16 16" aria-hidden="true">
-                                            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5l3.2 3.2L13 4.8"/>
-                                        </svg>
-                                    </span>
-                                    <span v-else class="badge badge-anon">
-                                        {{ msg.badgeAnonymous }}
-                                    </span>
-                                </template>
-                                <span class="message-timestamp" :title="formatFullDate(item.comment.created_at)">
-                                    <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
-                                    <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                             @pointerdown="onBubblePointerDown(item.comment, $event)">
+                            <!-- Header row on incoming firstInGroup: sender + badge -->
+                            <div v-if="item.firstInGroup && !item.isOwn" class="message-title">
+                                <span class="sender-title" :style="{ color: senderColor(item.comment) }">
+                                    {{ item.comment.author.display_name }}
+                                </span>
+                                <span v-if="item.comment.author.role === 'owner'" class="badge badge-owner">
+                                    {{ msg.badgeOwner }}
+                                </span>
+                                <span v-if="isTelegramSynced(item.comment)" class="badge badge-telegram"
+                                      :title="msg.badgeTelegram">
+                                    <svg class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="currentColor" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                                    </svg>
+                                </span>
+                                <span v-else-if="item.comment.author.verified" class="badge badge-verified"
+                                      :title="providerLabel(item.comment.author.provider)">
+                                    <svg v-if="item.comment.author.provider === 'github'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49v-1.72c-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.55-1.14-4.55-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05a9.38 9.38 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.26 10.26 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/>
+                                    </svg>
+                                    <svg v-else-if="item.comment.author.provider === 'google'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="currentColor" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.7-5.4 3.7-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/>
+                                    </svg>
+                                    <svg v-else-if="item.comment.author.provider === 'telegram'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="currentColor" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                                    </svg>
+                                    <svg v-else class="badge-svg" viewBox="0 0 16 16" aria-hidden="true">
+                                        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5l3.2 3.2L13 4.8"/>
+                                    </svg>
+                                </span>
+                                <span v-else class="badge badge-anon">
+                                    {{ msg.badgeAnonymous }}
                                 </span>
                             </div>
 
@@ -106,12 +99,18 @@
                                 </div>
                             </button>
 
-                            <!-- Message text -->
-                            <div class="text-content" :title="!item.firstInGroup ? formatFullDate(item.comment.created_at) : undefined">
+                            <!-- Message text (+ inline bottom-right timestamp when there are no reactions) -->
+                            <div class="text-content">
                                 <span class="comment-body" v-html="renderBody(item.comment)"></span>
+                                <span v-if="(item.comment.reactions?.length ?? 0) === 0"
+                                      class="message-timestamp in-text"
+                                      :title="formatFullDate(item.comment.created_at)">
+                                    <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                    <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                </span>
                             </div>
 
-                            <!-- Comment reaction pills -->
+                            <!-- Comment reaction pills (+ bottom-right timestamp when reactions exist) -->
                             <div v-if="(item.comment.reactions?.length ?? 0) > 0"
                                  class="comment-reactions"
                                  @dblclick.stop>
@@ -128,6 +127,11 @@
                                     <AppleEmoji v-else-if="r.emoji" :emoji="r.emoji" class="reaction-emoji" />
                                     <span class="reaction-count" v-if="r.count">{{ r.count }}</span>
                                 </button>
+                                <span class="message-timestamp in-reactions"
+                                      :title="formatFullDate(item.comment.created_at)">
+                                    <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                    <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                </span>
                             </div>
 
                             <!-- Exact Telegram Web A MessageAppendix SVG tail -->
@@ -141,24 +145,9 @@
                             </svg>
                         </div>
 
-                        <!-- Subtle hover/tap quick actions beside the bubble (+ hover time for stacked bubbles) -->
+                        <!-- Desktop hover quick actions beside the bubble (react removed: desktop uses right-click, mobile uses long-press) -->
                         <div class="bubble-actions" @dblclick.stop>
-                            <span v-if="!item.firstInGroup"
-                                  class="bubble-hover-time"
-                                  :title="formatFullDate(item.comment.created_at)">
-                                {{ formatShortTime(item.comment.created_at) }}
-                            </span>
-                            <button type="button"
-                                    class="bubble-act-btn react-btn"
-                                    :class="{ active: reactionTarget?.id === item.comment.id }"
-                                    :title="msg.addReaction"
-                                    :aria-label="msg.addReaction"
-                                    @click.stop="openCommentReactionSelector(item.comment, $event)">
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path fill="currentColor" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                </svg>
-                            </button>
-                            <button v-if="canCompose" type="button" class="bubble-act-btn"
+                            <button v-if="canCompose" type="button" class="bubble-act-btn reply-btn"
                                     :title="msg.reply" :aria-label="msg.reply"
                                     @click="startReply(item.comment)">
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -177,6 +166,20 @@
                                 </svg>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Touch slide-to-reply indicator pinned along the right margin -->
+                    <div v-if="canCompose"
+                         class="swipe-reply-hint"
+                         :class="{
+                             visible: swipeState?.id === item.comment.id && swipeState.locked === 'h' && swipeState.offset < -6,
+                             ready: swipeState?.id === item.comment.id && swipeState.locked === 'h' && -swipeState.offset >= SWIPE_REPLY_THRESHOLD
+                         }"
+                         :style="swipeHintStyle(item.comment.id)"
+                         aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/>
+                        </svg>
                     </div>
                 </template>
             </div>
@@ -210,10 +213,17 @@
                 </div>
             </div>
 
-            <div v-else class="guest-bar">
-                <button type="button" class="signin-btn" @click="ctx.openAuthModal()">
-                    {{ msg.signIn }}
-                </button>
+            <div v-else class="guest-bar" :class="{ 'has-composer': canCompose }">
+                <div class="guest-auth-row">
+                    <span class="guest-avatar" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    </span>
+                    <button type="button" class="signin-btn" @click="ctx.openAuthModal()">
+                        {{ msg.signIn }}
+                    </button>
+                </div>
                 <span v-if="allowAnon" class="guest-hint">{{ msg.commentingAnonymously }}</span>
                 <span v-else class="guest-hint">{{ msg.signInToComment }}</span>
             </div>
@@ -363,7 +373,8 @@ const availableCommentReactions = computed((): ReactionChoice[] =>
         reactionTarget.value?.reactions ?? [],
         channelCustomEmojis.value,
         resolvedPostsUrl.value,
-        epochEmojiBase.value
+        epochEmojiBase.value,
+        ctx?.allowedReactions.value ?? null
     )
 )
 
@@ -559,16 +570,6 @@ function openCommentReactionSelectorAt(comment: CommentDTO, x: number, y: number
     reactionTargetId.value = comment.id
 }
 
-function openCommentReactionSelector(comment: CommentDTO, e: MouseEvent) {
-    const btn = e.currentTarget as HTMLElement | null
-    const rect = btn?.getBoundingClientRect()
-    if (rect) {
-        openCommentReactionSelectorAt(comment, rect.right, rect.top)
-    } else {
-        openCommentReactionSelectorAt(comment, e.clientX, e.clientY)
-    }
-}
-
 function onBubbleContextMenu(comment: CommentDTO, e: MouseEvent) {
     if (comment.deleted || e.shiftKey) return
     if (shouldIgnoreBubbleReactionTrigger(e.target)) return
@@ -576,10 +577,26 @@ function onBubbleContextMenu(comment: CommentDTO, e: MouseEvent) {
     openCommentReactionSelectorAt(comment, e.clientX, e.clientY)
 }
 
+const SWIPE_REPLY_THRESHOLD = 44
+const SWIPE_MAX_OFFSET = 68
+
+interface BubbleSwipeState {
+    id: number
+    startX: number
+    startY: number
+    offset: number
+    locked: 'h' | 'v' | null
+    pointerId: number
+    comment: CommentDTO
+}
+
+const swipeState = ref<BubbleSwipeState | null>(null)
+
 let bubbleLongPressTimer: ReturnType<typeof setTimeout> | null = null
 let bubbleGhostClickTimer: ReturnType<typeof setTimeout> | null = null
 let bubbleSuppressGhostClick = false
 let bubblePressStart = {x: 0, y: 0}
+let activeTouchCleanup: (() => void) | null = null
 
 function cancelBubbleLongPress() {
     if (bubbleLongPressTimer) {
@@ -596,6 +613,37 @@ function clearBubbleGhostClickGuard() {
     }
 }
 
+function armBubbleGhostClickGuard(durationMs = 800) {
+    bubbleSuppressGhostClick = true
+    if (bubbleGhostClickTimer) clearTimeout(bubbleGhostClickTimer)
+    bubbleGhostClickTimer = setTimeout(() => {
+        bubbleSuppressGhostClick = false
+        bubbleGhostClickTimer = null
+    }, durationMs)
+}
+
+function cleanupTouchListeners() {
+    activeTouchCleanup?.()
+    activeTouchCleanup = null
+}
+
+function swipeWrapperStyle(commentId: number) {
+    if (swipeState.value?.id !== commentId || swipeState.value.locked !== 'h') return undefined
+    return {transform: `translateX(${swipeState.value.offset}px)`}
+}
+
+function swipeHintStyle(commentId: number) {
+    if (swipeState.value?.id !== commentId || swipeState.value.locked !== 'h' || swipeState.value.offset >= 0) {
+        return undefined
+    }
+    const progress = Math.min(1, Math.abs(swipeState.value.offset) / SWIPE_REPLY_THRESHOLD)
+    const scale = 0.55 + progress * 0.45
+    return {
+        opacity: String(progress),
+        transform: `translateY(-50%) scale(${scale.toFixed(2)})`,
+    }
+}
+
 function onBubbleClickCapture(e: MouseEvent) {
     if (!bubbleSuppressGhostClick) return
     clearBubbleGhostClickGuard()
@@ -605,27 +653,107 @@ function onBubbleClickCapture(e: MouseEvent) {
 
 function onBubblePointerDown(comment: CommentDTO, e: PointerEvent) {
     if (comment.deleted || e.pointerType !== 'touch') return
-    if (shouldIgnoreBubbleReactionTrigger(e.target)) return
 
     cancelBubbleLongPress()
+    cleanupTouchListeners()
     bubblePressStart = {x: e.clientX, y: e.clientY}
-    bubbleLongPressTimer = setTimeout(() => {
-        bubbleLongPressTimer = null
-        if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) return
-        bubbleSuppressGhostClick = true
-        if (bubbleGhostClickTimer) clearTimeout(bubbleGhostClickTimer)
-        bubbleGhostClickTimer = setTimeout(() => {
-            bubbleSuppressGhostClick = false
-            bubbleGhostClickTimer = null
-        }, 800)
-        openCommentReactionSelectorAt(comment, bubblePressStart.x, bubblePressStart.y)
-    }, 420)
-}
 
-function onBubblePointerMove(e: PointerEvent) {
-    if (!bubbleLongPressTimer) return
-    if (Math.hypot(e.clientX - bubblePressStart.x, e.clientY - bubblePressStart.y) > 8) {
-        cancelBubbleLongPress()
+    if (!shouldIgnoreBubbleReactionTrigger(e.target)) {
+        bubbleLongPressTimer = setTimeout(() => {
+            bubbleLongPressTimer = null
+            if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) return
+            armBubbleGhostClickGuard(800)
+            swipeState.value = null
+            cleanupTouchListeners()
+            openCommentReactionSelectorAt(comment, bubblePressStart.x, bubblePressStart.y)
+        }, 420)
+    }
+
+    if (canCompose.value && typeof window !== 'undefined') {
+        swipeState.value = {
+            id: comment.id,
+            startX: e.clientX,
+            startY: e.clientY,
+            offset: 0,
+            locked: null,
+            pointerId: e.pointerId,
+            comment,
+        }
+
+        const onWindowMove = (ev: PointerEvent) => {
+            const cur = swipeState.value
+            if (!cur || ev.pointerId !== cur.pointerId) return
+            const dx = ev.clientX - cur.startX
+            const dy = ev.clientY - cur.startY
+
+            if (Math.hypot(dx, dy) > 8) {
+                cancelBubbleLongPress()
+            }
+
+            if (cur.locked === null) {
+                if (Math.hypot(dx, dy) <= 8) return
+                if (dx < 0 && Math.abs(dx) > Math.abs(dy)) {
+                    cur.locked = 'h'
+                    armBubbleGhostClickGuard(350)
+                } else {
+                    cur.locked = 'v'
+                    swipeState.value = null
+                    cleanupTouchListeners()
+                    return
+                }
+            }
+
+            if (cur.locked === 'h') {
+                cur.offset = Math.max(-SWIPE_MAX_OFFSET, Math.min(0, dx * 0.72))
+            }
+        }
+
+        const onWindowEnd = (ev: PointerEvent) => {
+            const cur = swipeState.value
+            if (cur && ev.pointerId !== cur.pointerId) return
+            cancelBubbleLongPress()
+            cleanupTouchListeners()
+            if (
+                ev.type === 'pointerup'
+                && cur
+                && cur.locked === 'h'
+                && -cur.offset >= SWIPE_REPLY_THRESHOLD
+                && !cur.comment.deleted
+            ) {
+                armBubbleGhostClickGuard(350)
+                startReply(cur.comment)
+            }
+            swipeState.value = null
+        }
+
+        window.addEventListener('pointermove', onWindowMove, {passive: true})
+        window.addEventListener('pointerup', onWindowEnd)
+        window.addEventListener('pointercancel', onWindowEnd)
+        activeTouchCleanup = () => {
+            window.removeEventListener('pointermove', onWindowMove)
+            window.removeEventListener('pointerup', onWindowEnd)
+            window.removeEventListener('pointercancel', onWindowEnd)
+        }
+    } else if (typeof window !== 'undefined') {
+        const onMoveNoSwipe = (ev: PointerEvent) => {
+            if (ev.pointerId !== e.pointerId) return
+            if (Math.hypot(ev.clientX - bubblePressStart.x, ev.clientY - bubblePressStart.y) > 8) {
+                cancelBubbleLongPress()
+            }
+        }
+        const onEndNoSwipe = (ev: PointerEvent) => {
+            if (ev.pointerId !== e.pointerId) return
+            cancelBubbleLongPress()
+            cleanupTouchListeners()
+        }
+        window.addEventListener('pointermove', onMoveNoSwipe, {passive: true})
+        window.addEventListener('pointerup', onEndNoSwipe)
+        window.addEventListener('pointercancel', onEndNoSwipe)
+        activeTouchCleanup = () => {
+            window.removeEventListener('pointermove', onMoveNoSwipe)
+            window.removeEventListener('pointerup', onEndNoSwipe)
+            window.removeEventListener('pointercancel', onEndNoSwipe)
+        }
     }
 }
 
@@ -840,6 +968,7 @@ onUnmounted(() => {
     unsubscribe?.()
     autoAltchaController?.abort()
     cancelBubbleLongPress()
+    cleanupTouchListeners()
     clearBubbleGhostClickGuard()
     if (confirmTimer) clearTimeout(confirmTimer)
     if (highlightTimer) clearTimeout(highlightTimer)
@@ -918,6 +1047,7 @@ onUnmounted(() => {
     display: flex
     align-items: flex-end
     margin-bottom: 3px
+    touch-action: pan-y
 
     &.last-in-group
         margin-bottom: 9px
@@ -948,8 +1078,6 @@ onUnmounted(() => {
             --border-bottom-left-radius: 0
 
     &.own
-        --tgb-bubble-bg: #ffe6e0
-        --tgb-bubble-highlight-bg: #ffd8d0
         flex-direction: row-reverse
 
         &.first-in-group:not(.last-in-group)
@@ -968,25 +1096,9 @@ onUnmounted(() => {
         .message-content-wrapper
             flex-direction: row-reverse
 
-        .message-content
-            background: var(--tgb-bubble-bg)
-            box-shadow: 0 1px 2px rgba(171, 67, 67, 0.12)
-
         .svg-appendix
             right: -8.5px
             left: auto
-
-            .corner
-                fill: var(--tgb-bubble-bg)
-
-        .inline-reply-quote
-            background: rgba(171, 67, 67, 0.08)
-
-        .comment-reaction-btn:not(.chosen)
-            background: rgba(171, 67, 67, 0.11)
-
-            &:hover
-                background: rgba(171, 67, 67, 0.19)
 
 .tombstone-bubble
     font-style: italic
@@ -1040,6 +1152,37 @@ onUnmounted(() => {
     gap: 5px
     max-width: 88%
     min-width: 0
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)
+
+    &.is-swiping
+        transition: none
+
+.swipe-reply-hint
+    position: absolute
+    right: 2px
+    top: 50%
+    width: 26px
+    height: 26px
+    border-radius: 50%
+    background: rgba(253, 249, 241, 0.94)
+    border: 1px solid rgba(112, 81, 42, 0.14)
+    color: $color-text-light
+    display: flex
+    align-items: center
+    justify-content: center
+    pointer-events: none
+    opacity: 0
+    transform: translateY(-50%) scale(0.55)
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease
+
+    svg
+        width: 14px
+        height: 14px
+
+    &.ready
+        background: $color-text-special
+        border-color: $color-text-special
+        color: #fff
 
 .message-content
     position: relative
@@ -1077,28 +1220,34 @@ onUnmounted(() => {
     line-height: 1.25
     user-select: none
 
-    &.own-title
-        justify-content: flex-end
-
     .sender-title
         overflow: hidden
         text-overflow: ellipsis
         white-space: nowrap
 
-// Date by default in top name row, swapping smoothly to HH:mm only when hovering the date itself
+// Bottom-right timestamp inside every bubble (date by default, hover over the date for HH:mm)
 .message-timestamp
     display: inline-grid
     align-items: center
     justify-items: end
-    margin-left: auto
-    padding-left: 4px
-    font-size: 0.85em
+    font-size: 0.72em
     font-weight: 400
+    line-height: 1.1
     color: $color-text-light
     font-variant-numeric: tabular-nums
     white-space: nowrap
     flex-shrink: 0
     cursor: default
+    user-select: none
+
+    &.in-text
+        float: right
+        margin: 4px 0 -1px 8px
+
+    &.in-reactions
+        margin-left: auto
+        align-self: flex-end
+        padding: 2px 0 1px 4px
 
     > span
         grid-area: 1 / 1
@@ -1180,6 +1329,7 @@ onUnmounted(() => {
         text-overflow: ellipsis
 
 .text-content
+    display: flow-root
     font-size: 0.94em
     line-height: 1.42
     overflow-wrap: anywhere
@@ -1260,14 +1410,6 @@ onUnmounted(() => {
         &:hover
             background: color.adjust($color-text-special, $lightness: -4%)
 
-.bubble-hover-time
-    font-size: 0.72em
-    color: $color-text-light
-    font-variant-numeric: tabular-nums
-    white-space: nowrap
-    padding: 0 3px
-    user-select: none
-
 .bubble-actions
     display: flex
     align-items: center
@@ -1276,14 +1418,21 @@ onUnmounted(() => {
     transition: opacity 0.15s ease
     flex-shrink: 0
 
-.Message:hover .bubble-actions,
-.Message:focus-within .bubble-actions,
-.Message.selector-open .bubble-actions
-    opacity: 1
+@media (hover: hover) and (pointer: fine)
+    .Message:hover .bubble-actions,
+    .Message:focus-within .bubble-actions,
+    .Message.selector-open .bubble-actions
+        opacity: 1
 
-@media (hover: none)
-    .bubble-actions
+@media (hover: none), (pointer: coarse)
+    .bubble-act-btn.reply-btn
+        display: none
+
+    .bubble-actions:has(.bubble-act-btn.danger)
         opacity: 0.65
+
+    .bubble-actions:not(:has(.bubble-act-btn.danger))
+        display: none
 
 .bubble-act-btn
     background: rgba(253, 249, 241, 0.85)
@@ -1305,12 +1454,9 @@ onUnmounted(() => {
         width: 13px
         height: 13px
 
-    &:hover, &.react-btn.active
+    &:hover
         color: $color-text-special-dark
         border-color: rgba(255, 131, 115, 0.45)
-
-    &.react-btn.active
-        background: rgba(255, 131, 115, 0.16)
 
     &.danger:hover, &.confirming
         color: #c93b3b
@@ -1332,6 +1478,46 @@ onUnmounted(() => {
     justify-content: space-between
     flex-wrap: wrap
     gap: 6px
+
+.guest-bar
+    position: relative
+    z-index: 1
+
+.guest-auth-row
+    display: inline-flex
+    align-items: center
+    gap: 8px
+
+.guest-bar.has-composer
+    align-items: flex-end
+
+    .guest-auth-row
+        align-items: flex-end
+
+    .guest-avatar
+        margin-left: 12px
+        margin-bottom: -16px
+
+    .signin-btn
+        margin-bottom: 2px
+
+.guest-avatar
+    width: 30px
+    height: 30px
+    border-radius: 50%
+    flex-shrink: 0
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    background: #eee5d7
+    color: $color-text-light
+    border: 1px solid rgba(112, 81, 42, 0.14)
+    box-sizing: border-box
+    user-select: none
+
+    svg
+        width: 18px
+        height: 18px
 
 .user-pill
     display: inline-flex
@@ -1389,26 +1575,33 @@ onUnmounted(() => {
         background: rgba(255, 244, 235, 0.95)
 
 .signin-btn
-    background: rgba(253, 249, 241, 0.9)
-    border: 1px solid rgba(255, 131, 115, 0.45)
-    color: $color-text-special-dark
+    display: inline-flex
+    align-items: center
+    gap: 5px
+    background: $color-bg-card
+    border: none
+    color: $color-text-light
     border-radius: 999px
-    padding: 3px 11px
-    font-size: 0.8em
-    font-weight: 600
+    padding: 3px 10px
+    font-size: 0.82em
+    font-weight: 400
+    line-height: 1.4
     font-family: inherit
     cursor: pointer
-    transition: background 0.15s ease, border-color 0.15s ease
+    box-shadow: 0 2px 4px -1px rgb(0 0 0 / 8%)
+    transition: color 0.2s ease, transform 0.2s ease
 
     &:hover
-        background: $color-bg-5
-        border-color: $color-text-special
+        color: $color-text-special
+        transform: translateY(-1px)
 
 .guest-hint
     font-size: 0.78em
     color: $color-text-light
 
 .composer-box
+    position: relative
+    z-index: 2
     display: flex
     flex-direction: column
     gap: 6px
@@ -1421,7 +1614,7 @@ onUnmounted(() => {
     padding: 5px 10px
     border-left: 2.5px solid $color-text-special
     border-radius: 6px 10px 10px 6px
-    background: rgba(253, 249, 241, 0.9)
+    background: #fbf4ea
     font-size: 0.8em
 
     .reply-banner-content
@@ -1462,7 +1655,7 @@ onUnmounted(() => {
         line-height: 1.45
         width: 100%
         min-height: 40px
-        background: rgba(253, 249, 241, 0.88)
+        background: #fdf9f1
         color: $color-text-main
         border-radius: 12px
         overflow-y: auto
@@ -1470,12 +1663,12 @@ onUnmounted(() => {
         border: 1px solid rgba(112, 81, 42, 0.14)
         padding: 10px 68px 10px 12px
         box-sizing: border-box
-        outline: 0 solid white
+        outline: none
         transition: border-color 0.16s ease, background-color 0.16s ease
 
-        &:focus-visible
-            outline: 1px solid $color-text-special
-            border-color: $color-text-special
+        &:focus, &:focus-visible
+            outline: none
+            border-color: rgba(112, 81, 42, 0.26)
             background: #fffcf9
 
         &::placeholder

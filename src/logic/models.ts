@@ -178,10 +178,17 @@ export interface PostInteractionState {
   comment_count: number
 }
 
+export interface AllowedReactionItem {
+  reaction_key: string
+  emoji?: string | null
+  custom_emoji_id?: string | null
+}
+
 export interface InteractionsResponse {
   allow_anon_comments: boolean
   captcha_provider?: string | null
   me: UserDTO | null
+  allowed_reactions?: AllowedReactionItem[]
   posts: Record<string, PostInteractionState>
 }
 
@@ -303,6 +310,10 @@ export interface StreamCommentReactionUpdatedEvent {
 
 export interface StreamPostDeletedEvent {
   post_id: number
+}
+
+export interface StreamAllowedReactionsUpdatedEvent {
+  allowed_reactions: AllowedReactionItem[]
 }
 
 export type PostDeletedEvent = StreamPostDeletedEvent

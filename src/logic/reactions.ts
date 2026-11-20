@@ -1,4 +1,4 @@
-import type {MergedReaction, Post} from './models'
+import type {AllowedReactionItem, MergedReaction, Post} from './models'
 import {resolveRelativeUrl} from './url'
 
 export const CURATED_REACTIONS: readonly string[] = [
@@ -157,11 +157,9 @@ export function resolveCustomEmojiBaseSrc(
 }
 
 /**
- * Build the ordered, deduplicated reaction choices for a post:
- * 1. All existing reactions on this post (standard emoji + valid custom_emoji_id)
- * 2. Curated warm reactions
- * 3. Verified channel custom emojis seen across loaded posts on the page
- * 4. Full Telegram standard channel reactions (~65 emojis)
+ * Build the ordered, deduplicated reaction choices for a post or comment:
+ * - When `allowedReactions` is provided from the backend, follow that global ordered allow list strictly.
+ * - Otherwise (static/offline fallback), merge existing reactions -> curated -> channel custom emojis -> full TG defaults.
  *
  * Deduplicates variation selectors (`❤` vs `❤️`) via `canonicalReactionKey`.
  */
@@ -169,7 +167,8 @@ export function buildAvailableReactions(
   postReactions: MergedReaction[],
   channelCustomEmojis: Record<string, string>,
   postsUrl: string,
-  epochEmojiBase?: string | null
+  epochEmojiBase?: string | null,
+  allowedReactions?: AllowedReactionItem[] | null
 ): ReactionChoice[] {
   const seen = new Set<string>()
   const out: ReactionChoice[] = []
@@ -178,6 +177,36 @@ export function buildAvailableReactions(
     if (!choice.canonical_key || seen.has(choice.canonical_key)) return
     seen.add(choice.canonical_key)
     out.push(choice)
+  }
+
+  if (allowedReactions) {
+    for (const item of allowedReactions) {
+      if (item.custom_emoji_id) {
+        if (!isValidCustomEmojiId(item.custom_emoji_id)) continue
+        const key = item.reaction_key || `c:${item.custom_emoji_id}`
+        add({
+          reaction_key: key,
+          canonical_key: canonicalReactionKey({custom_emoji_id: item.custom_emoji_id}),
+          emoji: null,
+          custom_emoji_id: item.custom_emoji_id,
+          custom_emoji_src: resolveCustomEmojiBaseSrc(
+            item.custom_emoji_id,
+            channelCustomEmojis,
+            postsUrl,
+            epochEmojiBase
+          ),
+        })
+      } else if (item.emoji) {
+        add({
+          reaction_key: item.reaction_key || `e:${item.emoji}`,
+          canonical_key: canonicalReactionKey({emoji: item.emoji}),
+          emoji: item.emoji,
+          custom_emoji_id: null,
+          custom_emoji_src: null,
+        })
+      }
+    }
+    return out
   }
 
   // 1. Existing reactions on this post first

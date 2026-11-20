@@ -75,7 +75,7 @@
                     </span>
                 </div>
 
-                <div class="info font-code unselectable">
+                <div class="info font-code unselectable" :class="{ 'has-comment-fab': interactive, 'has-comment-count': interactive && commentCount > 0 }">
                     <div class="id">
                         <span class="share clickable" @click="share" :title="shareLabel">
                             <i-fas-check v-if="shared" />
@@ -83,15 +83,6 @@
                         </span>
                         #{{p.id}}
                     </div>
-                    <button v-if="interactive" type="button" class="comment-toggle clickable"
-                            :class="{ active: commentsOpen }"
-                            :aria-expanded="commentsOpen"
-                            @click="commentsOpen = !commentsOpen">
-                        <svg class="comment-icon" viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3v3l4.2-3H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm0 15h-9.4L9 18.2V17H4V4h16v13Z"/>
-                        </svg>
-                        <span>{{ commentCount > 0 ? msg.commentsCount(commentCount) : msg.reply }}</span>
-                    </button>
                     <div class="f-grow1"></div>
                     <div class="author" v-if="p.author">{{p.author}}</div>
                     <div class="date">{{p.date}}</div>
@@ -99,15 +90,19 @@
                 </div>
             </div>
 
-            <!-- Telegram Web A desktop hover quick-reaction trigger (Message.scss:105-133) -->
+            <!-- Prominent borderless round/pill replies button overlapping the bottom-right corner of .post.tgb-card -->
             <button v-if="interactive"
                     type="button"
-                    class="quick-reaction"
-                    :class="{ visible: selectorOpen }"
-                    :title="msg.addReaction"
-                    :aria-label="msg.addReaction"
-                    @click.stop="openQuickReaction">
-                <AppleEmoji emoji="❤️" class="quick-reaction-glyph" />
+                    class="comment-toggle clickable"
+                    :class="{ active: commentsOpen, 'has-count': commentCount > 0 }"
+                    :aria-expanded="commentsOpen"
+                    :title="commentCount > 0 ? `${msg.reply} (${msg.commentsCount(commentCount)})` : msg.reply"
+                    :aria-label="commentCount > 0 ? `${msg.reply} (${msg.commentsCount(commentCount)})` : msg.reply"
+                    @click="commentsOpen = !commentsOpen">
+                <svg class="comment-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M 12.00 20.13 Q 14.72 20.13 17.04 18.91 Q 19.31 17.70 20.62 15.66 Q 22.01 13.52 22.01 11.06 Q 22.01 8.60 20.62 6.49 Q 19.31 4.43 17.04 3.23 Q 14.72 1.99 12.00 1.99 Q 9.28 1.99 6.96 3.23 Q 4.69 4.43 3.38 6.49 Q 1.99 8.60 1.99 11.06 Q 1.99 13.17 2.95 14.95 Q 3.87 16.66 5.62 17.93 Q 5.77 18.05 5.86 18.45 Q 5.95 18.84 5.91 19.31 Q 5.81 19.85 5.53 20.32 Q 5.34 20.58 5.16 20.84 L 4.57 21.47 Q 4.41 21.66 4.37 21.76 Q 4.34 21.87 4.48 21.94 Q 4.62 22.01 5.06 22.01 Q 5.60 22.01 6.12 21.89 Q 6.77 21.77 7.29 21.48 Q 7.80 21.19 8.25 20.84 L 8.51 20.65 L 9.26 19.97 Q 9.42 19.83 9.54 19.88 Q 10.73 20.13 12.00 20.13 Z"/>
+                </svg>
+                <span v-if="commentCount > 0" class="comment-count">{{ msg.commentsCount(commentCount) }}</span>
             </button>
         </div>
 
@@ -217,7 +212,8 @@ const availableReactions = computed((): ReactionChoice[] =>
         displayReactions.value,
         channelCustomEmojis.value,
         props.postsUrl,
-        epochEmojiBase.value
+        epochEmojiBase.value,
+        interactiveCtx?.allowedReactions.value ?? null
     )
 )
 
@@ -270,16 +266,6 @@ function shouldIgnoreReactionTrigger(target: EventTarget | null): boolean {
 function openSelectorAt(x: number, y: number) {
     selectorAnchor.value = {x, y}
     selectorOpen.value = true
-}
-
-function openQuickReaction(e: MouseEvent) {
-    const btn = e.currentTarget as HTMLElement | null
-    const rect = btn?.getBoundingClientRect()
-    if (rect) {
-        openSelectorAt(rect.right, rect.top)
-    } else {
-        openSelectorAt(e.clientX, e.clientY)
-    }
 }
 
 function onCardContextMenu(e: MouseEvent) {
@@ -754,46 +740,54 @@ async function share()
     position: relative
     z-index: 1
 
-    &:hover .quick-reaction
-        opacity: 1
-
-    .quick-reaction
+    .comment-toggle
         position: absolute
-        z-index: 3
-        right: -0.75rem
-        bottom: -0.45rem
-        width: 2rem
-        height: 2rem
+        z-index: 4
+        right: -0.65rem
+        bottom: -0.65rem
+        min-width: 2.5rem
+        height: 2.5rem
         padding: 0
-        border: 1px solid rgba(255, 131, 115, 0.35)
-        border-radius: 50%
-        background: rgba(253, 249, 241, 0.95)
-        box-shadow: 0 3px 10px rgba(112, 81, 42, 0.16)
+        border: none
+        border-radius: 999px
+        background: rgba(253, 249, 241, 0.96)
+        transform: translateY(-5px)
+        box-shadow: 0 4px 10px #70512a33
+        color: $color-text-special-dark
         cursor: pointer
-        display: flex
+        display: inline-flex
         align-items: center
         justify-content: center
-        transform: scale(0.7)
-        opacity: 0
-        transition: transform 0.2s ease-out, opacity 0.2s ease-out, border-color 0.15s ease
-        transition-delay: 0.15s
+        gap: 5px
+        transition: transform 0.16s ease, color 0.16s ease, background-color 0.16s ease, box-shadow 0.16s ease
 
-        .quick-reaction-glyph
-            --apple-emoji-size: 1.05rem
-            font-size: 0.95rem
+        &.has-count
+            padding: 0 12px
+
+        .comment-icon
+            width: 20px
+            height: 20px
+            flex-shrink: 0
+
+        .comment-count
+            font-family: Inconsolata, Monospaced, $font
+            font-size: 13px
+            font-weight: 700
+            font-variant-numeric: tabular-nums
             line-height: 1
-            vertical-align: middle !important
-
-        &.visible
-            opacity: 1 !important
 
         &:hover
-            transform: scale(1)
-            border-color: $color-text-special
-            transition-delay: 0s
+            transform: translateY(-5px) scale(1.05)
+            color: $color-text-special
+            background: #fffcf9
+            box-shadow: 0 4px 10px #70512a33
 
-        @media (hover: none)
-            display: none
+        &:active
+            transform: translateY(-5px) scale(0.95)
+
+        &.active
+            background: $color-text-special
+            color: #ffffff
 
 .chat-accordion-shell
     display: grid
@@ -985,6 +979,12 @@ async function share()
         font-size: 0.9em
         gap: 4px 10px
 
+        &.has-comment-fab
+            padding-right: 1.05rem
+
+            &.has-comment-count
+                padding-right: 2.25rem
+
         .id
             display: flex
             align-items: center
@@ -996,29 +996,6 @@ async function share()
 
             &:hover
                 color: $color-text-special
-
-        .comment-toggle
-            display: inline-flex
-            align-items: center
-            gap: 4px
-            background: none
-            border: none
-            padding: 1px 6px
-            border-radius: 999px
-            color: inherit
-            font-family: inherit
-            font-size: 0.95em
-            line-height: 1.2
-            transition: color 0.16s ease, background-color 0.16s ease
-
-            .comment-icon
-                width: 12px
-                height: 12px
-                flex-shrink: 0
-
-            &:hover, &.active
-                color: $color-text-special
-                background: rgba(255, 131, 115, 0.1)
 
         .views
             display: flex
