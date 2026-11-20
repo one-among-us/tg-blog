@@ -3,6 +3,20 @@
  */
 
 const SSR_DUMMY_ORIGIN = 'http://tg-blog.invalid'
+const UNSAFE_SCHEME_RE = /^(?:javascript|vbscript|data):/i
+
+export function isSafeMediaUrl(url?: string | null): boolean {
+  if (!url) return false
+  const trimmed = url.trim()
+  if (!trimmed) return false
+  if (trimmed.startsWith('//')) return false
+  if (UNSAFE_SCHEME_RE.test(trimmed)) return false
+  if (trimmed.startsWith('/')) return true
+  if (/^(?:https?|blob):/i.test(trimmed)) return true
+  // Reject any other explicit unknown scheme (e.g. file:, ftp:, about:)
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) return false
+  return true
+}
 
 export function resolvePostsUrl(postsUrl: string): string {
   if (!postsUrl) return ''
@@ -26,35 +40,47 @@ export function resolvePostsUrl(postsUrl: string): string {
 
 export function resolveRelativeUrl(url: string, base: string): string {
   if (!url) return url
-  if (/^https?:\/\//i.test(url) || url.startsWith('data:') || url.startsWith('blob:')) {
-    return url
+  const trimmed = url.trim()
+  if (!trimmed) return ''
+  // Reject unsafe schemes (javascript:, vbscript:, data:) and protocol-relative // URLs
+  if (UNSAFE_SCHEME_RE.test(trimmed) || trimmed.startsWith('//')) {
+    return ''
+  }
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('blob:')) {
+    return trimmed
+  }
+  // Reject any other non-http(s) explicit scheme
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)) {
+    return ''
   }
   try {
     // Handle root-relative bases identically on BOTH SSR and client so rendered URLs match during hydration
     if (base && base.startsWith('/') && !base.startsWith('//')) {
       const absBase = new URL(base, SSR_DUMMY_ORIGIN).href
-      const resolved = new URL(url, absBase)
+      const resolved = new URL(trimmed, absBase)
       if (resolved.origin === SSR_DUMMY_ORIGIN) {
         return resolved.pathname + resolved.search + resolved.hash
       }
-      return resolved.toString()
+      return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : ''
     }
     if (base && /^https?:\/\//i.test(base)) {
-      return new URL(url, base).toString()
+      const resolved = new URL(trimmed, base)
+      return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : ''
     }
     if (typeof document !== 'undefined' && document.location?.href) {
       const absBase = new URL(base || document.location.href, document.location.href).href
-      return new URL(url, absBase).toString()
+      const resolved = new URL(trimmed, absBase)
+      return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : ''
     }
     const normalizedBase = base ? (base.startsWith('/') ? base : '/' + base) : '/'
     const absBase = new URL(normalizedBase, SSR_DUMMY_ORIGIN).href
-    const resolved = new URL(url, absBase)
+    const resolved = new URL(trimmed, absBase)
     if (resolved.origin === SSR_DUMMY_ORIGIN) {
       return resolved.pathname + resolved.search + resolved.hash
     }
-    return resolved.toString()
+    return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : ''
   } catch {
-    return url
+    return ''
   }
 }
 

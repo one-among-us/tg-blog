@@ -37,6 +37,7 @@
                    :providers="authProviders"
                    :auth-loaded="authLoaded"
                    :telegram-bot-username="resolvedTelegramBotUsername"
+                   :oidc-provider-name="oidcProviderName"
                    @close="authModalOpen = false"
                    @authenticated="refreshAuthAndInteractions" />
     </div>
@@ -50,6 +51,7 @@ import {
     PostInteractionState,
     ReactionTogglePayload,
     StreamCommentDeletedEvent,
+    StreamCommentReactionUpdatedEvent,
     StreamPollUpdatedEvent,
     StreamPostDeletedEvent,
     StreamReactionUpdatedEvent,
@@ -58,6 +60,8 @@ import {
     UserDTO,
 } from "@/logic/models";
 import {LifeApiClient, LifeStreamClient} from "@/logic/api";
+import {DEFAULT_APPLE_EMOJI_BASE_URL, tgbAppleEmojiKey} from "@/logic/appleEmoji";
+import {extractCustomEmojiAssets, inferEpochEmojiBase} from "@/logic/reactions";
 import {
     applyOptimisticReactionToggle,
     formatPostDate,
@@ -93,11 +97,15 @@ const props = withDefaults(defineProps<{
     telegramBotUsername?: string
     /** Optional reactive ?shared= post id override (useful in SSR routers like Nuxt 4 that defer query restoration until after hydration) */
     sharedId?: number | null
+    /** Base URL for Apple emoji PNGs (e.g. jsdelivr emoji-datasource-apple). Set to "" to disable and use native emojis. */
+    appleEmojiBaseUrl?: string
 }>(), {
-    margins: true
+    margins: true,
+    appleEmojiBaseUrl: DEFAULT_APPLE_EMOJI_BASE_URL,
 })
 const margins = computed(() => props.margins)
 const isInteractive = computed(() => !!props.apiUrl)
+provide(tgbAppleEmojiKey, computed(() => props.appleEmojiBaseUrl ?? ''))
 
 const msg = createMessages(undefined)
 provide(tgbMessagesKey, msg)
@@ -146,6 +154,7 @@ const pollVotingMap = reactive<Record<number, boolean>>({})
 const me = ref<UserDTO | null>(null)
 const authProviders = ref<string[]>([])
 const apiTelegramBotUsername = ref<string | null>(null)
+const oidcProviderName = ref<string | null>(null)
 const allowAnonComments = ref(false)
 const authLoaded = ref(false)
 const authModalOpen = ref(false)
@@ -153,6 +162,9 @@ const authModalOpen = ref(false)
 const resolvedTelegramBotUsername = computed(
     () => props.telegramBotUsername || apiTelegramBotUsername.value || null
 )
+
+const channelCustomEmojis = computed(() => extractCustomEmojiAssets(posts.value, purl.value))
+const epochEmojiBase = computed(() => inferEpochEmojiBase(posts.value, purl.value))
 
 const hydratedIds = new Set<number>()
 const hydratingIds = new Set<number>()
@@ -251,6 +263,7 @@ async function ensureAuthInfo(force = false): Promise<void> {
         authProviders.value = res.providers ?? []
         allowAnonComments.value = !!res.allow_anon_comments
         apiTelegramBotUsername.value = res.telegram_bot_username ?? null
+        oidcProviderName.value = res.oidc_provider_name ?? null
         authLoaded.value = true
     } catch (err) {
         console.warn('[tg-blog] Failed to load auth info:', err)
@@ -336,6 +349,8 @@ const interactiveCtx: TgBlogInteractiveContext = {
     telegramBotUsername: resolvedTelegramBotUsername,
     allowAnonComments,
     authLoaded,
+    channelCustomEmojis,
+    epochEmojiBase,
     openAuthModal,
     ensureAuthInfo: () => ensureAuthInfo(false),
     refreshAuthAndInteractions,
@@ -448,6 +463,11 @@ function handleStreamCommentDeleted(ev: StreamCommentDeletedEvent): void {
     subs?.forEach(listener => listener.onDeleted(ev))
 }
 
+function handleStreamCommentReactionUpdated(ev: StreamCommentReactionUpdatedEvent): void {
+    const subs = commentSubscribers.get(ev.post_id)
+    subs?.forEach(listener => listener.onReactionUpdated?.(ev))
+}
+
 function clampWindow(len: number): void {
     if (len <= 0) {
         startIdx.value = 0
@@ -531,6 +551,7 @@ function startStream(): void {
             onPollUpdated: handleStreamPollUpdated,
             onCommentCreated: handleStreamCommentCreated,
             onCommentDeleted: handleStreamCommentDeleted,
+            onCommentReactionUpdated: handleStreamCommentReactionUpdated,
             onReconnect: () => {
                 void hydrateInteractions(visiblePostIds.value, true)
             },
@@ -559,6 +580,7 @@ function resetInteractiveCaches(): void {
     me.value = null
     authProviders.value = []
     apiTelegramBotUsername.value = null
+    oidcProviderName.value = null
     allowAnonComments.value = false
     authLoaded.value = false
     authModalOpen.value = false

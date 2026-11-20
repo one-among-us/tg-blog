@@ -1,11 +1,18 @@
 import type {ComputedRef, InjectionKey, Ref} from 'vue'
 import {inject} from 'vue'
 import type {LifeApiClient} from './api'
-import type {CommentDTO, StreamCommentDeletedEvent, UpdateProfilePayload, UserDTO} from './models'
+import type {
+  CommentDTO,
+  StreamCommentDeletedEvent,
+  StreamCommentReactionUpdatedEvent,
+  UpdateProfilePayload,
+  UserDTO,
+} from './models'
 
 export interface CommentStreamListener {
   onCreated: (comment: CommentDTO) => void
   onDeleted: (event: StreamCommentDeletedEvent) => void
+  onReactionUpdated?: (event: StreamCommentReactionUpdatedEvent) => void
   onAuthChanged: () => void
 }
 
@@ -16,6 +23,8 @@ export interface TgBlogInteractiveContext {
   telegramBotUsername: Ref<string | null>
   allowAnonComments: Ref<boolean>
   authLoaded: Ref<boolean>
+  channelCustomEmojis: ComputedRef<Record<string, string>>
+  epochEmojiBase: ComputedRef<string | null>
   openAuthModal: () => void
   ensureAuthInfo: () => Promise<void>
   refreshAuthAndInteractions: () => Promise<void>

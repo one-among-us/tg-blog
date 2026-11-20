@@ -17,7 +17,7 @@
                         <span class="loading-spinner" aria-hidden="true"></span>
                     </div>
                     <template v-else>
-                        <div class="oauth-list" v-if="hasGithub || hasGoogle || hasTelegramWidget">
+                        <div class="oauth-list" v-if="hasGithub || hasGoogle || hasOidc || hasTelegramWidget">
                             <a v-if="hasGithub" class="oauth-btn github" :href="githubLoginUrl">
                                 <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
                                     <path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.88-.01-1.72-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.55-1.14-4.55-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05a9.38 9.38 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.59.69.49A10.26 10.26 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/>
@@ -32,12 +32,19 @@
                                 <span>{{ msg.authContinueWithGoogle }}</span>
                             </a>
 
+                            <a v-if="hasOidc" class="oauth-btn oidc" :href="oidcLoginUrl">
+                                <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path fill="currentColor" d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4Zm0 4.2A2.8 2.8 0 0 1 14.8 8a2.8 2.8 0 0 1-2.8 2.8A2.8 2.8 0 0 1 9.2 8 2.8 2.8 0 0 1 12 5.2Zm0 12.6a6.4 6.4 0 0 1-5-2.4c.03-1.66 3.33-2.57 5-2.57 1.66 0 4.97.91 5 2.57a6.4 6.4 0 0 1-5 2.4Z"/>
+                                </svg>
+                                <span>{{ msg.authContinueWithOidc(oidcProviderName?.trim() || 'SSO') }}</span>
+                            </a>
+
                             <div v-if="hasTelegramWidget" class="telegram-widget-wrap">
                                 <div ref="tgWidgetEl" class="telegram-widget-host"></div>
                             </div>
                         </div>
 
-                        <div class="divider" v-if="(hasGithub || hasGoogle || hasTelegramWidget) && hasEmail">
+                        <div class="divider" v-if="(hasGithub || hasGoogle || hasOidc || hasTelegramWidget) && hasEmail">
                             <span>{{ msg.authOrEmail }}</span>
                         </div>
 
@@ -81,6 +88,7 @@ const props = withDefaults(defineProps<{
     providers: string[]
     authLoaded?: boolean
     telegramBotUsername?: string | null
+    oidcProviderName?: string | null
 }>(), {
     authLoaded: true,
 })
@@ -109,6 +117,7 @@ const normalizedProviders = computed(() => props.providers.map(p => p.toLowerCas
 const validTelegramBotUsername = computed(() => normalizeTelegramBotUsername(props.telegramBotUsername))
 const hasGithub = computed(() => normalizedProviders.value.includes('github'))
 const hasGoogle = computed(() => normalizedProviders.value.includes('google'))
+const hasOidc = computed(() => normalizedProviders.value.includes('oidc'))
 const hasEmail = computed(() =>
     props.authLoaded && (
         normalizedProviders.value.length === 0 ||
@@ -125,6 +134,7 @@ const hasTelegramWidget = computed(() =>
 
 const githubLoginUrl = computed(() => props.api.getOAuthLoginUrl('github', nextPath.value))
 const googleLoginUrl = computed(() => props.api.getOAuthLoginUrl('google', nextPath.value))
+const oidcLoginUrl = computed(() => props.api.getOAuthLoginUrl('oidc', nextPath.value))
 
 function refreshNextPath() {
     if (typeof window === 'undefined') {

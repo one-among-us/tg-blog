@@ -60,8 +60,28 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
     expect(staticHtml).toContain('2026-11-19 8:00')
     expect(staticHtml).toContain('/api/life/media/epochs/1/photo.webp')
     expect(staticHtml).toContain('Empty images + location + video')
+    // No empty .head div when post has no forwarded_from (flush top edge fix)
+    expect(staticHtml).not.toContain('class="head unselectable"')
+    // Apple emoji image rendered in reaction pills by default
+    expect(staticHtml).toContain('emoji-datasource-apple@16.0.0/img/apple/64/2764-fe0f.png')
     expect(staticHtml).not.toContain('add-reaction-btn')
+    expect(staticHtml).not.toContain('quick-reaction')
     expect(staticHtml).not.toContain('comment-toggle')
+
+    // Forwarded post renders .head; empty appleEmojiBaseUrl disables Apple emoji images
+    const forwardedNoAppleHtml = await renderToString(
+      createSSRApp({
+        render: () =>
+          h(TgBlog, {
+            postsUrl: '/api/life/exports/posts.json',
+            postsData: [{...posts[0], forwarded_from: 'Friend'}],
+            appleEmojiBaseUrl: '',
+          }),
+      })
+    )
+    expect(forwardedNoAppleHtml).toContain('class="head unselectable"')
+    expect(forwardedNoAppleHtml).not.toContain('emoji-datasource-apple')
+    expect(forwardedNoAppleHtml).toContain('tgb-apple-emoji-fallback')
 
     const interactiveHtml = await renderToString(
       createSSRApp({
@@ -73,7 +93,9 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
           }),
       })
     )
-    expect(interactiveHtml).toContain('add-reaction-btn')
+    expect(interactiveHtml).not.toContain('add-reaction-btn')
+    expect(interactiveHtml).toContain('quick-reaction')
+    expect(interactiveHtml).toContain('interactive-reactions')
     expect(interactiveHtml).toContain('comment-toggle')
   })
 })

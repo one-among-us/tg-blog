@@ -112,6 +112,7 @@ export interface TgBlogMessages {
     authContinueWithGithub: string
     authContinueWithGoogle: string
     authContinueWithTelegram: string
+    authContinueWithOidc: (providerName: string) => string
     authOrEmail: string
     authEmailPlaceholder: string
     authDisplayNamePlaceholder: string
@@ -194,6 +195,7 @@ export const defaultMessages: TgBlogMessages = {
     authContinueWithGithub: 'Continue with GitHub',
     authContinueWithGoogle: 'Continue with Google',
     authContinueWithTelegram: 'Continue with Telegram',
+    authContinueWithOidc: (providerName) => `Continue with ${providerName}`,
     authOrEmail: 'or sign in with email',
     authEmailPlaceholder: 'you@example.com',
     authDisplayNamePlaceholder: 'Display name (optional)',

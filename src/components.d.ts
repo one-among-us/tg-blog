@@ -22,6 +22,7 @@ declare module 'vue' {
     IFasEye: typeof import('~icons/fa6-solid/eye')['default']
     IFasForward: typeof import('~icons/fa6-solid/forward')['default']
     IFasLink: typeof import('~icons/fa6-solid/link')['default']
+    IFasPaperPlane: typeof import('~icons/fa6-solid/paper-plane')['default']
     IFasPause: typeof import('~icons/fa6-solid/pause')['default']
     IFasPlay: typeof import('~icons/fa6-solid/play')['default']
     IIcRoundSearch: typeof import('~icons/ic/round-search')['default']

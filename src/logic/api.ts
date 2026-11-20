@@ -3,6 +3,7 @@ import type {
   AltchaChallenge,
   AuthMeResponse,
   CommentDTO,
+  CommentReactionToggleResponse,
   CommentsResponse,
   CreateCommentPayload,
   InteractionsResponse,
@@ -12,6 +13,7 @@ import type {
   ReactionTogglePayload,
   ReactionToggleResponse,
   StreamCommentDeletedEvent,
+  StreamCommentReactionUpdatedEvent,
   StreamPollUpdatedEvent,
   StreamPostDeletedEvent,
   StreamReactionUpdatedEvent,
@@ -136,6 +138,13 @@ export class LifeApiClient {
     })
   }
 
+  toggleCommentReaction(commentId: number, payload: ReactionTogglePayload): Promise<CommentReactionToggleResponse> {
+    return this.request<CommentReactionToggleResponse>(`/comments/${commentId}/reactions/toggle`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  }
+
   getAuthMe(): Promise<AuthMeResponse> {
     return this.request<AuthMeResponse>('/auth/me')
   }
@@ -157,11 +166,11 @@ export class LifeApiClient {
     return res as UserDTO
   }
 
-  getOAuthLoginUrl(provider: 'github' | 'google', next?: string): string {
+  getOAuthLoginUrl(provider: 'github' | 'google' | 'oidc' | string, next?: string): string {
     const params = new URLSearchParams()
     if (next) params.set('next', next)
     const qs = params.toString()
-    return `${this.baseUrl}/auth/oauth/${provider}/login${qs ? `?${qs}` : ''}`
+    return `${this.baseUrl}/auth/oauth/${encodeURIComponent(provider)}/login${qs ? `?${qs}` : ''}`
   }
 
   async telegramCallback(data: Record<string, any>): Promise<UserDTO | null> {
@@ -195,6 +204,7 @@ export interface LifeStreamHandlers {
   onPollUpdated?: (event: StreamPollUpdatedEvent) => void
   onCommentCreated?: (comment: CommentDTO) => void
   onCommentDeleted?: (event: StreamCommentDeletedEvent) => void
+  onCommentReactionUpdated?: (event: StreamCommentReactionUpdatedEvent) => void
   onReconnect?: () => void
   onError?: (err: Event) => void
 }
@@ -302,6 +312,7 @@ export class LifeStreamClient {
     bindJson<StreamPollUpdatedEvent>('poll.updated', this.handlers.onPollUpdated)
     bindJson<CommentDTO>('comment.created', this.handlers.onCommentCreated)
     bindJson<StreamCommentDeletedEvent>('comment.deleted', this.handlers.onCommentDeleted)
+    bindJson<StreamCommentReactionUpdatedEvent>('comment.reaction.updated', this.handlers.onCommentReactionUpdated)
 
     es.onerror = (err) => {
       this.handlers.onError?.(err)

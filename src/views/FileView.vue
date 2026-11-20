@@ -279,14 +279,11 @@ const size = computed(() => sizeFmt(f.value.size))
     > *
         width: 180px
 
-.no-head.has-head
-    margin-top: 0
-
 .no-head
-    margin-top: -22px
+    margin-top: -12px
 
 .video
-    margin: -22px 0 10px
+    margin: -12px 0 10px
     width: 100%
 
     // For spoilers
@@ -299,6 +296,10 @@ const size = computed(() => sizeFmt(f.value.size))
 
     .plyr:fullscreen video
         max-height: unset
+
+.no-head.has-head,
+.video.has-head
+    margin-top: 0
 
 .dice
     display: flex

@@ -122,7 +122,7 @@ export interface Post {
 
 // --- Interactive Mode (/life v2 API Contract) ---
 
-export type AuthProvider = 'github' | 'google' | 'telegram' | 'email' | 'anonymous' | string
+export type AuthProvider = 'github' | 'google' | 'telegram' | 'oidc' | 'email' | 'anonymous' | string
 
 export interface UserDTO {
   id: number
@@ -208,6 +208,7 @@ export interface CommentDTO {
   deleted: boolean
   is_mine: boolean
   can_delete: boolean
+  reactions?: MergedReaction[]
 }
 
 export interface CommentsResponse {
@@ -222,6 +223,12 @@ export interface ReactionTogglePayload {
 
 export interface ReactionToggleResponse {
   post_id: number
+  reactions: MergedReaction[]
+}
+
+export interface CommentReactionToggleResponse {
+  post_id: number
+  comment_id: number
   reactions: MergedReaction[]
 }
 
@@ -242,6 +249,7 @@ export interface AuthMeResponse {
   providers: string[]
   allow_anon_comments: boolean
   telegram_bot_username?: string | null
+  oidc_provider_name?: string | null
 }
 
 export interface UpdateProfilePayload {
@@ -285,6 +293,12 @@ export interface StreamPollUpdatedEvent {
 export interface StreamCommentDeletedEvent {
   post_id: number
   comment_id: number
+}
+
+export interface StreamCommentReactionUpdatedEvent {
+  post_id: number
+  comment_id: number
+  reactions: MergedReactionPublic[]
 }
 
 export interface StreamPostDeletedEvent {

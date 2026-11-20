@@ -8,6 +8,9 @@ import Poll from "./Poll.vue"
 import CommentThread from "./CommentThread.vue"
 import AuthModal from "./AuthModal.vue"
 import AltchaWidget from "./AltchaWidget.vue"
+import AppleEmoji from "./AppleEmoji.vue"
+import CustomEmoji from "./CustomEmoji.vue"
+import ReactionSelector from "./ReactionSelector.vue"
 
 export {
   TgBlog,
@@ -19,6 +22,9 @@ export {
   CommentThread,
   AuthModal,
   AltchaWidget,
+  AppleEmoji,
+  CustomEmoji,
+  ReactionSelector,
 }
 
 export type { ViewedImage, TrackedImage } from "./ImageViewer.vue"

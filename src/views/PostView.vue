@@ -1,129 +1,171 @@
 <template>
-    <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}" ref="el">
-        <div class="head unselectable">
-            <div class="forward" v-if="p.forwarded_from">
-                {{msg.forwardedFrom}} <a :href="fwdUrl">{{fwdName}}</a>
-            </div>
-        </div>
-        <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
-            <div class="thumb-wrap" v-if="p.reply.thumb">
-                <img class="thumb" :src="p.reply.thumb" alt="">
-            </div>
-            <div class="mtext">
-                <div class="reply-to">{{msg.replyTo}}</div>
-                <div class="reply-quote" v-if="p.quote?.text" v-html="p.quote.text"></div>
-                <div class="reply-text" v-else-if="p.reply.text" v-html="p.reply.text"></div>
-            </div>
-        </div>
-        <div class="quote-container" v-if="p.quote && !p.reply">
-            <blockquote v-html="p.quote.text"></blockquote>
-        </div>
-        <div class="text" v-if="p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
-        <div class="images" v-if="p.images?.length" :class="{'has-head': p.reply || p.forwarded_from || (p.show_caption_above_media && text)}"
-             :style="containerStyle">
-            <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
-                <img :src="img.thumb || img.url" alt="image"
-                     class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(img, i)" style="inset: 0">
-            </div>
-        </div>
-        <div class="files" v-if="p.files">
-            <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f"
-                      :has-head="!!(p.reply || p.forwarded_from || (p.show_caption_above_media && text) || p.images?.length)"
-                      :interactive="interactive"
-                      :poll-state="f.media_type === 'poll' ? (interaction?.poll ?? null) : null"
-                      :poll-voting="pollVoting"
-                      @play-file="onPlayFile"
-                      @vote-poll="onVotePoll" />
-        </div>
-        <div class="text" v-if="!p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
+    <div class="post-entry" :class="{ 'has-chat': interactive && commentsOpen }">
+        <div class="post-card-wrap" :class="{ 'selector-open': selectorOpen }">
+            <div class="post tgb-card"
+                 :id="`message-${p.id}`"
+                 :class="{ 'service': p.type === 'service' }"
+                 ref="el"
+                 @click.capture="onCardClickCapture"
+                 @contextmenu="onCardContextMenu"
+                 @pointerdown="onCardPointerDown"
+                 @pointermove="onCardPointerMove"
+                 @pointerup="cancelLongPress"
+                 @pointercancel="cancelLongPress">
+                <div class="head unselectable" v-if="p.forwarded_from">
+                    <div class="forward">
+                        {{msg.forwardedFrom}} <a :href="fwdUrl">{{fwdName}}</a>
+                    </div>
+                </div>
+                <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
+                    <div class="thumb-wrap" v-if="p.reply.thumb">
+                        <img class="thumb" :src="p.reply.thumb" alt="">
+                    </div>
+                    <div class="mtext">
+                        <div class="reply-to">{{msg.replyTo}}</div>
+                        <div class="reply-quote" v-if="p.quote?.text" v-html="p.quote.text"></div>
+                        <div class="reply-text" v-else-if="p.reply.text" v-html="p.reply.text"></div>
+                    </div>
+                </div>
+                <div class="quote-container" v-if="p.quote && !p.reply">
+                    <blockquote v-html="p.quote.text"></blockquote>
+                </div>
+                <div class="text" v-if="p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
+                <div class="images" v-if="p.images?.length" :class="{'has-head': p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && text)}"
+                     :style="containerStyle">
+                    <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
+                        <img :src="img.thumb || img.url" alt="image"
+                             class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(img, i)" style="inset: 0">
+                    </div>
+                </div>
+                <div class="files" v-if="p.files">
+                    <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f"
+                              :has-head="i > 0 || !!(p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && text) || p.images?.length)"
+                              :interactive="interactive"
+                              :poll-state="f.media_type === 'poll' ? (interaction?.poll ?? null) : null"
+                              :poll-voting="pollVoting"
+                              @play-file="onPlayFile"
+                              @vote-poll="onVotePoll" />
+                </div>
+                <div class="text" v-if="!p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
 
-        <!-- Interactive reactions (when apiUrl is provided) -->
-        <div class="reactions-wrap" v-if="interactive" ref="reactionsWrapEl">
-            <div class="reactions interactive-reactions">
-                <button type="button" class="reaction reaction-btn"
-                        v-for="r in displayReactions" :key="r.reaction_key"
-                        :class="{ reacted: r.reacted }"
-                        @click="onToggleReaction(r)">
-                    <i v-if="r.custom_emoji_id" class="custom-emoji" :emoji-src="`emoji/${r.custom_emoji_id}`"></i>
-                    <span v-else class="reaction-emoji">{{r.emoji}}</span>
-                    <span class="reaction-count" v-if="r.count">{{r.count}}</span>
-                </button>
-                <button type="button" class="reaction reaction-btn add-reaction-btn"
-                        :class="{ open: showEmojiPicker }"
-                        :title="msg.addReaction"
-                        :aria-label="msg.addReaction"
-                        :aria-expanded="showEmojiPicker"
-                        @click.stop="showEmojiPicker = !showEmojiPicker">
-                    +
-                </button>
-            </div>
-            <div v-if="showEmojiPicker" class="emoji-picker" @click.stop>
-                <button type="button" class="emoji-opt"
-                        v-for="em in QUICK_EMOJIS" :key="em"
-                        :class="{ active: isEmojiReacted(em) }"
-                        @click="pickEmoji(em)">
-                    {{ em }}
-                </button>
-            </div>
-        </div>
+                <!-- Interactive reactions styled after Telegram Web A ReactionButton.module.scss (no permanent + button) -->
+                <div class="reactions interactive-reactions" v-if="interactive && displayReactions.length">
+                    <button type="button" class="reaction reaction-btn"
+                            v-for="r in displayReactions" :key="r.reaction_key"
+                            :class="{ chosen: r.reacted }"
+                            @click="onToggleReaction(r)">
+                        <CustomEmoji v-if="r.custom_emoji_id"
+                                     :id="r.custom_emoji_id"
+                                     :src="customEmojiSrc(r.custom_emoji_id)"
+                                     :posts-url="postsUrl" />
+                        <AppleEmoji v-else-if="r.emoji" :emoji="r.emoji" class="reaction-emoji" />
+                        <span class="reaction-count" v-if="r.count">{{r.count}}</span>
+                    </button>
+                </div>
 
-        <!-- Static read-only reactions (100% v1.2.1 behavior when apiUrl is not provided) -->
-        <div class="reactions" v-else-if="p.reactions && p.reactions.length">
-            <span class="reaction" v-for="(r, idx) in p.reactions" :key="idx">
-                <i v-if="r.custom_emoji_id" class="custom-emoji" :emoji-src="`emoji/${r.custom_emoji_id}`"></i>
-                <span v-else class="reaction-emoji">{{r.emoji}}</span>
-                <span class="reaction-count" v-if="r.count">{{r.count}}</span>
-            </span>
-        </div>
+                <!-- Static read-only reactions (100% v1.2.1 behavior when apiUrl is not provided) -->
+                <div class="reactions" v-else-if="!interactive && p.reactions && p.reactions.length">
+                    <span class="reaction" v-for="(r, idx) in p.reactions" :key="idx">
+                        <CustomEmoji v-if="r.custom_emoji_id"
+                                     :id="r.custom_emoji_id"
+                                     :src="customEmojiSrc(r.custom_emoji_id)"
+                                     :posts-url="postsUrl" />
+                        <AppleEmoji v-else-if="r.emoji" :emoji="r.emoji" class="reaction-emoji" />
+                        <span class="reaction-count" v-if="r.count">{{r.count}}</span>
+                    </span>
+                </div>
 
-        <div class="info font-code unselectable">
-            <div class="id">
-                <span class="share clickable" @click="share" :title="shareLabel">
-                    <i-fas-check v-if="shared" />
-                    <i-fas-link v-else />
-                </span>
-                #{{p.id}}
+                <div class="info font-code unselectable">
+                    <div class="id">
+                        <span class="share clickable" @click="share" :title="shareLabel">
+                            <i-fas-check v-if="shared" />
+                            <i-fas-link v-else />
+                        </span>
+                        #{{p.id}}
+                    </div>
+                    <button v-if="interactive" type="button" class="comment-toggle clickable"
+                            :class="{ active: commentsOpen }"
+                            :aria-expanded="commentsOpen"
+                            @click="commentsOpen = !commentsOpen">
+                        <svg class="comment-icon" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3v3l4.2-3H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm0 15h-9.4L9 18.2V17H4V4h16v13Z"/>
+                        </svg>
+                        <span>{{ commentCount > 0 ? msg.commentsCount(commentCount) : msg.reply }}</span>
+                    </button>
+                    <div class="f-grow1"></div>
+                    <div class="author" v-if="p.author">{{p.author}}</div>
+                    <div class="date">{{p.date}}</div>
+                    <div class="views" v-if="p.views">{{p.views}} <i-fas-eye /></div>
+                </div>
             </div>
-            <button v-if="interactive" type="button" class="comment-toggle clickable"
-                    :class="{ active: commentsOpen }"
-                    :aria-expanded="commentsOpen"
-                    @click="commentsOpen = !commentsOpen">
-                <svg class="comment-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path fill="currentColor" d="M20 2H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h3v3l4.2-3H20a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Zm0 15h-9.4L9 18.2V17H4V4h16v13Z"/>
-                </svg>
-                <span>{{ commentCount > 0 ? msg.commentsCount(commentCount) : msg.reply }}</span>
+
+            <!-- Telegram Web A desktop hover quick-reaction trigger (Message.scss:105-133) -->
+            <button v-if="interactive"
+                    type="button"
+                    class="quick-reaction"
+                    :class="{ visible: selectorOpen }"
+                    :title="msg.addReaction"
+                    :aria-label="msg.addReaction"
+                    @click.stop="openQuickReaction">
+                <AppleEmoji emoji="❤️" class="quick-reaction-glyph" />
             </button>
-            <div class="f-grow1"></div>
-            <div class="author" v-if="p.author">{{p.author}}</div>
-            <div class="date">{{p.date}}</div>
-            <div class="views" v-if="p.views">{{p.views}} <i-fas-eye /></div>
         </div>
 
-        <CommentThread v-if="interactive && commentsOpen" :post-id="p.id" />
+        <!-- External chat area directly beneath .post.tgb-card with smooth CSS Grid 0fr <-> 1fr accordion -->
+        <Transition name="tgb-chat-accordion">
+            <div v-if="interactive && commentsOpen" class="chat-accordion-shell">
+                <div class="chat-accordion-inner">
+                    <CommentThread :post-id="p.id" :posts-url="postsUrl" />
+                </div>
+            </div>
+        </Transition>
+
+        <!-- Telegram Web A 2-stage floating ReactionSelector + ReactionPickerLimited -->
+        <ReactionSelector v-if="interactive"
+                          :open="selectorOpen"
+                          :reactions="availableReactions"
+                          :chosen-keys="chosenReactionKeys"
+                          :posts-url="postsUrl"
+                          :anchor="selectorAnchor"
+                          @select="onSelectReactionChoice"
+                          @close="selectorOpen = false" />
     </div>
 </template>
 
 <script lang="ts" setup>
 import {Image, MergedReaction, Post, PostInteractionState, ReactionTogglePayload, TGFile} from "@/logic/models";
 import FileView from "@/views/FileView.vue";
+import AppleEmoji from "@/views/AppleEmoji.vue";
+import CustomEmoji from "@/views/CustomEmoji.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
+import {replaceTextEmojisWithApple, useAppleEmojiBaseUrl} from "@/logic/appleEmoji";
+import {MountedTgsHandle, mountTgsAnimation} from "@/logic/tgs";
 import {useTgbMessages} from "@/logic/messages";
+import {useTgbInteractive} from "@/logic/interactive";
+import {
+    buildAvailableReactions,
+    canonicalReactionKey,
+    ReactionChoice,
+    resolveCustomEmojiBaseSrc,
+} from "@/logic/reactions";
 import {resolveRelativeUrl} from "@/logic/url";
-import {computed, defineAsyncComponent, onMounted, onUnmounted, onUpdated, ref, StyleValue, watch} from "vue";
-import katex from "katex";
-import "katex/dist/katex.min.css";
+import {computed, defineAsyncComponent, onMounted, onUnmounted, onUpdated, ref, StyleValue} from "vue";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 
 const CommentThread = defineAsyncComponent(() => import("@/views/CommentThread.vue"))
+const ReactionSelector = defineAsyncComponent(() => import("@/views/ReactionSelector.vue"))
 
-const QUICK_EMOJIS = [
-    '❤️', '👍', '🔥', '🥰', '👏', '😂',
-    '😮', '😢', '🎉', '🙏', '💯', '🤩',
-    '🤔', '👀', '🫡', '🤗', '✨', '☕',
-]
+interface TgsInstanceRecord {
+    host: HTMLElement
+    controller: AbortController
+    handle: MountedTgsHandle | null
+}
 
 const msg = useTgbMessages()
+const interactiveCtx = useTgbInteractive()
+const appleEmojiBaseUrl = useAppleEmojiBaseUrl()
+const tgsInstances: TgsInstanceRecord[] = []
 
 const props = defineProps<{
     p: Post
@@ -143,10 +185,17 @@ const emit = defineEmits<{
 }>()
 
 const el = ref<HTMLDivElement>()
-const reactionsWrapEl = ref<HTMLDivElement>()
 const sizeScale = ref(1)
-const showEmojiPicker = ref(false)
 const commentsOpen = ref(false)
+const selectorOpen = ref(false)
+const selectorAnchor = ref({x: 0, y: 0})
+
+const channelCustomEmojis = computed(() => interactiveCtx?.channelCustomEmojis.value ?? {})
+const epochEmojiBase = computed(() => interactiveCtx?.epochEmojiBase.value ?? null)
+
+function customEmojiSrc(id: string): string {
+    return resolveCustomEmojiBaseSrc(id, channelCustomEmojis.value, props.postsUrl, epochEmojiBase.value)
+}
 
 const displayReactions = computed((): MergedReaction[] => {
     if (props.interaction?.reactions) {
@@ -163,11 +212,27 @@ const displayReactions = computed((): MergedReaction[] => {
     }))
 })
 
-const commentCount = computed(() => props.interaction?.comment_count ?? 0)
+const availableReactions = computed((): ReactionChoice[] =>
+    buildAvailableReactions(
+        displayReactions.value,
+        channelCustomEmojis.value,
+        props.postsUrl,
+        epochEmojiBase.value
+    )
+)
 
-function isEmojiReacted(emoji: string): boolean {
-    return displayReactions.value.some(r => r.emoji === emoji && r.reacted)
-}
+const chosenReactionKeys = computed((): Set<string> => {
+    const keys = new Set<string>()
+    for (const r of displayReactions.value) {
+        if (!r.reacted) continue
+        keys.add(r.reaction_key)
+        const canon = canonicalReactionKey(r)
+        if (canon) keys.add(canon)
+    }
+    return keys
+})
+
+const commentCount = computed(() => props.interaction?.comment_count ?? 0)
 
 function onToggleReaction(r: MergedReaction) {
     if (r.custom_emoji_id) {
@@ -177,24 +242,107 @@ function onToggleReaction(r: MergedReaction) {
     }
 }
 
-function pickEmoji(emoji: string) {
-    showEmojiPicker.value = false
-    emit('toggle-reaction', p.value.id, {emoji})
+function onSelectReactionChoice(choice: ReactionChoice) {
+    if (choice.custom_emoji_id) {
+        emit('toggle-reaction', p.value.id, {custom_emoji_id: choice.custom_emoji_id})
+    } else if (choice.emoji) {
+        emit('toggle-reaction', p.value.id, {emoji: choice.emoji})
+    }
 }
 
 function onVotePoll(pollId: string, optionIndices: number[]) {
     emit('vote-poll', p.value.id, pollId, optionIndices)
 }
 
-function onDocumentClick(e: MouseEvent) {
-    if (!showEmojiPicker.value) return
-    if (reactionsWrapEl.value && reactionsWrapEl.value.contains(e.target as Node)) return
-    showEmojiPicker.value = false
+const INTERACTIVE_TRIGGER_SELECTOR =
+    'a, button, input, textarea, select, img, video, audio, summary, .clickable, .media_spoiler, .spoiler, .plyr, #Location, blockquote[expandable], blockquote.expandable, .reaction-btn, #Poll, pre, .code-copy-btn'
+
+function shouldIgnoreReactionTrigger(target: EventTarget | null): boolean {
+    if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) {
+        return true
+    }
+    if (target instanceof Element && target.closest(INTERACTIVE_TRIGGER_SELECTOR)) {
+        return true
+    }
+    return false
 }
 
-function onDocumentKeydown(e: KeyboardEvent) {
-    if (showEmojiPicker.value && e.key === 'Escape') {
-        showEmojiPicker.value = false
+function openSelectorAt(x: number, y: number) {
+    selectorAnchor.value = {x, y}
+    selectorOpen.value = true
+}
+
+function openQuickReaction(e: MouseEvent) {
+    const btn = e.currentTarget as HTMLElement | null
+    const rect = btn?.getBoundingClientRect()
+    if (rect) {
+        openSelectorAt(rect.right, rect.top)
+    } else {
+        openSelectorAt(e.clientX, e.clientY)
+    }
+}
+
+function onCardContextMenu(e: MouseEvent) {
+    if (!props.interactive) return
+    // Shift + Right-click always preserves the native browser context menu
+    if (e.shiftKey) return
+    if (shouldIgnoreReactionTrigger(e.target)) return
+    e.preventDefault()
+    openSelectorAt(e.clientX, e.clientY)
+}
+
+let longPressTimer: ReturnType<typeof setTimeout> | null = null
+let ghostClickTimer: ReturnType<typeof setTimeout> | null = null
+let suppressGhostClick = false
+let pressStart = {x: 0, y: 0}
+
+function cancelLongPress() {
+    if (longPressTimer) {
+        clearTimeout(longPressTimer)
+        longPressTimer = null
+    }
+}
+
+function clearGhostClickGuard() {
+    suppressGhostClick = false
+    if (ghostClickTimer) {
+        clearTimeout(ghostClickTimer)
+        ghostClickTimer = null
+    }
+}
+
+function onCardClickCapture(e: MouseEvent) {
+    if (!suppressGhostClick) return
+    clearGhostClickGuard()
+    e.preventDefault()
+    e.stopPropagation()
+}
+
+function onCardPointerDown(e: PointerEvent) {
+    if (!props.interactive) return
+    // Restrict long-press strictly to touch so desktop left-click-hold never hijacks text selection
+    if (e.pointerType !== 'touch') return
+    if (shouldIgnoreReactionTrigger(e.target)) return
+
+    cancelLongPress()
+    pressStart = {x: e.clientX, y: e.clientY}
+    longPressTimer = setTimeout(() => {
+        longPressTimer = null
+        if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) return
+        suppressGhostClick = true
+        if (ghostClickTimer) clearTimeout(ghostClickTimer)
+        ghostClickTimer = setTimeout(() => {
+            suppressGhostClick = false
+            ghostClickTimer = null
+        }, 800)
+        openSelectorAt(pressStart.x, pressStart.y)
+    }, 420)
+}
+
+function onCardPointerMove(e: PointerEvent) {
+    if (!longPressTimer) return
+    if (Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 8) {
+        cancelLongPress()
     }
 }
 
@@ -241,6 +389,37 @@ function onTextClick(e: MouseEvent) {
     }
 }
 
+const KATEX_CSS_HREF = "https://cdn.jsdelivr.net/npm/katex@0.19.1/dist/katex.min.css"
+
+function ensureKatexStylesheet() {
+    if (typeof document === 'undefined' || !document.head) return
+    if (document.head.querySelector('link[data-tgb-katex="1"]')) return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = KATEX_CSS_HREF
+    link.setAttribute('data-tgb-katex', '1')
+    document.head.appendChild(link)
+}
+
+async function renderMathNodes(mathNodes: HTMLElement[]) {
+    try {
+        const katexMod = await import("katex")
+        const katex = katexMod.default ?? katexMod
+        for (const node of mathNodes) {
+            if (!node.isConnected) continue
+            const expr = node.textContent?.trim() || ""
+            if (!expr) continue
+            try {
+                katex.render(expr, node, { throwOnError: false, displayMode: false })
+            } catch (e) {
+                console.error("KaTeX render error:", e)
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load KaTeX:", e)
+    }
+}
+
 function initRichContent()
 {
     if (!el.value) return
@@ -278,18 +457,13 @@ function initRichContent()
         })
     })
 
-    // Render KaTeX for math formulas
-    el.value.querySelectorAll<HTMLElement>("code.math:not(.katex-rendered)").forEach(node => {
-        node.classList.add("katex-rendered")
-        const expr = node.textContent?.trim() || ""
-        if (expr) {
-            try {
-                katex.render(expr, node, { throwOnError: false, displayMode: false })
-            } catch (e) {
-                console.error("KaTeX render error:", e)
-            }
-        }
-    })
+    // Render KaTeX for math formulas lazily only when math nodes exist
+    const mathNodes = Array.from(el.value.querySelectorAll<HTMLElement>("code.math:not(.katex-rendered)"))
+    if (mathNodes.length > 0) {
+        mathNodes.forEach(node => node.classList.add("katex-rendered"))
+        ensureKatexStylesheet()
+        void renderMathNodes(mathNodes)
+    }
 
     // Syntax highlighting for code blocks
     el.value.querySelectorAll<HTMLElement>("pre:not(.hljs-rendered)").forEach(pre => {
@@ -393,32 +567,19 @@ function initRichContent()
             pre.insertBefore(header, pre.firstChild)
         }
     })
+
+    // Replace standard Unicode emojis inside post text, replies, & standalone quotes with Apple emoji images
+    if (appleEmojiBaseUrl.value) {
+        el.value.querySelectorAll<HTMLElement>(".text, .reply-text, .reply-quote, .quote-container").forEach(node => {
+            replaceTextEmojisWithApple(node, appleEmojiBaseUrl.value)
+        })
+    }
 }
 
 function refreshSize() {
     if (!el.value) return
     sizeScale.value = el.value.clientWidth / 450
 }
-
-let pickerListenersAttached = false
-
-function detachPickerListeners() {
-    if (!pickerListenersAttached || typeof document === 'undefined') return
-    document.removeEventListener('click', onDocumentClick)
-    document.removeEventListener('keydown', onDocumentKeydown)
-    pickerListenersAttached = false
-}
-
-watch(showEmojiPicker, (open) => {
-    if (typeof document === 'undefined') return
-    if (open && !pickerListenersAttached) {
-        document.addEventListener('click', onDocumentClick)
-        document.addEventListener('keydown', onDocumentKeydown)
-        pickerListenersAttached = true
-    } else if (!open) {
-        detachPickerListeners()
-    }
-})
 
 onMounted(() =>
 {
@@ -434,10 +595,31 @@ onUpdated(() =>
     initRichContent()
 })
 
+function destroyAllTgsInstances() {
+    for (const rec of tgsInstances) {
+        rec.controller.abort()
+        rec.handle?.destroy()
+    }
+    tgsInstances.length = 0
+}
+
+function pruneDetachedTgsInstances() {
+    for (let i = tgsInstances.length - 1; i >= 0; i--) {
+        const rec = tgsInstances[i]
+        if (!el.value?.contains(rec.host)) {
+            rec.controller.abort()
+            rec.handle?.destroy()
+            tgsInstances.splice(i, 1)
+        }
+    }
+}
+
 onUnmounted(() =>
 {
     window.removeEventListener('resize', refreshSize)
-    detachPickerListeners()
+    cancelLongPress()
+    clearGhostClickGuard()
+    destroyAllTgsInstances()
 })
 
 function replaceUrl(url: string): string
@@ -451,16 +633,41 @@ function replaceUrl(url: string): string
 function initEmoji()
 {
     if (!el.value || typeof document === 'undefined') return
+    pruneDetachedTgsInstances()
     // Scope strictly to this post element and build media nodes via DOM APIs (never innerHTML)
     el.value.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
         const rawSrc = it.getAttribute("emoji-src")
         if (!rawSrc) return
         const src = replaceUrl(rawSrc)
+        if (!src) return
 
         it.classList.add("init")
         it.textContent = ""
 
-        if (src.toLowerCase().split("?")[0].endsWith(".webm"))
+        const cleanSrc = src.toLowerCase().split("?")[0]
+        if (cleanSrc.endsWith(".tgs"))
+        {
+            const host = document.createElement("span")
+            host.className = "tgb-tgs-host"
+            it.appendChild(host)
+            const controller = new AbortController()
+            const rec: TgsInstanceRecord = {host, controller, handle: null}
+            tgsInstances.push(rec)
+            void mountTgsAnimation(host, src, controller.signal)
+                .then(handle => {
+                    if (controller.signal.aborted || !el.value?.contains(host)) {
+                        handle.destroy()
+                    } else {
+                        rec.handle = handle
+                    }
+                })
+                .catch(() => {
+                    if (!controller.signal.aborted) {
+                        host.textContent = "✦"
+                    }
+                })
+        }
+        else if (cleanSrc.endsWith(".webm"))
         {
             const video = document.createElement("video")
             video.src = src
@@ -539,11 +746,79 @@ async function share()
 .font-code
     font-family: Inconsolata, Monospaced, $font
 
+.post-entry
+    width: 100%
+    margin-bottom: 20px
+
+.post-card-wrap
+    position: relative
+    z-index: 1
+
+    &:hover .quick-reaction
+        opacity: 1
+
+    .quick-reaction
+        position: absolute
+        z-index: 3
+        right: -0.75rem
+        bottom: -0.45rem
+        width: 2rem
+        height: 2rem
+        padding: 0
+        border: 1px solid rgba(255, 131, 115, 0.35)
+        border-radius: 50%
+        background: rgba(253, 249, 241, 0.95)
+        box-shadow: 0 3px 10px rgba(112, 81, 42, 0.16)
+        cursor: pointer
+        display: flex
+        align-items: center
+        justify-content: center
+        transform: scale(0.7)
+        opacity: 0
+        transition: transform 0.2s ease-out, opacity 0.2s ease-out, border-color 0.15s ease
+        transition-delay: 0.15s
+
+        .quick-reaction-glyph
+            --apple-emoji-size: 1.05rem
+            font-size: 0.95rem
+            line-height: 1
+            vertical-align: middle !important
+
+        &.visible
+            opacity: 1 !important
+
+        &:hover
+            transform: scale(1)
+            border-color: $color-text-special
+            transition-delay: 0s
+
+        @media (hover: none)
+            display: none
+
+.chat-accordion-shell
+    display: grid
+    grid-template-rows: 1fr
+    opacity: 1
+
+.chat-accordion-inner
+    overflow: hidden
+    min-height: 0
+
+.tgb-chat-accordion-enter-active,
+.tgb-chat-accordion-leave-active
+    transition: grid-template-rows 0.26s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease
+
+.tgb-chat-accordion-enter-from,
+.tgb-chat-accordion-leave-to
+    grid-template-rows: 0fr
+    opacity: 0
+
 .post.service
     .id
         display: none
 
 .post
+    margin-bottom: 0
     padding: 12px 20px 8px
     text-align: left
     overflow: hidden
@@ -607,18 +882,11 @@ async function share()
     .quote-container
         margin: 6px 0
 
-    .reactions-wrap
-        position: relative
-        margin-top: 6px
-
     .reactions
         display: flex
         flex-wrap: wrap
         gap: 6px
         margin-top: 6px
-
-        &.interactive-reactions
-            margin-top: 0
 
         .reaction
             display: inline-flex
@@ -638,76 +906,57 @@ async function share()
                 font-size: 0.9em
                 font-weight: 500
 
-        .reaction-btn
-            border: 1px solid transparent
-            font-family: inherit
-            color: inherit
-            cursor: pointer
-            transition: background-color 0.16s ease, border-color 0.16s ease, transform 0.12s ease
+        &.interactive-reactions
+            gap: 0.35rem
 
-            &:hover
+            .reaction-btn
+                --custom-emoji-size: 1.25rem
+                height: 1.875rem
+                padding: 0 0.5rem 0 0.375rem
+                border: none
+                border-radius: 1.75rem
+                gap: 0.25rem
+                font-family: inherit
+                font-size: 0.85em
+                font-weight: 600
+                font-variant-numeric: tabular-nums
+                line-height: 1.75rem
+                white-space: nowrap
+                cursor: pointer
                 background: rgba(255, 131, 115, 0.12)
-                border-color: rgba(255, 131, 115, 0.35)
+                color: $color-text-special-dark
+                transition: background-color 150ms ease, color 150ms ease, transform 120ms ease
 
-            &:active
-                transform: scale(0.95)
-
-            &.reacted
-                background: rgba(255, 131, 115, 0.18)
-                border-color: rgba(255, 131, 115, 0.65)
+                .reaction-emoji
+                    --apple-emoji-size: 1.2rem
+                    font-size: 1.15rem
+                    line-height: 1
+                    vertical-align: middle !important
 
                 .reaction-count
-                    color: $color-text-special-dark
+                    color: inherit
+                    font-size: 0.86rem
                     font-weight: 600
+                    margin-inline-end: 0.1rem
 
-        .add-reaction-btn
-            min-width: 26px
-            justify-content: center
-            font-weight: 600
-            color: $color-text-light
-            padding: 2px 7px
+                &:hover
+                    background: rgba(255, 131, 115, 0.2)
 
-            &.open, &:hover
-                color: $color-text-special-dark
+                &:active
+                    transform: scale(0.95)
 
-    .emoji-picker
-        display: flex
-        flex-wrap: wrap
-        gap: 4px
-        margin-top: 6px
-        padding: 6px 8px
-        border-radius: 12px
-        background: $color-bg-4
-        border: 1px solid rgba(112, 81, 42, 0.14)
-        box-shadow: 0 4px 12px rgba(112, 81, 42, 0.08)
+                &.chosen
+                    background: $color-text-special
+                    color: #ffffff
 
-        .emoji-opt
-            background: transparent
-            border: 1px solid transparent
-            border-radius: 8px
-            width: 30px
-            height: 30px
-            padding: 0
-            font-size: 1.05em
-            display: inline-flex
-            align-items: center
-            justify-content: center
-            cursor: pointer
-            transition: background-color 0.14s ease, transform 0.12s ease, border-color 0.14s ease
-
-            &:hover
-                background: rgba(255, 131, 115, 0.14)
-                transform: scale(1.12)
-
-            &.active
-                background: rgba(255, 131, 115, 0.2)
-                border-color: rgba(255, 131, 115, 0.55)
+                    &:hover
+                        background: color.adjust($color-text-special, $lightness: -4%)
 
     .images.has-head
         margin: 0 -20px 10px
 
     .images
-        margin: -20px -20px 10px
+        margin: -12px -20px 10px
         display: flex
         position: relative
 
@@ -1212,13 +1461,21 @@ async function share()
 
 // Custom emojis
 i.custom-emoji
-    video, img
+    video, img, .tgb-tgs-host
         $size-incr: 0.3em
+        display: inline-block
+        width: 1em + $size-incr
         height: 1em + $size-incr
         margin-top: calc($size-incr / -2)
         margin-bottom: calc($size-incr / -2)
+        vertical-align: -0.2em
         //transform: translateY(0.125em)
         transform: translateZ(1em)
         pointer-events: none
         image-rendering: optimizeQuality
+
+    .tgb-tgs-host svg
+        width: 100% !important
+        height: 100% !important
+        display: block
 </style>
