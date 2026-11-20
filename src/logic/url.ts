@@ -85,6 +85,41 @@ export function resolveRelativeUrl(url: string, base: string): string {
 }
 
 /**
+ * Resolve an asset URL returned by the Life API (e.g. `/api/life/media/...` or `/api/life/exports/emoji/...`)
+ * without rewriting root-relative `/api/...` paths against `postsUrl` (which may live on a different origin/path).
+ * Root-relative paths are only bound to `apiUrl`'s origin when `apiUrl` is an explicit `http(s)://` URL.
+ */
+export function resolveApiAssetUrl(
+  raw?: string | null,
+  apiUrl?: string | null,
+  fallbackPostsUrl?: string | null
+): string {
+  if (!raw) return ''
+  const trimmed = raw.trim()
+  if (!trimmed || !isSafeMediaUrl(trimmed)) return ''
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('blob:')) {
+    return trimmed
+  }
+  if (trimmed.startsWith('/')) {
+    if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
+      try {
+        return new URL(trimmed, apiUrl).href
+      } catch {
+        return ''
+      }
+    }
+    return trimmed
+  }
+  if (fallbackPostsUrl) {
+    return resolveRelativeUrl(trimmed, fallbackPostsUrl)
+  }
+  if (apiUrl) {
+    return resolveRelativeUrl(trimmed, apiUrl.endsWith('/') ? apiUrl : `${apiUrl}/`)
+  }
+  return trimmed
+}
+
+/**
  * Validate an avatar URL so only safe schemes (`https://`, `http://`, or single-slash root-relative `/...`) are rendered.
  * Rejects protocol-relative (`//...`), `javascript:`, `data:`, etc.
  */

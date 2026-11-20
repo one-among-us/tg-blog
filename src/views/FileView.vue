@@ -22,11 +22,11 @@
 
     <!-- Stickers -->
     <div class="sticker" v-if="f.media_type === 'sticker'">
-        <video v-if="f.url.toLowerCase().endsWith('webm')" :src="f.url"
-               preload="metadata" muted autoplay loop playsinline disablepictureinpicture>
-            <img v-if="f.thumb" :src="f.thumb" alt="">
-        </video>
-        <img v-else :src="f.url" alt=""/>
+        <StickerMedia :url="f.url"
+                      :thumb="f.thumb"
+                      :emoji="f.sticker_emoji"
+                      :is-animated="f.url.toLowerCase().split('?')[0].endsWith('.tgs')"
+                      :is-video="f.url.toLowerCase().split('?')[0].endsWith('.webm')" />
     </div>
 
     <!-- Videos -->
@@ -103,6 +103,7 @@ function downloadURI(uri: string, name: string) {
 const Location = defineAsyncComponent(() => import("./Location.vue"))
 const Poll = defineAsyncComponent(() => import("./Poll.vue"))
 const VideoPlayer = defineAsyncComponent(() => import("./VideoPlayer.vue"))
+import StickerMedia from "@/views/StickerMedia.vue"
 
 const props = defineProps<{
     f: TGFile
@@ -278,6 +279,7 @@ const size = computed(() => sizeFmt(f.value.size))
 
     > *
         width: 180px
+        min-height: 180px
 
 .no-head
     margin-top: -12px

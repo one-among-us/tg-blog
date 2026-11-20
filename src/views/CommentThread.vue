@@ -1,5 +1,5 @@
 <template>
-    <div v-if="ctx && activeApi" class="chat-zone" @click.stop>
+    <div v-if="ctx && activeApi" ref="chatZoneEl" class="chat-zone" @click.stop>
         <!-- Loading / Error / Empty states -->
         <div v-if="loading" class="thread-status">{{ msg.loadingComments }}</div>
         <div v-else-if="loadError" class="thread-status error">
@@ -30,14 +30,17 @@
                     <!-- Incoming 32px circular avatar pinned bottom-left on lastInGroup -->
                     <div v-if="!item.isOwn" class="avatar-slot">
                         <template v-if="item.lastInGroup">
-                            <img v-if="safeAvatar(item.comment.author.avatar_url)"
-                                 :src="safeAvatar(item.comment.author.avatar_url)!"
+                            <img v-if="commentAvatarUrl(item.comment)"
+                                 :src="commentAvatarUrl(item.comment)!"
                                  referrerpolicy="no-referrer"
-                                 class="bubble-avatar" alt="" loading="lazy" />
+                                 class="bubble-avatar"
+                                 :class="avatarClass(item.comment)"
+                                 :style="avatarRingStyle(item.comment)"
+                                 alt="" loading="lazy" />
                             <span v-else class="bubble-avatar avatar-fallback"
                                   :class="avatarClass(item.comment)"
                                   :style="avatarFallbackStyle(item.comment)">
-                                {{ avatarInitial(item.comment.author.display_name) }}
+                                {{ avatarInitial(displayAuthorName(item.comment)) }}
                             </span>
                         </template>
                     </div>
@@ -47,15 +50,20 @@
                          :class="{ 'is-swiping': swipeState?.id === item.comment.id && swipeState.locked === 'h' }"
                          :style="swipeWrapperStyle(item.comment.id)">
                         <div class="message-content has-solid-background"
-                             :class="{ 'has-appendix': item.lastInGroup }"
+                             :class="{
+                                 'has-appendix': item.lastInGroup && !isStickerOnlyBubble(item),
+                                 'is-sticker-only': isStickerOnlyBubble(item)
+                             }"
                              @dblclick="canCompose && startReply(item.comment)"
                              @click.capture="onBubbleClickCapture"
                              @contextmenu="onBubbleContextMenu(item.comment, $event)"
                              @pointerdown="onBubblePointerDown(item.comment, $event)">
                             <!-- Header row on incoming firstInGroup: sender + badge -->
-                            <div v-if="item.firstInGroup && !item.isOwn" class="message-title">
+                            <div v-if="item.firstInGroup && !item.isOwn"
+                                 class="message-title"
+                                 :class="{ 'sticker-title-pill': isStickerOnlyBubble(item) }">
                                 <span class="sender-title" :style="{ color: senderColor(item.comment) }">
-                                    {{ item.comment.author.display_name }}
+                                    {{ displayAuthorName(item.comment) }}
                                 </span>
                                 <span v-if="item.comment.author.role === 'owner'" class="badge badge-owner">
                                     {{ msg.badgeOwner }}
@@ -86,22 +94,131 @@
                                 </span>
                             </div>
 
-                            <!-- Inline Telegram Web A reply quote bar -->
+                            <!-- Inline Telegram Web A reply quote bar (with optional media thumbnail) -->
                             <button v-if="item.parentComment"
                                     type="button"
                                     class="inline-reply-quote clickable"
                                     @click="jumpToComment(item.parentComment.id)">
-                                <div class="quote-author">
-                                    {{ item.parentComment.deleted ? msg.commentDeleted : item.parentComment.author.display_name }}
-                                </div>
-                                <div class="quote-snippet" v-if="!item.parentComment.deleted">
-                                    {{ quoteSnippet(item.parentComment) }}
+                                <div class="inline-reply-row">
+                                    <template v-if="!item.parentComment.deleted && item.parentComment.media">
+                                        <img v-if="replyThumbUrl(item.parentComment.media)"
+                                             :src="replyThumbUrl(item.parentComment.media)!"
+                                             class="quote-thumb"
+                                             alt=""
+                                             loading="lazy" />
+                                        <span v-else class="quote-thumb-badge" aria-hidden="true">
+                                            {{ replyThumbBadge(item.parentComment.media) }}
+                                        </span>
+                                    </template>
+                                    <div class="quote-meta">
+                                        <div class="quote-author">
+                                            {{ item.parentComment.deleted ? msg.commentDeleted : displayAuthorName(item.parentComment) }}
+                                        </div>
+                                        <div class="quote-snippet" v-if="!item.parentComment.deleted" v-html="quoteSnippetHtml(item.parentComment)"></div>
+                                    </div>
                                 </div>
                             </button>
 
+                            <!-- Rich Comment Media (photo, sticker, animation, document) -->
+                            <template v-if="item.comment.media && safeMediaSrc(item.comment.media.url)">
+                                <!-- Photo -->
+                                <div v-if="item.comment.media.media_type === 'photo'"
+                                     class="comment-media comment-media-photo"
+                                     :class="{ 'has-caption': commentHasBody(item.comment) }">
+                                    <img :src="safeMediaSrc(item.comment.media.thumb || item.comment.media.url)"
+                                         :alt="item.comment.body_text || msg.mediaPhoto"
+                                         class="clickable"
+                                         loading="lazy"
+                                         @click.stop="openCommentPhoto(item.comment)" />
+                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
+                                          class="message-timestamp media-pill"
+                                          :title="formatFullDate(item.comment.created_at)">
+                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                    </span>
+                                </div>
+
+                                <!-- Sticker (.webp / .png / .tgs / .webm) -->
+                                <div v-else-if="item.comment.media.media_type === 'sticker'"
+                                     class="comment-media comment-media-sticker">
+                                    <StickerMedia :url="safeMediaSrc(item.comment.media.url)"
+                                                  :thumb="safeMediaSrc(item.comment.media.thumb)"
+                                                  :emoji="item.comment.media.emoji"
+                                                  :is-animated="item.comment.media.is_animated"
+                                                  :is-video="item.comment.media.is_video" />
+                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
+                                          class="message-timestamp media-pill"
+                                          :title="formatFullDate(item.comment.created_at)">
+                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                    </span>
+                                </div>
+
+                                <!-- Animation / GIF -->
+                                <div v-else-if="item.comment.media.media_type === 'animation'"
+                                     class="comment-media comment-media-animation"
+                                     :class="{ 'has-caption': commentHasBody(item.comment) }">
+                                    <img v-if="isGifMedia(item.comment.media.url)"
+                                         :src="safeMediaSrc(item.comment.media.url)"
+                                         alt="GIF"
+                                         loading="lazy" />
+                                    <video v-else
+                                           :src="safeMediaSrc(item.comment.media.url)"
+                                           :poster="safeMediaSrc(item.comment.media.thumb) || undefined"
+                                           preload="metadata"
+                                           autoplay
+                                           loop
+                                           muted
+                                           playsinline
+                                           disablepictureinpicture />
+                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
+                                          class="message-timestamp media-pill"
+                                          :title="formatFullDate(item.comment.created_at)">
+                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                    </span>
+                                </div>
+
+                                <!-- Video -->
+                                <div v-else-if="item.comment.media.media_type === 'video'"
+                                     class="comment-media comment-media-video"
+                                     :class="{ 'has-caption': commentHasBody(item.comment) }">
+                                    <video :src="safeMediaSrc(item.comment.media.url)"
+                                           :poster="safeMediaSrc(item.comment.media.thumb) || undefined"
+                                           controls
+                                           preload="metadata"
+                                           playsinline />
+                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
+                                          class="message-timestamp media-pill"
+                                          :title="formatFullDate(item.comment.created_at)">
+                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                    </span>
+                                </div>
+
+                                <!-- Document / Downloadable file -->
+                                <a v-else
+                                   class="comment-media-doc"
+                                   :href="safeMediaSrc(item.comment.media.url)"
+                                   :download="item.comment.media.file_name || ''"
+                                   target="_blank"
+                                   rel="noopener noreferrer">
+                                    <span class="doc-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24">
+                                            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+                                        </svg>
+                                    </span>
+                                    <span class="doc-info">
+                                        <span class="doc-name">{{ item.comment.media.file_name || msg.mediaDocument }}</span>
+                                        <span v-if="item.comment.media.size" class="doc-size">{{ sizeFmt(item.comment.media.size) }}</span>
+                                    </span>
+                                </a>
+                            </template>
+
                             <!-- Message text (+ inline bottom-right timestamp when there are no reactions) -->
-                            <div class="text-content">
-                                <span class="comment-body" v-html="renderBody(item.comment)"></span>
+                            <div v-if="commentHasBody(item.comment) || !item.comment.media || (item.comment.media.media_type === 'document' && (item.comment.reactions?.length ?? 0) === 0)"
+                                 class="text-content">
+                                <span v-if="commentHasBody(item.comment)" class="comment-body" v-html="renderBody(item.comment)"></span>
                                 <span v-if="(item.comment.reactions?.length ?? 0) === 0"
                                       class="message-timestamp in-text"
                                       :title="formatFullDate(item.comment.created_at)">
@@ -135,7 +252,7 @@
                             </div>
 
                             <!-- Exact Telegram Web A MessageAppendix SVG tail -->
-                            <svg v-if="item.lastInGroup" width="9" height="20" viewBox="0 0 9 20" class="svg-appendix" aria-hidden="true">
+                            <svg v-if="item.lastInGroup && !isStickerOnlyBubble(item)" width="9" height="20" viewBox="0 0 9 20" class="svg-appendix" aria-hidden="true">
                                 <path v-if="item.isOwn"
                                       d="M6 17H0V0c.193 2.84.876 5.767 2.05 8.782.904 2.325 2.446 4.485 4.625 6.48A1 1 0 016 17z"
                                       class="corner" />
@@ -190,10 +307,25 @@
         <div class="composer">
             <div v-if="me" class="user-bar">
                 <div class="user-pill">
-                    <img v-if="safeAvatar(me.avatar_url)" :src="safeAvatar(me.avatar_url)!"
-                         referrerpolicy="no-referrer" class="avatar sm" alt="" />
-                    <span v-else class="avatar sm avatar-fallback">{{ avatarInitial(me.display_name) }}</span>
-                    <span class="user-name">{{ me.display_name }}</span>
+                    <template v-if="asAnonymous && allowAnon">
+                        <img v-if="activeAnonIdentity?.avatarUrl"
+                             :src="activeAnonIdentity.avatarUrl"
+                             class="avatar sm anon-ringed"
+                             :style="activeAnonRingStyle"
+                             alt="" />
+                        <span v-else
+                              class="avatar sm avatar-fallback anon anon-ringed"
+                              :style="activeAnonRingStyle">
+                            {{ avatarInitial(activeAnonLabel) }}
+                        </span>
+                        <span class="user-name anon">{{ activeAnonLabel }}</span>
+                    </template>
+                    <template v-else>
+                        <img v-if="safeAvatar(me.avatar_url)" :src="safeAvatar(me.avatar_url)!"
+                             referrerpolicy="no-referrer" class="avatar sm" alt="" />
+                        <span v-else class="avatar sm avatar-fallback">{{ avatarInitial(me.display_name) }}</span>
+                        <span class="user-name">{{ me.display_name }}</span>
+                    </template>
                 </div>
                 <div class="user-controls">
                     <button v-if="me.email_verified" type="button" class="chip-btn"
@@ -215,51 +347,101 @@
 
             <div v-else class="guest-bar" :class="{ 'has-composer': canCompose }">
                 <div class="guest-auth-row">
-                    <span class="guest-avatar" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
+                    <button type="button"
+                            class="guest-avatar"
+                            :class="{ 'anon-ringed': !!activeAnonTag }"
+                            :style="activeAnonRingStyle"
+                            :title="msg.signIn"
+                            :aria-label="`${activeAnonLabel} - ${msg.signIn}`"
+                            @click="ctx.openAuthModal()">
+                        <img v-if="activeAnonIdentity?.avatarUrl"
+                             :src="activeAnonIdentity.avatarUrl"
+                             class="guest-avatar-img"
+                             alt="" />
+                        <svg v-else viewBox="0 0 24 24" aria-hidden="true">
                             <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
                         </svg>
-                    </span>
+                    </button>
+                    <span v-if="activeAnonTag" class="guest-anon-name">{{ activeAnonTag }}</span>
+                </div>
+                <div class="guest-meta-row">
+                    <span v-if="allowAnon" class="guest-hint">{{ msg.commentingAnonymously }}</span>
+                    <span v-else class="guest-hint">{{ msg.signInToComment }}</span>
                     <button type="button" class="signin-btn" @click="ctx.openAuthModal()">
                         {{ msg.signIn }}
                     </button>
                 </div>
-                <span v-if="allowAnon" class="guest-hint">{{ msg.commentingAnonymously }}</span>
-                <span v-else class="guest-hint">{{ msg.signInToComment }}</span>
             </div>
 
             <div v-if="canCompose" class="composer-box">
                 <div v-if="replyTarget" class="reply-banner">
                     <div class="reply-banner-content">
-                        <span class="reply-banner-title">{{ msg.replyingTo(replyTarget.author.display_name) }}</span>
-                        <span class="reply-banner-snippet">{{ quoteSnippet(replyTarget) }}</span>
+                        <span class="reply-banner-title">{{ msg.replyingTo(displayAuthorName(replyTarget)) }}</span>
+                        <span class="reply-banner-snippet" v-html="quoteSnippetHtml(replyTarget)"></span>
                     </div>
                     <button type="button" class="cancel-reply-btn" @click="replyTarget = null" :aria-label="msg.cancelReply">
                         ✕
                     </button>
                 </div>
 
-                <!-- Ported directly from one-among-us/web ProfileComments.vue -->
+                <!-- Web A Rich Composer inside #add-comment -->
                 <div id="add-comment" class="add-comment">
-                    <textarea ref="textareaEl"
-                              v-model="draft"
-                              rows="1"
-                              maxlength="4000"
-                              :placeholder="msg.writeCommentPlaceholder"
-                              :aria-label="msg.writeCommentPlaceholder"
-                              :readonly="submitting"
-                              @input="resizeInput"
-                              @keydown="onComposerKeydown" />
-                    <div id="send-comment-btn" class="send-comment-btn" v-if="draft.trim().length > 0 || submitting">
-                        <span class="char-count unselectable">{{ draft.trim().length }}</span>
+                    <button ref="smileyBtnEl"
+                            type="button"
+                            class="composer-smiley-btn"
+                            :class="{ active: symbolMenuOpen }"
+                            :title="msg.emojiAndStickers"
+                            :aria-label="msg.emojiAndStickers"
+                            :disabled="submitting"
+                            @mousedown.prevent
+                            @click="toggleSymbolMenu">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+                        </svg>
+                    </button>
+
+                    <RichCommentInput ref="richInputRef"
+                                      v-model="draft"
+                                      class="composer-rich-input"
+                                      :placeholder="msg.writeCommentPlaceholder"
+                                      :aria-label="msg.writeCommentPlaceholder"
+                                      :readonly="submitting"
+                                      :max-length="4000"
+                                      :custom-emoji-urls="mergedCustomEmojiUrls"
+                                      :epoch-emoji-base="epochEmojiBase"
+                                      :posts-url="resolvedPostsUrl"
+                                      @text-length="n => draftTextLength = n"
+                                      @submit="submitComment"
+                                      @files="onComposerFiles" />
+
+                    <input ref="fileInputEl"
+                           type="file"
+                           accept="image/*"
+                           style="display: none"
+                           @change="onFileInputChange" />
+
+                    <div id="send-comment-btn" class="send-comment-btn">
                         <button type="button"
-                                class="unstyled-button"
-                                :disabled="!canSubmit"
-                                :aria-label="msg.postComment"
-                                @click="submitComment">
-                            <span v-if="submitting" class="send-spinner" aria-hidden="true"></span>
-                            <i-fas-paper-plane v-else class="icon" />
+                                class="attach-btn"
+                                :title="msg.attachPhoto"
+                                :aria-label="msg.attachPhoto"
+                                :disabled="submitting"
+                                @click="openFilePicker">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+                            </svg>
                         </button>
+                        <template v-if="draft.trim().length > 0 || submitting">
+                            <span class="char-count unselectable">{{ draftCharCount }}</span>
+                            <button type="button"
+                                    class="unstyled-button"
+                                    :disabled="!canSubmit"
+                                    :aria-label="msg.postComment"
+                                    @click="submitComment">
+                                <span v-if="submitting" class="send-spinner" aria-hidden="true"></span>
+                                <i-fas-paper-plane v-else class="icon" />
+                            </button>
+                        </template>
                     </div>
                 </div>
 
@@ -272,6 +454,29 @@
                 <div v-if="submitError" class="composer-error">{{ submitError }}</div>
             </div>
         </div>
+
+        <SymbolMenu :open="symbolMenuOpen"
+                    :posts-url="resolvedPostsUrl"
+                    :anchor-rect="symbolAnchorRect"
+                    :anchor-el="smileyBtnEl"
+                    @select-emoji="onSelectEmoji"
+                    @select-custom-emoji="onSelectCustomEmoji"
+                    @select-sticker="onSelectSticker"
+                    @backspace="onSymbolBackspace"
+                    @close="symbolMenuOpen = false" />
+
+        <AttachmentModal :open="attachModalOpen"
+                         :file="pendingAttachFile"
+                         :initial-caption="draft"
+                         :sending="submitting"
+                         :error="attachError"
+                         :custom-emoji-urls="mergedCustomEmojiUrls"
+                         :epoch-emoji-base="epochEmojiBase"
+                         :posts-url="resolvedPostsUrl"
+                         @close="closeAttachModal"
+                         @send="onSendAttachment" />
+
+        <ImageViewer v-if="!ctx?.openMediaViewer" :imgs="localViewerImgs" v-model:index="localViewerIdx" />
 
         <ReactionSelector :open="!!reactionTarget"
                           :reactions="availableCommentReactions"
@@ -286,20 +491,32 @@
 <script lang="ts" setup>
 import moment from 'moment'
 import {computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpdated, ref, watch} from 'vue'
-import {CommentDTO, MergedReaction, ReactionTogglePayload} from '@/logic/models'
+import {
+    CommentDTO,
+    CommentMediaDTO,
+    CustomEmojiAsset,
+    MergedReaction,
+    ReactionTogglePayload,
+    StickerItem,
+} from '@/logic/models'
 import {solveAltchaChallenge} from '@/logic/altcha'
-import {sanitizeCommentHtml} from '@/logic/api'
+import {sanitizeCommentHtml, sanitizeCommentSnippetHtml} from '@/logic/api'
 import {replaceTextEmojisWithApple, useAppleEmojiBaseUrl} from '@/logic/appleEmoji'
+import {sizeFmt} from '@/logic/formatter'
 import {
     buildAvailableReactions,
     canonicalReactionKey,
+    isValidCustomEmojiId,
     ReactionChoice,
     resolveCustomEmojiBaseSrc,
 } from '@/logic/reactions'
+import {initSpoilers} from '@/logic/spoilers'
+import {buildCustomEmojiCandidates, createCustomEmojiDomManager} from '@/logic/customEmojiDom'
 import {
     applyCommentDeleteInList,
     applyOptimisticCommentReactionToggle,
     buildChatMessages,
+    ChatBubbleItem,
     formatCommentShortDate,
     loadOwnCommentIds,
     mergeCommentReactionsInList,
@@ -308,12 +525,19 @@ import {
 } from '@/logic/state'
 import {useTgbInteractive} from '@/logic/interactive'
 import {useTgbMessages} from '@/logic/messages'
-import {sanitizeAvatarUrl} from '@/logic/url'
+import {normalizeAnonDisplayName, pickAnonIdentity} from '@/logic/anonAvatar'
+import {resolveApiAssetUrl, sanitizeAvatarUrl} from '@/logic/url'
 import AltchaWidget from '@/views/AltchaWidget.vue'
 import AppleEmoji from '@/views/AppleEmoji.vue'
 import CustomEmoji from '@/views/CustomEmoji.vue'
+import type {ViewedImage} from '@/views/ImageViewer.vue'
+import RichCommentInput from '@/views/RichCommentInput.vue'
+import StickerMedia from '@/views/StickerMedia.vue'
 
 const ReactionSelector = defineAsyncComponent(() => import('@/views/ReactionSelector.vue'))
+const SymbolMenu = defineAsyncComponent(() => import('@/views/SymbolMenu.vue'))
+const AttachmentModal = defineAsyncComponent(() => import('@/views/AttachmentModal.vue'))
+const ImageViewer = defineAsyncComponent(() => import('@/views/ImageViewer.vue'))
 
 const SENDER_PALETTE = [
     '#c8553d', '#2b8a6e', '#5a6fb8', '#a85d8e', '#b5742c', '#2c7da0', '#8d5b4c',
@@ -328,9 +552,11 @@ const props = defineProps<{
     postsUrl?: string
 }>()
 
+const chatZoneEl = ref<HTMLElement | null>(null)
 const chatListEl = ref<HTMLElement | null>(null)
 const comments = ref<CommentDTO[]>([])
 const ownCommentIds = ref<Set<number>>(new Set())
+const viewerAnonTag = ref<string | null>(null)
 const loading = ref(true)
 const loadError = ref<string | null>(null)
 
@@ -340,9 +566,21 @@ const asAnonymous = ref(false)
 const altchaPayload = ref<string | null>(null)
 const showManualAltcha = ref(false)
 const altchaRef = ref<InstanceType<typeof AltchaWidget> | null>(null)
-const textareaEl = ref<HTMLTextAreaElement | null>(null)
+const richInputRef = ref<InstanceType<typeof RichCommentInput> | null>(null)
+const smileyBtnEl = ref<HTMLElement | null>(null)
+const fileInputEl = ref<HTMLInputElement | null>(null)
 const submitting = ref(false)
 const submitError = ref<string | null>(null)
+
+const symbolMenuOpen = ref(false)
+const symbolAnchorRect = ref<{ left: number; top: number; bottom: number; width: number } | null>(null)
+const attachModalOpen = ref(false)
+const pendingAttachFile = ref<File | null>(null)
+const attachError = ref<string | null>(null)
+const localViewerImgs = ref<ViewedImage[]>([])
+const localViewerIdx = ref(-1)
+const draftTextLength = ref(0)
+const commentEmojiManager = createCustomEmojiDomManager()
 
 const confirmDeleteId = ref<number | null>(null)
 let confirmTimer: ReturnType<typeof setTimeout> | null = null
@@ -359,8 +597,10 @@ const reactionSeqMap = new Map<number, number>()
 const reactionInFlightMap = new Map<number, number>()
 
 const channelCustomEmojis = computed(() => ctx?.channelCustomEmojis.value ?? {})
+const mergedCustomEmojiUrls = computed(() => ctx?.allCustomEmojis.value ?? channelCustomEmojis.value)
 const epochEmojiBase = computed(() => ctx?.epochEmojiBase.value ?? null)
 const resolvedPostsUrl = computed(() => props.postsUrl ?? '')
+const draftCharCount = computed(() => draftTextLength.value || (draft.value.trim() ? draft.value.trim().length : 0))
 
 const reactionTarget = computed(() => {
     if (reactionTargetId.value === null) return null
@@ -390,7 +630,7 @@ const chosenCommentReactionKeys = computed((): Set<string> => {
 })
 
 function customEmojiSrc(id: string): string {
-    return resolveCustomEmojiBaseSrc(id, channelCustomEmojis.value, resolvedPostsUrl.value, epochEmojiBase.value)
+    return resolveCustomEmojiBaseSrc(id, mergedCustomEmojiUrls.value, resolvedPostsUrl.value, epochEmojiBase.value)
 }
 
 const activeApi = computed(() => ctx?.api.value ?? null)
@@ -401,12 +641,33 @@ const canCompose = computed(() => !!me.value || allowAnon.value)
 const needsAltcha = computed(() => canCompose.value && isPostingAnon.value)
 const canSubmit = computed(() => {
     if (!activeApi.value || submitting.value) return false
-    if (!draft.value.trim()) return false
+    if (!draft.value.trim() || draftTextLength.value > 4000) return false
     if (needsAltcha.value && showManualAltcha.value && !altchaPayload.value) return false
     return true
 })
 
 const chatMessages = computed(() => buildChatMessages(comments.value, ownCommentIds.value))
+
+const activeAnonTag = computed<string | null>(() => {
+    if (viewerAnonTag.value) return normalizeAnonDisplayName(viewerAnonTag.value)
+    for (let i = comments.value.length - 1; i >= 0; i--) {
+        const c = comments.value[i]
+        if (!c.deleted && (c.is_mine || ownCommentIds.value.has(c.id)) && isAnonymous(c)) {
+            return displayAuthorName(c)
+        }
+    }
+    return null
+})
+
+const activeAnonLabel = computed(() => activeAnonTag.value || 'Anon')
+
+const activeAnonIdentity = computed(() =>
+    activeAnonTag.value ? pickAnonIdentity(activeAnonTag.value, anonAvatarList.value) : null,
+)
+
+const activeAnonRingStyle = computed<Record<string, string>>(() =>
+    activeAnonIdentity.value ? {'--tgb-anon-ring': activeAnonIdentity.value.ringColor} : {},
+)
 
 watch(me, (newMe) => {
     if (!newMe) asAnonymous.value = false
@@ -429,6 +690,12 @@ function safeAvatar(url?: string | null): string | null {
     return sanitizeAvatarUrl(url)
 }
 
+const anonAvatarList = computed(() =>
+    (ctx?.anonAvatars?.value ?? [])
+        .map((url) => sanitizeAvatarUrl(url))
+        .filter((url): url is string => !!url),
+)
+
 function avatarInitial(name: string): string {
     return (name || '?').trim().charAt(0).toUpperCase() || '?'
 }
@@ -439,6 +706,22 @@ function isTelegramSynced(c: CommentDTO): boolean {
 
 function isAnonymous(c: CommentDTO): boolean {
     return !c.author?.verified && !isTelegramSynced(c)
+}
+
+function displayAuthorName(c: CommentDTO): string {
+    if (isAnonymous(c)) return normalizeAnonDisplayName(c.author?.display_name)
+    return c.author?.display_name || ''
+}
+
+function anonIdentity(c: CommentDTO) {
+    return pickAnonIdentity(c.author?.display_name, anonAvatarList.value)
+}
+
+function commentAvatarUrl(c: CommentDTO): string | null {
+    const explicit = safeAvatar(c.author?.avatar_url)
+    if (explicit) return explicit
+    if (isAnonymous(c)) return anonIdentity(c).avatarUrl
+    return null
 }
 
 function hashName(name: string): number {
@@ -456,17 +739,25 @@ function senderColor(c: CommentDTO): string {
     return SENDER_PALETTE[hashName(c.author?.display_name || '') % SENDER_PALETTE.length]
 }
 
+function avatarRingStyle(c: CommentDTO): Record<string, string> {
+    if (!isAnonymous(c) || safeAvatar(c.author?.avatar_url)) return {}
+    return {'--tgb-anon-ring': anonIdentity(c).ringColor}
+}
+
 function avatarFallbackStyle(c: CommentDTO): Record<string, string> {
-    if (c.author?.role === 'owner' || isTelegramSynced(c) || isAnonymous(c)) return {}
+    if (isAnonymous(c)) return avatarRingStyle(c)
+    if (c.author?.role === 'owner' || isTelegramSynced(c)) return {}
     const col = senderColor(c)
     return {backgroundColor: col, color: '#fff'}
 }
 
 function avatarClass(c: CommentDTO): Record<string, boolean> {
+    const anon = isAnonymous(c)
     return {
         owner: c.author?.role === 'owner',
         telegram: isTelegramSynced(c),
-        anon: isAnonymous(c),
+        anon,
+        'anon-ringed': anon && !safeAvatar(c.author?.avatar_url),
     }
 }
 
@@ -488,27 +779,105 @@ function formatShortTime(iso: string): string {
 }
 
 function applyAppleEmojis() {
-    if (!chatListEl.value || !appleEmojiBaseUrl.value) return
-    chatListEl.value.querySelectorAll<HTMLElement>('.comment-body').forEach(node => {
+    const root = chatZoneEl.value ?? chatListEl.value
+    if (!root || !appleEmojiBaseUrl.value) return
+    root.querySelectorAll<HTMLElement>('.comment-body, .quote-snippet, .reply-banner-snippet').forEach(node => {
         replaceTextEmojisWithApple(node, appleEmojiBaseUrl.value)
     })
 }
 
-function quoteSnippet(c: CommentDTO): string {
-    const raw = (c.body_text || '').replace(/\s+/g, ' ').trim()
-    return raw.length > 90 ? `${raw.slice(0, 90)}…` : raw
+function initCommentCustomEmojis() {
+    const root = chatZoneEl.value ?? chatListEl.value
+    if (!root || typeof document === 'undefined') return
+    commentEmojiManager.mountAll(root, {
+        selector: '.comment-body i.custom-emoji[data-custom-emoji-id], .quote-snippet i.custom-emoji[data-custom-emoji-id], .reply-banner-snippet i.custom-emoji[data-custom-emoji-id]',
+        resolveCandidates: (it) => {
+            const id = it.getAttribute('data-custom-emoji-id')?.trim()
+            if (!id || !isValidCustomEmojiId(id)) return []
+            const deferProbe = !!(activeApi.value && ctx && !ctx.customEmojiCatalogReady.value)
+            return buildCustomEmojiCandidates(customEmojiSrc(id), deferProbe)
+        },
+    })
+}
+
+function hydrateCommentDom() {
+    initCommentCustomEmojis()
+    applyAppleEmojis()
+    initSpoilers()
+}
+
+function safeMediaSrc(raw?: string | null): string {
+    return resolveApiAssetUrl(raw, activeApi.value?.baseUrl, resolvedPostsUrl.value)
+}
+
+function isGifMedia(url?: string | null): boolean {
+    if (!url) return false
+    return url.toLowerCase().split('?')[0].split('#')[0].endsWith('.gif')
+}
+
+function commentHasBody(c: CommentDTO): boolean {
+    return !!(c.body_html?.trim() || c.body_text?.trim())
+}
+
+function isStickerOnlyBubble(item: ChatBubbleItem): boolean {
+    return item.comment.media?.media_type === 'sticker' && !commentHasBody(item.comment)
+}
+
+function mediaTypeLabel(media?: CommentMediaDTO | null): string {
+    if (!media) return ''
+    switch (media.media_type) {
+        case 'photo': return msg.mediaPhoto
+        case 'sticker': return media.emoji ? `${media.emoji} ${msg.mediaSticker}` : msg.mediaSticker
+        case 'animation': return msg.mediaAnimation
+        case 'video': return msg.mediaVideo
+        case 'document': return media.file_name || msg.mediaDocument
+        default: return msg.mediaDocument
+    }
+}
+
+function replyThumbUrl(media: CommentMediaDTO): string | null {
+    const candidate = media.thumb || (media.media_type === 'photo' ? media.url : null) || (
+        media.media_type === 'sticker' && !media.is_animated && !media.is_video && !media.url?.toLowerCase().endsWith('.tgs') && !media.url?.toLowerCase().endsWith('.webm')
+            ? media.url
+            : null
+    )
+    const safe = safeMediaSrc(candidate)
+    return safe || null
+}
+
+function replyThumbBadge(media: CommentMediaDTO): string {
+    if (media.media_type === 'sticker') return media.emoji || '🎭'
+    if (media.media_type === 'animation') return '🎞️'
+    if (media.media_type === 'video') return '🎬'
+    if (media.media_type === 'photo') return '🖼️'
+    return '📎'
+}
+
+function openCommentPhoto(c: CommentDTO) {
+    if (!c.media) return
+    const url = safeMediaSrc(c.media.url)
+    if (!url) return
+    const item: ViewedImage = {
+        url,
+        text: c.body_html || c.body_text || undefined,
+        date: formatFullDate(c.created_at),
+        fileName: c.media.file_name ?? undefined,
+    }
+    if (ctx?.openMediaViewer) {
+        ctx.openMediaViewer([item], 0)
+    } else {
+        localViewerImgs.value = [item]
+        localViewerIdx.value = 0
+    }
+}
+
+function quoteSnippetHtml(c: CommentDTO): string {
+    const mLabel = c.media ? mediaTypeLabel(c.media) : ''
+    return sanitizeCommentSnippetHtml(c.body_html, c.body_text, mLabel)
 }
 
 function renderBody(c: CommentDTO): string {
     return sanitizeCommentHtml(c.body_html, c.body_text)
-}
-
-function resizeInput() {
-    const el = textareaEl.value
-    if (!el) return
-    el.style.height = 'auto'
-    const border = el.offsetHeight - el.clientHeight
-    el.style.height = `${Math.min(el.scrollHeight + border, 160)}px`
 }
 
 function jumpToComment(commentId: number) {
@@ -530,7 +899,11 @@ async function fetchComments() {
     try {
         const res = await activeApi.value.getComments(props.postId)
         comments.value = res.comments ?? []
+        viewerAnonTag.value = res.viewer_anon_tag ? normalizeAnonDisplayName(res.viewer_anon_tag) : null
         ctx.markCommentsSeen(props.postId, comments.value.map(c => c.id))
+        if (comments.value.some(c => c.body_html?.includes('data-custom-emoji-id'))) {
+            void ctx.ensureCustomEmojis()
+        }
     } catch (err: any) {
         loadError.value = err?.message || msg.commentsLoadFailed
     } finally {
@@ -540,6 +913,9 @@ async function fetchComments() {
 
 function upsertComment(incoming: CommentDTO) {
     comments.value = upsertCommentInList(comments.value, incoming)
+    if (incoming.body_html?.includes('data-custom-emoji-id')) {
+        void ctx?.ensureCustomEmojis()
+    }
 }
 
 function applyDelete(commentId: number) {
@@ -552,7 +928,7 @@ function applyDelete(commentId: number) {
     comments.value = applyCommentDeleteInList(comments.value, commentId)
 }
 
-const BUBBLE_TRIGGER_IGNORE_SELECTOR = 'a, button, input, textarea, select, img, .comment-reaction-btn, .inline-reply-quote, pre, code'
+const BUBBLE_TRIGGER_IGNORE_SELECTOR = 'a, button, input, textarea, select, .comment-media-video video, .comment-media-doc, .comment-reaction-btn, .inline-reply-quote, pre, code, .spoiler'
 
 function shouldIgnoreBubbleReactionTrigger(target: EventTarget | null): boolean {
     if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) {
@@ -775,6 +1151,13 @@ async function toggleCommentReaction(comment: CommentDTO, payload: ReactionToggl
         if (activeApi.value === api && reactionSeqMap.get(commentId) === seq) {
             comments.value = mergeCommentReactionsInList(comments.value, commentId, res.reactions)
         }
+        if (activeApi.value === api && !viewerAnonTag.value) {
+            void api.getComments(props.postId).then((r) => {
+                if (activeApi.value === api && r.viewer_anon_tag) {
+                    viewerAnonTag.value = normalizeAnonDisplayName(r.viewer_anon_tag)
+                }
+            }).catch(() => {})
+        }
     } catch (err) {
         console.warn('[tg-blog] Comment reaction toggle failed:', err)
         const remaining = (reactionInFlightMap.get(commentId) ?? 1) - 1
@@ -817,15 +1200,51 @@ function startReply(comment: CommentDTO) {
     if (comment.deleted) return
     replyTarget.value = comment
     nextTick(() => {
-        textareaEl.value?.focus()
+        richInputRef.value?.focus()
     })
 }
 
-function onComposerKeydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && canSubmit.value) {
-        e.preventDefault()
-        void submitComment()
+async function resolveAltchaForSend(): Promise<string | null> {
+    if (!needsAltcha.value) return null
+    if (altchaPayload.value) return altchaPayload.value
+    if (!activeApi.value) return null
+
+    autoAltchaController?.abort()
+    const controller = new AbortController()
+    autoAltchaController = controller
+    try {
+        const challenge = await activeApi.value.getCaptchaChallenge(controller.signal)
+        if (controller.signal.aborted) return null
+        const res = await solveAltchaChallenge(challenge, controller.signal)
+        if (controller.signal.aborted) return null
+        return res.payload
+    } catch (powErr: any) {
+        if (controller.signal.aborted || powErr?.name === 'AbortError') return null
+        showManualAltcha.value = true
+        throw new Error(msg.altchaError, {cause: powErr})
+    } finally {
+        if (autoAltchaController === controller) {
+            autoAltchaController = null
+        }
     }
+}
+
+function recordCreatedComment(created: CommentDTO) {
+    saveOwnCommentId(created.id)
+    const nextOwn = new Set(ownCommentIds.value)
+    nextOwn.add(created.id)
+    ownCommentIds.value = nextOwn
+
+    if (!created.author?.verified && !isTelegramSynced(created) && created.author?.display_name) {
+        viewerAnonTag.value = normalizeAnonDisplayName(created.author.display_name)
+    }
+
+    upsertComment({...created, is_mine: true})
+    ctx?.notifyLocalCommentCreated(created)
+    replyTarget.value = null
+    altchaPayload.value = null
+    showManualAltcha.value = false
+    altchaRef.value?.reset()
 }
 
 async function submitComment() {
@@ -834,33 +1253,8 @@ async function submitComment() {
     submitError.value = null
 
     try {
-        let solvedPayload: string | null = null
-        if (needsAltcha.value) {
-            if (altchaPayload.value) {
-                solvedPayload = altchaPayload.value
-            } else {
-                // Frictionless automatic inline ALTCHA PoW on send
-                autoAltchaController?.abort()
-                const controller = new AbortController()
-                autoAltchaController = controller
-                try {
-                    const challenge = await activeApi.value.getCaptchaChallenge(controller.signal)
-                    if (controller.signal.aborted) return
-                    const res = await solveAltchaChallenge(challenge, controller.signal)
-                    if (controller.signal.aborted) return
-                    solvedPayload = res.payload
-                } catch (powErr: any) {
-                    if (controller.signal.aborted || powErr?.name === 'AbortError') return
-                    showManualAltcha.value = true
-                    submitError.value = msg.altchaError
-                    return
-                } finally {
-                    if (autoAltchaController === controller) {
-                        autoAltchaController = null
-                    }
-                }
-            }
-        }
+        const solvedPayload = await resolveAltchaForSend()
+        if (needsAltcha.value && !solvedPayload) return
 
         const created = await activeApi.value.createComment(props.postId, {
             body: draft.value.trim(),
@@ -869,23 +1263,151 @@ async function submitComment() {
             altcha_payload: solvedPayload,
         })
 
-        // Mark as own comment locally (persists across reloads even for anonymous replies)
-        saveOwnCommentId(created.id)
-        const nextOwn = new Set(ownCommentIds.value)
-        nextOwn.add(created.id)
-        ownCommentIds.value = nextOwn
-
-        upsertComment({...created, is_mine: true})
-        ctx.notifyLocalCommentCreated(created)
+        recordCreatedComment(created)
         draft.value = ''
-        replyTarget.value = null
-        altchaPayload.value = null
-        showManualAltcha.value = false
-        altchaRef.value?.reset()
-        await nextTick()
-        resizeInput()
+        draftTextLength.value = 0
+        richInputRef.value?.clear()
     } catch (err: any) {
         submitError.value = err?.message || 'Failed to post comment'
+        altchaPayload.value = null
+        altchaRef.value?.reset()
+    } finally {
+        submitting.value = false
+    }
+}
+
+function toggleSymbolMenu() {
+    if (symbolMenuOpen.value) {
+        symbolMenuOpen.value = false
+        return
+    }
+    const rect = smileyBtnEl.value?.getBoundingClientRect()
+    if (rect) {
+        symbolAnchorRect.value = {
+            left: rect.left,
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+        }
+    }
+    symbolMenuOpen.value = true
+}
+
+function onSelectEmoji(emoji: string) {
+    richInputRef.value?.insertEmoji(emoji)
+}
+
+function onSelectCustomEmoji(asset: CustomEmojiAsset) {
+    richInputRef.value?.insertCustomEmoji({id: asset.id, url: asset.url})
+}
+
+function onSymbolBackspace() {
+    richInputRef.value?.backspaceAtSelection()
+}
+
+async function onSelectSticker(sticker: StickerItem) {
+    if (!ctx || !activeApi.value || submitting.value) return
+    if (needsAltcha.value && showManualAltcha.value && !altchaPayload.value) {
+        submitError.value = msg.altchaError
+        return
+    }
+    submitting.value = true
+    submitError.value = null
+    try {
+        const solvedPayload = await resolveAltchaForSend()
+        if (needsAltcha.value && !solvedPayload) return
+
+        const media: CommentMediaDTO = {
+            media_type: 'sticker',
+            url: sticker.url,
+            thumb: sticker.thumb ?? null,
+            emoji: sticker.emoji ?? null,
+            is_animated: !!sticker.is_animated || sticker.format === 'tgs',
+            is_video: !!sticker.is_video || sticker.format === 'webm',
+            sticker_id: sticker.id,
+        }
+        const created = await activeApi.value.createComment(props.postId, {
+            body: '',
+            media,
+            parent_id: replyTarget.value?.id ?? null,
+            as_anonymous: isPostingAnon.value,
+            altcha_payload: solvedPayload,
+        })
+        recordCreatedComment(created)
+    } catch (err: any) {
+        submitError.value = err?.message || 'Failed to send sticker'
+        altchaPayload.value = null
+        altchaRef.value?.reset()
+    } finally {
+        submitting.value = false
+    }
+}
+
+function openFilePicker() {
+    if (submitting.value) return
+    fileInputEl.value?.click()
+}
+
+function onFileInputChange(e: Event) {
+    const input = e.target as HTMLInputElement
+    const file = input.files?.[0]
+    input.value = ''
+    if (file) {
+        openAttachmentForFile(file)
+    }
+}
+
+function onComposerFiles(files: File[]) {
+    if (files.length > 0) {
+        openAttachmentForFile(files[0])
+    }
+}
+
+function openAttachmentForFile(file: File) {
+    pendingAttachFile.value = file
+    attachError.value = null
+    symbolMenuOpen.value = false
+    attachModalOpen.value = true
+}
+
+function closeAttachModal() {
+    if (submitting.value) return
+    attachModalOpen.value = false
+    pendingAttachFile.value = null
+    attachError.value = null
+}
+
+async function onSendAttachment({file, caption}: { file: File; caption: string }) {
+    if (!ctx || !activeApi.value || submitting.value) return
+    if (needsAltcha.value && showManualAltcha.value && !altchaPayload.value) {
+        attachError.value = msg.altchaError
+        return
+    }
+
+    submitting.value = true
+    attachError.value = null
+    submitError.value = null
+
+    try {
+        const solvedPayload = await resolveAltchaForSend()
+        if (needsAltcha.value && !solvedPayload) return
+
+        const media = await activeApi.value.uploadCommentMedia(file)
+        const created = await activeApi.value.createComment(props.postId, {
+            body: caption,
+            media,
+            parent_id: replyTarget.value?.id ?? null,
+            as_anonymous: isPostingAnon.value,
+            altcha_payload: solvedPayload,
+        })
+        recordCreatedComment(created)
+        draft.value = ''
+        draftTextLength.value = 0
+        richInputRef.value?.clear()
+        attachModalOpen.value = false
+        pendingAttachFile.value = null
+    } catch (err: any) {
+        attachError.value = err?.message || msg.uploadFailed
         altchaPayload.value = null
         altchaRef.value?.reset()
     } finally {
@@ -951,22 +1473,29 @@ onMounted(() => {
         onAuthChanged: () => { void fetchComments() },
     })
     nextTick(() => {
-        resizeInput()
-        applyAppleEmojis()
+        hydrateCommentDom()
     })
 })
 
 onUpdated(() => {
-    applyAppleEmojis()
+    hydrateCommentDom()
 })
 
-watch(appleEmojiBaseUrl, () => {
-    nextTick(() => applyAppleEmojis())
+watch([appleEmojiBaseUrl, mergedCustomEmojiUrls, () => ctx?.customEmojiCatalogReady.value ?? true], () => {
+    nextTick(() => hydrateCommentDom())
+})
+
+watch(replyTarget, (nextTarget) => {
+    if (nextTarget?.body_html?.includes('data-custom-emoji-id') || nextTarget?.body_text?.includes('<tg-emoji')) {
+        void ctx?.ensureCustomEmojis()
+    }
+    nextTick(() => hydrateCommentDom())
 })
 
 onUnmounted(() => {
     unsubscribe?.()
     autoAltchaController?.abort()
+    commentEmojiManager.destroyAll()
     cancelBubbleLongPress()
     cleanupTouchListeners()
     clearBubbleGhostClickGuard()
@@ -1122,7 +1651,14 @@ onUnmounted(() => {
     border-radius: 50%
     object-fit: cover
     display: block
+    box-sizing: border-box
     box-shadow: 0 1px 3px rgba(112, 81, 42, 0.16)
+
+    &.anon-ringed
+        border: 2px solid var(--tgb-anon-ring, #8a7357)
+        padding: 1px
+        background: #fdf9f1
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 1px 4px rgba(112, 81, 42, 0.2)
 
 .avatar-fallback
     display: inline-flex
@@ -1196,6 +1732,30 @@ onUnmounted(() => {
     border-bottom-right-radius: var(--border-bottom-right-radius)
     padding: 6px 10px 6px 11px
     box-sizing: border-box
+
+    &.is-sticker-only
+        background: transparent !important
+        box-shadow: none !important
+        padding: 0
+        min-width: 0
+
+        .inline-reply-quote
+            background: rgba(253, 249, 241, 0.94)
+            box-shadow: 0 1px 3px rgba(112, 81, 42, 0.12)
+            backdrop-filter: blur(8px)
+            margin-bottom: 4px
+
+        .comment-reactions
+            margin-top: 4px
+
+.sticker-title-pill
+    background: rgba(253, 249, 241, 0.92)
+    border-radius: 10px
+    padding: 2px 8px
+    margin-bottom: 4px
+    width: fit-content
+    max-width: 100%
+    box-shadow: 0 1px 2px rgba(112, 81, 42, 0.1)
 
 .svg-appendix
     position: absolute
@@ -1313,6 +1873,36 @@ onUnmounted(() => {
     &:hover
         background: rgba(255, 131, 115, 0.17)
 
+    .inline-reply-row
+        display: flex
+        align-items: center
+        gap: 6px
+        min-width: 0
+
+    .quote-thumb
+        width: 20px
+        height: 20px
+        border-radius: 4px
+        object-fit: cover
+        flex-shrink: 0
+        display: block
+
+    .quote-thumb-badge
+        width: 20px
+        height: 20px
+        border-radius: 4px
+        background: rgba(255, 131, 115, 0.16)
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        font-size: 12px
+        line-height: 1
+        flex-shrink: 0
+
+    .quote-meta
+        min-width: 0
+        flex: 1
+
     .quote-author
         font-size: 0.78em
         font-weight: 700
@@ -1327,6 +1917,99 @@ onUnmounted(() => {
         white-space: nowrap
         overflow: hidden
         text-overflow: ellipsis
+
+.comment-media
+    position: relative
+    margin: 2px 0 4px
+
+    &:last-child
+        margin-bottom: 0
+
+.comment-media-photo, .comment-media-animation, .comment-media-video
+    border-radius: 10px
+    overflow: hidden
+    max-width: 256px
+    background: rgba(112, 81, 42, 0.06)
+
+    &.has-caption
+        margin-bottom: 6px
+
+    img, video
+        display: block
+        max-width: 100%
+        max-height: 280px
+        width: auto
+        height: auto
+        object-fit: cover
+        border-radius: 10px
+
+.comment-media-video video
+    width: 100%
+    background: #1a140e
+
+.comment-media-sticker
+    width: 136px
+    height: 136px
+    margin: 0
+    display: flex
+    align-items: center
+    justify-content: center
+
+.message-timestamp.media-pill
+    position: absolute
+    right: 6px
+    bottom: 6px
+    padding: 2px 6px
+    border-radius: 999px
+    background: rgba(56, 40, 22, 0.56)
+    color: #fff
+    backdrop-filter: blur(4px)
+
+.comment-media-doc
+    display: flex
+    align-items: center
+    gap: 8px
+    padding: 6px 9px
+    margin: 2px 0 4px
+    border-radius: 10px
+    background: rgba(255, 131, 115, 0.1)
+    color: $color-text-main
+    text-decoration: none
+    transition: background-color 0.15s ease
+
+    &:hover
+        background: rgba(255, 131, 115, 0.18)
+
+    .doc-icon
+        width: 28px
+        height: 28px
+        border-radius: 8px
+        background: $color-text-special
+        color: #fff
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        flex-shrink: 0
+
+        svg
+            width: 16px
+            height: 16px
+
+    .doc-info
+        display: flex
+        flex-direction: column
+        min-width: 0
+
+    .doc-name
+        font-size: 0.86em
+        font-weight: 600
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+    .doc-size
+        font-size: 0.74em
+        color: $color-text-light
 
 .text-content
     display: flow-root
@@ -1357,7 +2040,50 @@ onUnmounted(() => {
     :deep(blockquote)
         margin: 4px 0
         padding: 2px 8px
+        border-left: 2.5px solid $color-text-special
+        border-radius: 3px 6px 6px 3px
+        background: rgba(255, 131, 115, 0.1)
         font-size: 0.92em
+
+    :deep(pre)
+        margin: 4px 0
+        padding: 6px 8px
+        border-radius: 6px
+        background: rgba(0, 0, 0, 0.06)
+        overflow-x: auto
+        font-size: 0.88em
+
+        code
+            background: none
+            padding: 0
+
+.text-content, .quote-snippet, .reply-banner-snippet
+    :deep(u)
+        text-decoration: underline
+
+    :deep(del), :deep(s)
+        text-decoration: line-through
+
+    :deep(i.custom-emoji)
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        width: 1.25em
+        height: 1.25em
+        vertical-align: -0.22em
+        margin: 0 1px
+
+        img, video, .tgb-tgs-host
+            width: 100%
+            height: 100%
+            object-fit: contain
+            display: block
+            pointer-events: none
+
+        .tgb-tgs-host svg
+            width: 100% !important
+            height: 100% !important
+            display: block
 
 .comment-reactions
     display: flex
@@ -1429,7 +2155,14 @@ onUnmounted(() => {
         display: none
 
     .bubble-actions:has(.bubble-act-btn.danger)
-        opacity: 0.65
+        opacity: 0.85
+
+    .bubble-actions:has(.bubble-act-btn.confirming)
+        opacity: 1
+
+    .bubble-act-btn.danger
+        min-width: 28px
+        height: 28px
 
     .bubble-actions:not(:has(.bubble-act-btn.danger))
         display: none
@@ -1488,10 +2221,16 @@ onUnmounted(() => {
     align-items: center
     gap: 8px
 
+.guest-meta-row
+    display: inline-flex
+    align-items: center
+    gap: 8px
+    margin-left: auto
+
 .guest-bar.has-composer
     align-items: flex-end
 
-    .guest-auth-row
+    .guest-auth-row, .guest-meta-row
         align-items: flex-end
 
     .guest-avatar
@@ -1499,25 +2238,53 @@ onUnmounted(() => {
         margin-bottom: -16px
 
     .signin-btn
-        margin-bottom: 2px
+        margin-bottom: 0
 
 .guest-avatar
     width: 30px
-    height: 30px
+    aspect-ratio: 1
+    padding: 0
     border-radius: 50%
     flex-shrink: 0
     display: inline-flex
     align-items: center
     justify-content: center
+    overflow: hidden
     background: #eee5d7
     color: $color-text-light
     border: 1px solid rgba(112, 81, 42, 0.14)
     box-sizing: border-box
+    cursor: pointer
     user-select: none
+    transition: transform 0.16s ease, box-shadow 0.16s ease
+
+    &:hover
+        transform: translateY(-1px)
+
+    &.anon-ringed
+        width: 40px
+        border: 2px solid var(--tgb-anon-ring, #8a7357)
+        padding: 1px
+        background: #fdf9f1
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 1px 4px rgba(112, 81, 42, 0.2)
+
+    .guest-avatar-img
+        width: 100%
+        height: auto
+        aspect-ratio: 1
+        border-radius: 50%
+        object-fit: cover
+        display: block
 
     svg
         width: 18px
         height: 18px
+
+.guest-anon-name
+    font-size: 0.78em
+    font-weight: 600
+    color: #8a7357
+    white-space: nowrap
 
 .user-pill
     display: inline-flex
@@ -1527,11 +2294,22 @@ onUnmounted(() => {
     font-weight: 600
     color: $color-text-main
 
+    .user-name.anon
+        color: #8a7357
+
 .avatar.sm
     width: 18px
     height: 18px
     border-radius: 50%
     object-fit: cover
+    box-sizing: border-box
+
+    &.anon-ringed
+        width: 22px
+        height: 22px
+        border: 2px solid var(--tgb-anon-ring, #8a7357)
+        padding: 1px
+        background: #fdf9f1
 
 .user-controls
     display: flex
@@ -1644,49 +2422,84 @@ onUnmounted(() => {
     &:hover
         color: $color-text-special-dark
 
-// Ported from one-among-us/web ProfileComments.vue (#add-comment + #send-comment-btn)
+// Web A Rich Composer inside #add-comment
 .add-comment
     position: relative
 
-    textarea
-        display: block
-        font-family: $font
-        font-size: 0.94em
-        line-height: 1.45
-        width: 100%
-        min-height: 40px
-        background: #fdf9f1
-        color: $color-text-main
-        border-radius: 12px
-        overflow-y: auto
-        resize: none
-        border: 1px solid rgba(112, 81, 42, 0.14)
-        padding: 10px 68px 10px 12px
-        box-sizing: border-box
-        outline: none
-        transition: border-color 0.16s ease, background-color 0.16s ease
+.composer-smiley-btn
+    position: absolute
+    left: 7px
+    bottom: 7px
+    z-index: 2
+    width: 26px
+    height: 26px
+    padding: 0
+    border: none
+    border-radius: 50%
+    background: transparent
+    color: $color-text-light
+    cursor: pointer
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    transition: color 0.14s ease, background-color 0.14s ease
 
-        &:focus, &:focus-visible
-            outline: none
-            border-color: rgba(112, 81, 42, 0.26)
-            background: #fffcf9
+    svg
+        width: 19px
+        height: 19px
 
-        &::placeholder
-            color: $color-text-light
-            opacity: 0.65
+    &:hover:not(:disabled), &.active
+        color: $color-text-special
+        background: rgba(255, 131, 115, 0.12)
+
+    &:disabled
+        opacity: 0.5
+        cursor: default
+
+.composer-rich-input
+    --tgb-rich-pad-left: 38px
+    --tgb-rich-pad-right: 78px
 
 .send-comment-btn
     position: absolute
-    right: 10px
-    bottom: 10px
+    right: 8px
+    bottom: 7px
+    z-index: 2
     color: $color-text-special
     display: flex
     align-items: center
+    gap: 3px
+
+    .attach-btn
+        width: 26px
+        height: 26px
+        padding: 0
+        border: none
+        border-radius: 50%
+        background: transparent
+        color: $color-text-light
+        cursor: pointer
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        transition: color 0.14s ease, background-color 0.14s ease
+
+        svg
+            width: 18px
+            height: 18px
+
+        &:hover:not(:disabled)
+            color: $color-text-special
+            background: rgba(255, 131, 115, 0.12)
+
+        &:disabled
+            opacity: 0.5
+            cursor: default
 
     .char-count
         font-size: 10px
         color: $color-text-light
-        margin-right: 5px
+        margin-right: 2px
         font-variant-numeric: tabular-nums
 
     .unstyled-button

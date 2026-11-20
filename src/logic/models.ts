@@ -176,6 +176,7 @@ export interface PostInteractionState {
   reactions: MergedReaction[]
   poll?: MergedPoll | null
   comment_count: number
+  views?: string | null
 }
 
 export interface AllowedReactionItem {
@@ -201,6 +202,59 @@ export interface CommentAuthorDTO {
   verified: boolean
 }
 
+export interface CommentMediaDTO {
+  media_type: 'photo' | 'sticker' | 'animation' | 'video' | 'document' | string
+  url: string
+  thumb?: string | null
+  width?: number | null
+  height?: number | null
+  size?: number | null
+  file_name?: string | null
+  mime_type?: string | null
+  emoji?: string | null
+  is_animated?: boolean | null
+  is_video?: boolean | null
+  sticker_id?: string | null
+}
+
+export interface CustomEmojiAsset {
+  id: string
+  url: string
+  format?: string | null
+}
+
+export interface StickerItem {
+  id: string
+  url: string
+  file?: string | null
+  thumb?: string | null
+  emoji?: string | null
+  width?: number | null
+  height?: number | null
+  format?: 'webp' | 'tgs' | 'webm' | string | null
+  is_animated?: boolean
+  is_video?: boolean
+}
+
+export interface StickerPack {
+  id: string
+  name?: string
+  title: string
+  stickers: StickerItem[]
+}
+
+export interface CustomEmojisResponse {
+  emojis: CustomEmojiAsset[]
+}
+
+export interface StickersResponse {
+  packs: StickerPack[]
+}
+
+export interface PostViewResponse {
+  views: Record<string, string>
+}
+
 export interface CommentDTO {
   id: number
   post_id: number
@@ -209,7 +263,7 @@ export interface CommentDTO {
   author: CommentAuthorDTO
   body_text: string
   body_html: string
-  media?: any | null
+  media?: CommentMediaDTO | null
   created_at: string
   edited_at?: string | null
   deleted: boolean
@@ -221,6 +275,7 @@ export interface CommentDTO {
 export interface CommentsResponse {
   post_id: number
   comments: CommentDTO[]
+  viewer_anon_tag?: string | null
 }
 
 export interface ReactionTogglePayload {
@@ -245,7 +300,8 @@ export interface PollVoteResponse {
 }
 
 export interface CreateCommentPayload {
-  body: string
+  body?: string
+  media?: CommentMediaDTO | null
   parent_id?: number | null
   as_anonymous?: boolean
   altcha_payload?: string | null
@@ -314,6 +370,10 @@ export interface StreamPostDeletedEvent {
 
 export interface StreamAllowedReactionsUpdatedEvent {
   allowed_reactions: AllowedReactionItem[]
+}
+
+export interface StreamPostViewsUpdatedEvent {
+  views: Record<string, string>
 }
 
 export type PostDeletedEvent = StreamPostDeletedEvent

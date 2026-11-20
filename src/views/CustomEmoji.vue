@@ -11,23 +11,25 @@
                loop
                playsinline
                disablepictureinpicture
-               @error="tryNext" />
+               @error="tryNext(currentSrc)" />
         <img v-else-if="currentSrc"
              ref="imgEl"
              :key="currentSrc"
              :src="currentSrc"
              alt=""
              loading="lazy"
-             @error="tryNext" />
+             @error="tryNext(currentSrc)" />
         <span v-else class="fallback-star" aria-hidden="true">✦</span>
     </span>
 </template>
 
 <script lang="ts" setup>
 import {computed, nextTick, onMounted, onUnmounted, ref, watch} from 'vue'
+import {buildCustomEmojiCandidates} from '@/logic/customEmojiDom'
+import {useTgbInteractive} from '@/logic/interactive'
 import {isValidCustomEmojiId} from '@/logic/reactions'
 import {MountedTgsHandle, mountTgsAnimation} from '@/logic/tgs'
-import {isSafeMediaUrl, resolveRelativeUrl} from '@/logic/url'
+import {resolveRelativeUrl} from '@/logic/url'
 
 const props = defineProps<{
     id: string
@@ -35,6 +37,7 @@ const props = defineProps<{
     postsUrl: string
 }>()
 
+const interactiveCtx = useTgbInteractive()
 const attemptIdx = ref(0)
 const tgsHost = ref<HTMLElement | null>(null)
 const imgEl = ref<HTMLImageElement | null>(null)
@@ -42,28 +45,18 @@ const videoEl = ref<HTMLVideoElement | null>(null)
 let tgsHandle: MountedTgsHandle | null = null
 let tgsAbort: AbortController | null = null
 
+const deferExtensionlessProbe = computed(
+    () => !!(interactiveCtx?.api.value && !interactiveCtx.customEmojiCatalogReady.value)
+)
+
 const candidates = computed((): string[] => {
     if (!isValidCustomEmojiId(props.id)) return []
     const primary = props.src ? props.src.trim() : resolveRelativeUrl(`emoji/${props.id}`, props.postsUrl)
-    if (!primary || !isSafeMediaUrl(primary)) return []
-
-    const clean = primary.split('?')[0].split('#')[0]
-    const fileName = clean.split('/').pop() || ''
-    if (!fileName.includes('.')) {
-        // Put extensioned candidates first (including .apng & .tgs) to avoid guaranteed extensionless 404s
-        return [
-            `${primary}.webp`,
-            `${primary}.webm`,
-            `${primary}.apng`,
-            `${primary}.tgs`,
-            `${primary}.png`,
-            `${primary}.gif`,
-        ]
-    }
-    return [primary]
+    return buildCustomEmojiCandidates(primary, deferExtensionlessProbe.value)
 })
 
-watch(() => [props.id, props.src, props.postsUrl], () => {
+watch(() => [props.id, props.src, props.postsUrl, candidates.value.join('|')], () => {
+    cleanupTgs()
     attemptIdx.value = 0
 })
 
@@ -79,7 +72,10 @@ function cleanupTgs() {
     tgsHandle = null
 }
 
-function tryNext() {
+function tryNext(expectedSrc?: string) {
+    if (expectedSrc !== undefined && expectedSrc !== currentSrc.value) {
+        return
+    }
     cleanupTgs()
     if (attemptIdx.value < candidates.value.length) {
         attemptIdx.value++
@@ -104,7 +100,7 @@ watch(
             tgsHandle = handle
         } catch {
             if (!controller.signal.aborted) {
-                tryNext()
+                tryNext(url)
             }
         }
     },
@@ -115,12 +111,12 @@ onMounted(() => {
     // SSR-rendered <img> / <video> candidates can 404 before Vue attaches @error listeners
     if (isTgs.value || !currentSrc.value) return
     if (isVideo.value) {
-        if (videoEl.value?.error) tryNext()
+        if (videoEl.value?.error) tryNext(currentSrc.value)
         return
     }
     const img = imgEl.value
     if (img && img.complete && img.naturalWidth === 0) {
-        tryNext()
+        tryNext(currentSrc.value)
     }
 })
 

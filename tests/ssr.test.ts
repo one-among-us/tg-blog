@@ -1,7 +1,15 @@
 import {describe, expect, test} from 'bun:test'
 import {createSSRApp, h} from 'vue'
 import {renderToString} from 'vue/server-renderer'
-import {TgBlog} from '../dist/tg-blog.es.js'
+import {
+  AttachmentModal,
+  CommentThread,
+  RichCommentInput,
+  StickerMedia,
+  SymbolMenu,
+  TextFormatter,
+  TgBlog,
+} from '../dist/tg-blog.es.js'
 import type {Post} from '../src/logic/models'
 
 describe('TgBlog SSR rendering (pure server environment)', () => {
@@ -97,5 +105,67 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
     expect(interactiveHtml).not.toContain('quick-reaction')
     expect(interactiveHtml).toContain('interactive-reactions')
     expect(interactiveHtml).toContain('comment-toggle')
+  })
+
+  test('renders v3 composer & media components safely during SSR without browser globals', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+
+    const richHtml = await renderToString(
+      createSSRApp({
+        render: () => h(RichCommentInput, {
+          modelValue: '**hello**',
+          placeholder: 'Write a reply...',
+        }),
+      })
+    )
+    expect(richHtml).toContain('tgb-rich-input')
+
+    const stickerHtml = await renderToString(
+      createSSRApp({
+        render: () => h(StickerMedia, {
+          url: '/api/life/media/stickers/starter/hello.webp',
+          emoji: '✨',
+        }),
+      })
+    )
+    expect(stickerHtml).toContain('/api/life/media/stickers/starter/hello.webp')
+
+    const tgsStickerHtml = await renderToString(
+      createSSRApp({
+        render: () => h(StickerMedia, {
+          url: '/api/life/media/stickers/starter/anim.tgs',
+          isAnimated: true,
+          emoji: '🎉',
+        }),
+      })
+    )
+    expect(tgsStickerHtml).toContain('tgb-sticker-tgs-host')
+    expect(tgsStickerHtml).not.toContain('<img')
+
+    const closedWidgetsHtml = await renderToString(
+      createSSRApp({
+        render: () => h('div', [
+          h(TextFormatter, {
+            open: true,
+            anchor: {x: 100, y: 100},
+            activeFormats: {
+              bold: true,
+              italic: false,
+              underline: false,
+              strikethrough: false,
+              monospace: false,
+              spoiler: false,
+              blockquote: false,
+              hasFormatting: true,
+            },
+          }),
+          h(SymbolMenu, {open: true}),
+          h(AttachmentModal, {open: true, file: null}),
+          h(CommentThread, {postId: 1}),
+        ]),
+      })
+    )
+    expect(typeof closedWidgetsHtml).toBe('string')
   })
 })

@@ -86,7 +86,7 @@
                     <div class="f-grow1"></div>
                     <div class="author" v-if="p.author">{{p.author}}</div>
                     <div class="date">{{p.date}}</div>
-                    <div class="views" v-if="p.views">{{p.views}} <i-fas-eye /></div>
+                    <div class="views" v-if="displayViews">{{displayViews}} <i-fas-eye /></div>
                 </div>
             </div>
 
@@ -134,33 +134,29 @@ import AppleEmoji from "@/views/AppleEmoji.vue";
 import CustomEmoji from "@/views/CustomEmoji.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {replaceTextEmojisWithApple, useAppleEmojiBaseUrl} from "@/logic/appleEmoji";
-import {MountedTgsHandle, mountTgsAnimation} from "@/logic/tgs";
+import {buildCustomEmojiCandidates, createCustomEmojiDomManager} from "@/logic/customEmojiDom";
 import {useTgbMessages} from "@/logic/messages";
 import {useTgbInteractive} from "@/logic/interactive";
 import {
     buildAvailableReactions,
     canonicalReactionKey,
+    isValidCustomEmojiId,
     ReactionChoice,
     resolveCustomEmojiBaseSrc,
 } from "@/logic/reactions";
 import {resolveRelativeUrl} from "@/logic/url";
-import {computed, defineAsyncComponent, onMounted, onUnmounted, onUpdated, ref, StyleValue} from "vue";
+import {initSpoilers} from "@/logic/spoilers";
+import {computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpdated, ref, StyleValue, watch} from "vue";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 
 const CommentThread = defineAsyncComponent(() => import("@/views/CommentThread.vue"))
 const ReactionSelector = defineAsyncComponent(() => import("@/views/ReactionSelector.vue"))
 
-interface TgsInstanceRecord {
-    host: HTMLElement
-    controller: AbortController
-    handle: MountedTgsHandle | null
-}
-
 const msg = useTgbMessages()
 const interactiveCtx = useTgbInteractive()
 const appleEmojiBaseUrl = useAppleEmojiBaseUrl()
-const tgsInstances: TgsInstanceRecord[] = []
+const emojiDomManager = createCustomEmojiDomManager()
 
 const props = defineProps<{
     p: Post
@@ -185,7 +181,9 @@ const commentsOpen = ref(false)
 const selectorOpen = ref(false)
 const selectorAnchor = ref({x: 0, y: 0})
 
-const channelCustomEmojis = computed(() => interactiveCtx?.channelCustomEmojis.value ?? {})
+const channelCustomEmojis = computed(() =>
+    interactiveCtx?.allCustomEmojis.value ?? interactiveCtx?.channelCustomEmojis.value ?? {}
+)
 const epochEmojiBase = computed(() => interactiveCtx?.epochEmojiBase.value ?? null)
 
 function customEmojiSrc(id: string): string {
@@ -229,6 +227,7 @@ const chosenReactionKeys = computed((): Set<string> => {
 })
 
 const commentCount = computed(() => props.interaction?.comment_count ?? 0)
+const displayViews = computed(() => props.interaction?.views ?? p.value.views)
 
 function onToggleReaction(r: MergedReaction) {
     if (r.custom_emoji_id) {
@@ -251,7 +250,7 @@ function onVotePoll(pollId: string, optionIndices: number[]) {
 }
 
 const INTERACTIVE_TRIGGER_SELECTOR =
-    'a, button, input, textarea, select, img, video, audio, summary, .clickable, .media_spoiler, .spoiler, .plyr, #Location, blockquote[expandable], blockquote.expandable, .reaction-btn, #Poll, pre, .code-copy-btn'
+    'a, button, input, textarea, select, audio, summary, .media_spoiler, .spoiler, .plyr, #Location, blockquote[expandable], blockquote.expandable, .reaction-btn, #Poll, pre, .code-copy-btn, .reply, .share, .comment-toggle, .dice, .file .thumb'
 
 function shouldIgnoreReactionTrigger(target: EventTarget | null): boolean {
     if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) {
@@ -264,6 +263,7 @@ function shouldIgnoreReactionTrigger(target: EventTarget | null): boolean {
 }
 
 function openSelectorAt(x: number, y: number) {
+    void interactiveCtx?.ensureCustomEmojis()
     selectorAnchor.value = {x, y}
     selectorOpen.value = true
 }
@@ -560,6 +560,8 @@ function initRichContent()
             replaceTextEmojisWithApple(node, appleEmojiBaseUrl.value)
         })
     }
+
+    initSpoilers()
 }
 
 function refreshSize() {
@@ -567,8 +569,29 @@ function refreshSize() {
     sizeScale.value = el.value.clientWidth / 450
 }
 
+function maybePrefetchCustomEmojis() {
+    if (!props.interactive || !interactiveCtx) return
+    const hasCustomReaction = displayReactions.value.some(r => !!r.custom_emoji_id)
+    const hasCustomInline = !!p.value.text?.includes('data-custom-emoji-id')
+    if (hasCustomReaction || hasCustomInline) {
+        void interactiveCtx.ensureCustomEmojis()
+    }
+}
+
+watch(
+    () => [displayReactions.value, p.value.text] as const,
+    () => {
+        maybePrefetchCustomEmojis()
+    }
+)
+
+watch([channelCustomEmojis, () => interactiveCtx?.customEmojiCatalogReady.value ?? true], () => {
+    void nextTick(() => initEmoji())
+})
+
 onMounted(() =>
 {
+    maybePrefetchCustomEmojis()
     initEmoji()
     initRichContent()
     refreshSize()
@@ -581,31 +604,12 @@ onUpdated(() =>
     initRichContent()
 })
 
-function destroyAllTgsInstances() {
-    for (const rec of tgsInstances) {
-        rec.controller.abort()
-        rec.handle?.destroy()
-    }
-    tgsInstances.length = 0
-}
-
-function pruneDetachedTgsInstances() {
-    for (let i = tgsInstances.length - 1; i >= 0; i--) {
-        const rec = tgsInstances[i]
-        if (!el.value?.contains(rec.host)) {
-            rec.controller.abort()
-            rec.handle?.destroy()
-            tgsInstances.splice(i, 1)
-        }
-    }
-}
-
 onUnmounted(() =>
 {
     window.removeEventListener('resize', refreshSize)
     cancelLongPress()
     clearGhostClickGuard()
-    destroyAllTgsInstances()
+    emojiDomManager.destroyAll()
 })
 
 function replaceUrl(url: string): string
@@ -614,64 +618,28 @@ function replaceUrl(url: string): string
 }
 
 /**
- * Initialize custom emojis
+ * Initialize custom emojis (supports both `emoji-src` and `data-custom-emoji-id` inside `.text`).
  */
 function initEmoji()
 {
     if (!el.value || typeof document === 'undefined') return
-    pruneDetachedTgsInstances()
-    // Scope strictly to this post element and build media nodes via DOM APIs (never innerHTML)
-    el.value.querySelectorAll("i.custom-emoji:not(.init)").forEach(it => {
-        const rawSrc = it.getAttribute("emoji-src")
-        if (!rawSrc) return
-        const src = replaceUrl(rawSrc)
-        if (!src) return
-
-        it.classList.add("init")
-        it.textContent = ""
-
-        const cleanSrc = src.toLowerCase().split("?")[0]
-        if (cleanSrc.endsWith(".tgs"))
-        {
-            const host = document.createElement("span")
-            host.className = "tgb-tgs-host"
-            it.appendChild(host)
-            const controller = new AbortController()
-            const rec: TgsInstanceRecord = {host, controller, handle: null}
-            tgsInstances.push(rec)
-            void mountTgsAnimation(host, src, controller.signal)
-                .then(handle => {
-                    if (controller.signal.aborted || !el.value?.contains(host)) {
-                        handle.destroy()
-                    } else {
-                        rec.handle = handle
-                    }
-                })
-                .catch(() => {
-                    if (!controller.signal.aborted) {
-                        host.textContent = "✦"
-                    }
-                })
-        }
-        else if (cleanSrc.endsWith(".webm"))
-        {
-            const video = document.createElement("video")
-            video.src = src
-            video.preload = "auto"
-            video.muted = true
-            video.autoplay = true
-            video.loop = true
-            video.playsInline = true
-            video.setAttribute("disablepictureinpicture", "")
-            it.appendChild(video)
-        }
-        else
-        {
-            const img = document.createElement("img")
-            img.src = src
-            img.alt = ""
-            it.appendChild(img)
-        }
+    emojiDomManager.mountAll(el.value, {
+        selector: 'i.custom-emoji',
+        resolveCandidates: (node) => {
+            const rawSrc = node.getAttribute('emoji-src')
+            if (rawSrc) {
+                const src = replaceUrl(rawSrc)
+                return src ? buildCustomEmojiCandidates(src) : []
+            }
+            const id = node.getAttribute('data-custom-emoji-id')?.trim()
+            if (id && isValidCustomEmojiId(id)) {
+                const deferProbe = !!(
+                    interactiveCtx?.api.value && !interactiveCtx.customEmojiCatalogReady.value
+                )
+                return buildCustomEmojiCandidates(customEmojiSrc(id), deferProbe)
+            }
+            return []
+        },
     })
 }
 

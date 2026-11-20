@@ -4,6 +4,7 @@ import {gzipSync} from 'node:zlib'
 import {
   isSafeMediaUrl,
   normalizeTelegramBotUsername,
+  resolveApiAssetUrl,
   resolvePostsUrl,
   resolveRelativeUrl,
   sanitizeAvatarUrl,
@@ -37,7 +38,15 @@ import {
   MAX_TGS_COMPRESSED_BYTES,
   MAX_TGS_DECOMPRESSED_BYTES,
 } from '../src/logic/tgs'
-import {defaultMessages} from '../src/logic/messages'
+import {defaultMessages, zhCnMessages} from '../src/logic/messages'
+import {ANON_RING_PALETTE, normalizeAnonDisplayName, pickAnonIdentity} from '../src/logic/anonAvatar'
+import {
+  matchLiveMarkdownRule,
+  parseMarkdownToHtml,
+  sanitize,
+  serializeEditorDomToMarkdown,
+} from '../src/logic/markdown'
+import {buildCustomEmojiCandidates} from '../src/logic/customEmojiDom'
 import {
   buildAvailableReactions,
   canonicalReactionKey,
@@ -46,8 +55,23 @@ import {
   inferEpochEmojiBase,
   TELEGRAM_CHANNEL_REACTIONS,
 } from '../src/logic/reactions'
-import {LifeApiClient, LifeStreamClient, sanitizeCommentHtml} from '../src/logic/api'
-import type {CommentDTO, MergedPoll, MergedReaction, Post} from '../src/logic/models'
+import {LifeApiClient, LifeStreamClient, sanitizeCommentHtml, sanitizeCommentSnippetHtml} from '../src/logic/api'
+import {
+  clampCenterPlacement,
+  clampFloatingPlacement,
+  createFloatingPositionController,
+  isEventInsideElement,
+} from '../src/logic/floatingPosition'
+import {
+  EditorHistoryManager,
+  getEditorSelectionOffsets,
+  MAX_HISTORY,
+  resolveEditorDomPosition,
+  restoreEditorSelectionOffsets,
+  snapshotEditorHtml,
+} from '../src/logic/editorHistory'
+import {initSpoilers} from '../src/logic/spoilers'
+import type {CommentDTO, CommentMediaDTO, MergedPoll, MergedReaction, Post} from '../src/logic/models'
 import moment from 'moment'
 
 describe('url.ts — SSR & client hydration consistency', () => {
@@ -954,5 +978,1151 @@ describe('comment reactions — state helpers, API client, and SSE dispatch', ()
       if (origES === undefined) delete (globalThis as any).EventSource
       else (globalThis as any).EventSource = origES
     }
+  })
+})
+
+describe('v3 features — markdown, sanitizeCommentHtml, media APIs, SSE views, and messages', () => {
+  test('parseMarkdownToHtml converts Telegram Markdown safely and escapes XSS', () => {
+    expect(parseMarkdownToHtml('**bold** __italic__ <u>under</u> ~~strike~~ ||secret|| `code`')).toBe(
+      '<b>bold</b> <em>italic</em> <u>under</u> <del>strike</del> <span class="spoiler"><span>secret</span></span> <code>code</code>'
+    )
+
+    // Nested formatting & links with underscores in URL
+    expect(parseMarkdownToHtml('[**bold link**](https://example.com/a__b__c)')).toBe(
+      '<a href="https://example.com/a__b__c" target="_blank" rel="noopener noreferrer nofollow"><b>bold link</b></a>'
+    )
+
+    // Rejects unsafe javascript: links and escapes script tags
+    const unsafe = parseMarkdownToHtml('[bad](javascript:alert(1)) <script>alert(1)</script>')
+    expect(unsafe).not.toContain('<a ')
+    expect(unsafe).not.toContain('<script>')
+    expect(unsafe).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+
+    // Fenced code blocks & multi-line blockquotes
+    const mdBlock = '```ts\nconst x = "**not bold**";\n```\n> quote **one**\n> quote two'
+    expect(parseMarkdownToHtml(mdBlock)).toBe(
+      '<pre><code class="language-ts">const x = "**not bold**";</code></pre><blockquote>quote <b>one</b><br>quote two</blockquote>'
+    )
+
+    // Custom emoji in both default <i> and editor <img> mode
+    const emojiMd = 'Hi <tg-emoji emoji-id="5368324170671202286">👍</tg-emoji>'
+    expect(parseMarkdownToHtml(emojiMd)).toBe(
+      'Hi <i class="custom-emoji" data-custom-emoji-id="5368324170671202286">👍</i>'
+    )
+    expect(parseMarkdownToHtml(emojiMd, {
+      customEmojiTag: 'img',
+      customEmojiUrls: {'5368324170671202286': '/api/life/exports/emoji/5368324170671202286.webp'},
+    })).toBe(
+      'Hi <img class="custom-emoji" data-custom-emoji-id="5368324170671202286" alt="👍" src="/api/life/exports/emoji/5368324170671202286.webp">'
+    )
+  })
+
+  test('serializeEditorDomToMarkdown converts live formatted DOM nodes back to Telegram Markdown', () => {
+    class MockClassList {
+      private set = new Set<string>()
+      constructor(classes: string[] = []) {
+        classes.forEach(c => this.set.add(c))
+      }
+      contains(c: string) { return this.set.has(c) }
+    }
+    class MockText {
+      nodeType = 3
+      nodeValue: string
+      constructor(val: string) { this.nodeValue = val }
+    }
+    class MockEl {
+      nodeType = 1
+      tagName: string
+      classList: MockClassList
+      className: string
+      attrs: Record<string, string>
+      style: Record<string, string> = {}
+      childNodes: Array<MockEl | MockText> = []
+      constructor(tag: string, attrs: Record<string, string> = {}, children: Array<MockEl | MockText | string> = []) {
+        this.tagName = tag.toUpperCase()
+        this.attrs = attrs
+        this.className = attrs.class || ''
+        this.classList = new MockClassList((attrs.class || '').split(/\s+/).filter(Boolean))
+        for (const ch of children) {
+          this.childNodes.push(typeof ch === 'string' ? new MockText(ch) : ch)
+        }
+      }
+      get children() { return this.childNodes.filter((n): n is MockEl => n.nodeType === 1) }
+      getAttribute(k: string) { return this.attrs[k] ?? null }
+      hasAttribute(k: string) { return k in this.attrs }
+      querySelector(sel: string) {
+        return this.children.find(c => c.tagName.toLowerCase() === sel.toLowerCase()) ?? null
+      }
+      get textContent(): string {
+        return this.childNodes.map(c => c.nodeType === 3 ? c.nodeValue : (c as MockEl).textContent).join('')
+      }
+    }
+
+    const root = new MockEl('div', {}, [
+      new MockEl('b', {}, ['bold']),
+      ' ',
+      new MockEl('em', {}, ['italic']),
+      ' ',
+      new MockEl('u', {}, ['under']),
+      ' ',
+      new MockEl('del', {}, ['strike']),
+      ' ',
+      new MockEl('span', {class: 'spoiler'}, ['secret']),
+      ' ',
+      new MockEl('code', {}, ['inline()']),
+      ' ',
+      new MockEl('a', {href: 'https://example.com'}, ['link']),
+      ' ',
+      new MockEl('img', {'data-custom-emoji-id': '123456', alt: '✦'}),
+      new MockEl('blockquote', {}, ['quoted line', new MockEl('br'), 'second']),
+      new MockEl('pre', {}, [new MockEl('code', {class: 'language-js'}, ['const a = 1'])]),
+    ])
+
+    const md = serializeEditorDomToMarkdown(root as unknown as HTMLElement)
+    expect(md).toBe(
+      '**bold** __italic__ <u>under</u> ~~strike~~ ||secret|| `inline()` [link](https://example.com) <tg-emoji emoji-id="123456">✦</tg-emoji>\n' +
+      '> quoted line\n> second\n' +
+      '```js\nconst a = 1\n```'
+    )
+  })
+
+  test('matchLiveMarkdownRule matches completed inline Telegram Markdown delimiters cleanly', () => {
+    expect(matchLiveMarkdownRule('hello **world**')).toMatchObject({
+      format: 'bold',
+      content: 'world',
+      raw: '**world**',
+    })
+    expect(matchLiveMarkdownRule('__ital__')).toMatchObject({format: 'italic', content: 'ital'})
+    expect(matchLiveMarkdownRule('~~del~~')).toMatchObject({format: 'strike', content: 'del'})
+    expect(matchLiveMarkdownRule('||hide||')).toMatchObject({format: 'spoiler', content: 'hide'})
+    expect(matchLiveMarkdownRule('`fn()`')).toMatchObject({format: 'code', content: 'fn()'})
+    expect(matchLiveMarkdownRule('***partial**')).toBeNull()
+    expect(matchLiveMarkdownRule('**   **')).toBeNull()
+  })
+
+  test('sanitizeCommentHtml preserves spoiler, custom-emoji numeric IDs, and formatting while blocking XSS', () => {
+    const html =
+      '<p><b>b</b> <em>e</em> <u>u</u> <del>d</del> <span class="spoiler">secret</span> ' +
+      '<i class="custom-emoji" data-custom-emoji-id="5368324170671202286" onclick="alert(1)">✦</i> ' +
+      '<i class="custom-emoji" data-custom-emoji-id="../evil">bad</i> ' +
+      '<span class="evil-class">ok</span> ' +
+      '<a href="https://example.com" onclick="evil()">safe</a></p>'
+    const clean = sanitizeCommentHtml(html)
+    expect(clean).toContain('<b>b</b>')
+    expect(clean).toContain('<em>e</em>')
+    expect(clean).toContain('<u>u</u>')
+    expect(clean).toContain('<del>d</del>')
+    expect(clean).toContain('<span class="spoiler">secret</span>')
+    expect(clean).toContain('<i data-custom-emoji-id="5368324170671202286" class="custom-emoji">✦</i>')
+    expect(clean).not.toContain('../evil')
+    expect(clean).not.toContain('onclick')
+    expect(clean).not.toContain('evil-class')
+    expect(clean).toContain('target="_blank"')
+    expect(clean).toContain('rel="noopener noreferrer nofollow"')
+  })
+
+  test('LifeApiClient v3 endpoints (recordViews, uploadCommentMedia, getCustomEmojis, getStickers, createComment with media)', async () => {
+    const origFetch = globalThis.fetch
+    const calls: Array<{url: string; method: string; body: any; credentials?: RequestCredentials}> = []
+    const sampleMedia: CommentMediaDTO = {
+      media_type: 'photo',
+      url: '/api/life/media/comments/1.webp',
+      thumb: '/api/life/media/comments/1_thumb.webp',
+      width: 800,
+      height: 600,
+    }
+
+    globalThis.fetch = (async (input: any, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method ?? 'GET'
+      calls.push({url, method, body: init?.body, credentials: init?.credentials})
+
+      if (url.endsWith('/posts/view')) {
+        return new Response(JSON.stringify({views: {'1': '42', '2': '1.2K'}}), {
+          status: 200,
+          headers: {'content-type': 'application/json'},
+        })
+      }
+      if (url.endsWith('/comments/media')) {
+        return new Response(JSON.stringify(sampleMedia), {
+          status: 200,
+          headers: {'content-type': 'application/json'},
+        })
+      }
+      if (url.endsWith('/emojis/custom')) {
+        return new Response(JSON.stringify({emojis: [{id: '123', url: '/api/life/exports/emoji/123.webp', format: 'webp'}]}), {
+          status: 200,
+          headers: {'content-type': 'application/json'},
+        })
+      }
+      if (url.endsWith('/stickers')) {
+        return new Response(JSON.stringify({packs: [{id: 'starter', title: 'Starter', stickers: []}]}), {
+          status: 200,
+          headers: {'content-type': 'application/json'},
+        })
+      }
+      return new Response(JSON.stringify({
+        id: 500,
+        post_id: 10,
+        parent_id: null,
+        source: 'web',
+        author: {display_name: 'Anon', role: 'anonymous', verified: false},
+        body_text: '',
+        body_html: '',
+        media: sampleMedia,
+        created_at: '2026-11-20T04:00:00Z',
+        deleted: false,
+        is_mine: true,
+        can_delete: true,
+      }), {
+        status: 200,
+        headers: {'content-type': 'application/json'},
+      })
+    }) as unknown as typeof fetch
+
+    try {
+      const api = new LifeApiClient('/api/life')
+
+      const viewsRes = await api.recordViews([1, 2, 1])
+      expect(viewsRes.views).toEqual({'1': '42', '2': '1.2K'})
+      expect(calls[0].url).toBe('/api/life/posts/view')
+      expect(JSON.parse(calls[0].body)).toEqual({post_ids: [1, 2]})
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'pic.png', {type: 'image/png'})
+      const uploaded = await api.uploadCommentMedia(file)
+      expect(uploaded).toEqual(sampleMedia)
+      expect(calls[1].url).toBe('/api/life/comments/media')
+      expect(calls[1].body).toBeInstanceOf(FormData)
+
+      const ce = await api.getCustomEmojis()
+      expect(ce.emojis).toHaveLength(1)
+      expect(calls[2].url).toBe('/api/life/emojis/custom')
+
+      const stickers = await api.getStickers()
+      expect(stickers.packs[0].id).toBe('starter')
+      expect(calls[3].url).toBe('/api/life/stickers')
+
+      const created = await api.createComment(10, {body: '', media: sampleMedia})
+      expect(created.media).toEqual(sampleMedia)
+      expect(JSON.parse(calls[4].body)).toMatchObject({body: '', media: sampleMedia})
+    } finally {
+      globalThis.fetch = origFetch
+    }
+  })
+
+  test('LifeStreamClient dispatches post.views.updated SSE events', () => {
+    const listeners = new Map<string, (ev: Event) => void>()
+    class MockEventSource {
+      static CLOSED = 2
+      readyState = 1
+      onopen: (() => void) | null = null
+      onerror: ((ev: Event) => void) | null = null
+      addEventListener(type: string, cb: (ev: Event) => void) {
+        listeners.set(type, cb)
+      }
+      close() {
+        this.readyState = 2
+      }
+    }
+
+    const origWin = (globalThis as any).window
+    const origES = (globalThis as any).EventSource
+    ;(globalThis as any).window = {}
+    ;(globalThis as any).EventSource = MockEventSource
+
+    try {
+      const received: any[] = []
+      const client = new LifeStreamClient('/api/life', {
+        onPostViewsUpdated: (ev) => received.push(ev),
+      })
+      client.connect()
+
+      const handler = listeners.get('post.views.updated')
+      expect(handler).toBeDefined()
+      const payload = {views: {'10': '99', '11': '1.5K'}}
+      handler!({data: JSON.stringify(payload), lastEventId: 'evt-99'} as unknown as Event)
+      expect(received).toEqual([payload])
+      client.close()
+    } finally {
+      if (origWin === undefined) delete (globalThis as any).window
+      else (globalThis as any).window = origWin
+      if (origES === undefined) delete (globalThis as any).EventSource
+      else (globalThis as any).EventSource = origES
+    }
+  })
+
+  test('applyCommentDeleteInList clears media on tombstoned parent comments', () => {
+    const parent: CommentDTO = {
+      id: 1,
+      post_id: 10,
+      parent_id: null,
+      source: 'web',
+      author: {display_name: 'A', role: 'user', verified: true},
+      body_text: 'photo',
+      body_html: '<p>photo</p>',
+      media: {media_type: 'photo', url: '/a.webp'},
+      created_at: '2026-11-20T00:00:00Z',
+      deleted: false,
+      is_mine: true,
+      can_delete: true,
+    }
+    const child: CommentDTO = {
+      ...parent,
+      id: 2,
+      parent_id: 1,
+      media: null,
+    }
+    const after = applyCommentDeleteInList([parent, child], 1)
+    expect(after).toHaveLength(2)
+    expect(after[0].deleted).toBe(true)
+    expect(after[0].media).toBeNull()
+  })
+
+  test('defaultMessages and zhCnMessages expose all v3 media/composer/formatter labels', () => {
+    expect(defaultMessages.mediaPhoto).toBe('[Photo]')
+    expect(defaultMessages.mediaSticker).toBe('[Sticker]')
+    expect(defaultMessages.mediaVideo).toBe('[Video]')
+    expect(defaultMessages.mediaDocument).toBe('[File]')
+    expect(zhCnMessages.mediaPhoto).toBe('[图片]')
+    expect(zhCnMessages.mediaSticker).toBe('[贴纸]')
+    expect(zhCnMessages.mediaVideo).toBe('[视频]')
+    expect(zhCnMessages.mediaDocument).toBe('[文件]')
+    expect(Object.keys(zhCnMessages).sort()).toEqual(Object.keys(defaultMessages).sort())
+  })
+
+  test('resolveApiAssetUrl preserves root-relative /api/... paths across cross-origin postsUrl and binds to http(s) apiUrl', () => {
+    // Root-relative API asset stays root-relative when apiUrl is root-relative or omitted, even if postsUrl is on another origin
+    expect(resolveApiAssetUrl('/api/life/media/stickers/starter/a.webp', '/api/life', 'https://cdn.example/posts.json')).toBe(
+      '/api/life/media/stickers/starter/a.webp'
+    )
+    expect(resolveApiAssetUrl('/api/life/exports/emoji/123.webp', null, 'https://cdn.example/posts.json')).toBe(
+      '/api/life/exports/emoji/123.webp'
+    )
+    // Explicit http(s) apiUrl binds root-relative paths to apiUrl origin
+    expect(resolveApiAssetUrl('/api/life/media/stickers/starter/a.webp', 'https://api.example/api/life', 'https://cdn.example/posts.json')).toBe(
+      'https://api.example/api/life/media/stickers/starter/a.webp'
+    )
+    // Relative non-leading-slash paths resolve against fallbackPostsUrl
+    expect(resolveApiAssetUrl('../media/comments/1.webp', '/api/life', '/api/life/exports/posts.json')).toBe(
+      '/api/life/media/comments/1.webp'
+    )
+    expect(resolveApiAssetUrl('javascript:alert(1)', '/api/life')).toBe('')
+  })
+
+  test('sanitizeCommentHtml validates <pre language="..."> and markdown sanitize() blocks protocol-relative URLs and enforces rel', () => {
+    const cleanComment = sanitizeCommentHtml(
+      '<pre language="TypeScript+1"><code>x</code></pre><pre language="../bad"><code>y</code></pre>'
+    )
+    expect(cleanComment).toContain('<pre language="TypeScript+1">')
+    expect(cleanComment).not.toContain('../bad')
+
+    const cleanPost = sanitize(
+      '<a href="https://example.com" target="_blank">ok</a><a href="//evil.example/a">bad</a>'
+    )
+    expect(cleanPost).toContain('rel="noopener noreferrer nofollow"')
+    expect(cleanPost).not.toContain('//evil.example')
+  })
+
+  test('serializeEditorDomToMarkdown wraps multi-line inline formatting per non-empty line', () => {
+    class MockClassList {
+      private set = new Set<string>()
+      contains(c: string) { return this.set.has(c) }
+    }
+    class MockText {
+      nodeType = 3
+      nodeValue: string
+      constructor(val: string) { this.nodeValue = val }
+    }
+    class MockEl {
+      nodeType = 1
+      tagName: string
+      classList = new MockClassList()
+      className = ''
+      style: Record<string, string> = {}
+      childNodes: Array<MockEl | MockText> = []
+      constructor(tag: string, children: Array<MockEl | MockText | string> = []) {
+        this.tagName = tag.toUpperCase()
+        for (const ch of children) {
+          this.childNodes.push(typeof ch === 'string' ? new MockText(ch) : ch)
+        }
+      }
+      get children() { return this.childNodes.filter((n): n is MockEl => n.nodeType === 1) }
+      getAttribute() { return null }
+      hasAttribute() { return false }
+      get textContent(): string {
+        return this.childNodes.map(c => c.nodeType === 3 ? c.nodeValue : (c as MockEl).textContent).join('')
+      }
+    }
+
+    const root = new MockEl('div', [
+      new MockEl('b', ['line 1', new MockEl('br'), 'line 2']),
+      new MockEl('br'),
+      new MockEl('u', ['u1', new MockEl('br'), new MockEl('br'), 'u2']),
+    ])
+    expect(serializeEditorDomToMarkdown(root as unknown as HTMLElement)).toBe(
+      '**line 1**\n**line 2**\n<u>u1</u>\n\n<u>u2</u>'
+    )
+  })
+
+  test('buildCustomEmojiCandidates expands extensionless URLs and preserves extensioned or rejects unsafe URLs', () => {
+    expect(buildCustomEmojiCandidates('/api/life/exports/emoji/123')).toEqual([
+      '/api/life/exports/emoji/123.webp',
+      '/api/life/exports/emoji/123.webm',
+      '/api/life/exports/emoji/123.apng',
+      '/api/life/exports/emoji/123.tgs',
+      '/api/life/exports/emoji/123.png',
+      '/api/life/exports/emoji/123.gif',
+    ])
+    expect(buildCustomEmojiCandidates('/api/life/exports/emoji/123', true)).toEqual([])
+    expect(buildCustomEmojiCandidates('/api/life/exports/emoji/123.tgs', true)).toEqual([
+      '/api/life/exports/emoji/123.tgs',
+    ])
+    expect(buildCustomEmojiCandidates('/api/life/exports/emoji/123.tgs')).toEqual([
+      '/api/life/exports/emoji/123.tgs',
+    ])
+    expect(buildCustomEmojiCandidates('javascript:alert(1)')).toEqual([])
+  })
+})
+
+describe('floatingPosition.ts — scroll & resize tracking for floating menus', () => {
+  function setupMockWindow(initial: { innerWidth: number; innerHeight: number; scrollX: number; scrollY: number }) {
+    const origWindow = (globalThis as any).window
+    const listeners = new Map<string, Set<{ fn: (e: any) => void; capture: boolean }>>()
+    const mockWin: any = {
+      innerWidth: initial.innerWidth,
+      innerHeight: initial.innerHeight,
+      scrollX: initial.scrollX,
+      scrollY: initial.scrollY,
+      addEventListener(type: string, fn: (e: any) => void, opts?: boolean | { capture?: boolean }) {
+        const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture)
+        if (!listeners.has(type)) listeners.set(type, new Set())
+        listeners.get(type)!.add({ fn, capture })
+      },
+      removeEventListener(type: string, fn: (e: any) => void, opts?: boolean | { capture?: boolean }) {
+        const capture = typeof opts === 'boolean' ? opts : Boolean(opts?.capture)
+        const set = listeners.get(type)
+        if (!set) return
+        for (const item of Array.from(set)) {
+          if (item.fn === fn && item.capture === capture) {
+            set.delete(item)
+          }
+        }
+      },
+      dispatch(type: string, event: any = {}) {
+        const set = listeners.get(type)
+        if (!set) return
+        for (const item of Array.from(set)) {
+          item.fn(event)
+        }
+      },
+      listenerCount(type: string) {
+        return listeners.get(type)?.size ?? 0
+      },
+    }
+    ;(globalThis as any).window = mockWin
+    return {
+      mockWin,
+      restore() {
+        if (origWindow === undefined) delete (globalThis as any).window
+        else (globalThis as any).window = origWindow
+      },
+    }
+  }
+
+  test('clampFloatingPlacement and clampCenterPlacement handle above/below flip and clamping', () => {
+    expect(
+      clampFloatingPlacement({
+        desiredLeft: 900,
+        aboveTop: 500 - 340 - 8,
+        belowTop: 530 + 8,
+        width: 340,
+        height: 340,
+        viewportWidth: 1000,
+        viewportHeight: 800,
+      })
+    ).toEqual({ left: 650, top: 152 })
+
+    // Insufficient room above -> flips below
+    expect(
+      clampFloatingPlacement({
+        desiredLeft: 100,
+        aboveTop: -100,
+        belowTop: 60,
+        width: 300,
+        height: 200,
+        viewportWidth: 1000,
+        viewportHeight: 800,
+      })
+    ).toEqual({ left: 100, top: 60 })
+
+    expect(clampCenterPlacement(340, 340, 1000, 800)).toEqual({ left: 330, top: 230 })
+  })
+
+  test('tracks anchorEl rect deltas on external scroll, ignores internal scroll, and leaves top unclamped', () => {
+    const env = setupMockWindow({ innerWidth: 1000, innerHeight: 800, scrollX: 0, scrollY: 0 })
+    try {
+      const innerGrid = { nodeType: 1 } as unknown as HTMLElement
+      const outsideEl = { nodeType: 1 } as unknown as HTMLElement
+      const floatingEl = {
+        nodeType: 1,
+        contains(target: any) {
+          return target === floatingEl || target === innerGrid
+        },
+      } as unknown as HTMLElement
+
+      let anchorRect = { left: 200, top: 400, bottom: 430, width: 32 }
+      const anchorEl = {
+        isConnected: true,
+        getBoundingClientRect: () => ({ ...anchorRect }),
+      } as unknown as HTMLElement
+
+      const positions: Array<{ left: number; top: number }> = []
+      const controller = createFloatingPositionController({
+        getFloatingEl: () => floatingEl,
+        getAnchorEl: () => anchorEl,
+        positionMode: 'fixed',
+        computeBasePosition: () =>
+          clampFloatingPlacement({
+            desiredLeft: anchorRect.left,
+            aboveTop: anchorRect.top - 200 - 8,
+            belowTop: anchorRect.bottom + 8,
+            width: 300,
+            height: 200,
+            viewportWidth: env.mockWin.innerWidth,
+            viewportHeight: env.mockWin.innerHeight,
+          }),
+        onPositionChange: pos => positions.push(pos),
+      })
+
+      controller.updateBase()
+      controller.attach()
+      expect(positions[positions.length - 1]).toEqual({ left: 200, top: 192 })
+      expect(env.mockWin.listenerCount('scroll')).toBe(1)
+      expect(env.mockWin.listenerCount('resize')).toBe(1)
+
+      // Internal scroll (e.g. .EmojiPicker-main) is ignored even if anchor coordinates moved
+      anchorRect = { left: 200, top: 300, bottom: 330, width: 32 }
+      const countBeforeInternal = positions.length
+      env.mockWin.dispatch('scroll', { target: innerGrid })
+      env.mockWin.dispatch('scroll', { target: floatingEl })
+      expect(positions.length).toBe(countBeforeInternal)
+      expect(isEventInsideElement({ target: innerGrid } as unknown as Event, floatingEl)).toBe(true)
+      expect(isEventInsideElement({ target: outsideEl } as unknown as Event, floatingEl)).toBe(false)
+
+      // External scroll shifts 1:1 with anchorEl without clamping top back into viewport
+      anchorRect = { left: 180, top: 50, bottom: 80, width: 32 } // dx = -20, dy = -350
+      env.mockWin.dispatch('scroll', { target: outsideEl })
+      expect(positions[positions.length - 1]).toEqual({ left: 180, top: -158 })
+
+      // Detach cleans up both scroll and resize listeners
+      controller.detach()
+      expect(env.mockWin.listenerCount('scroll')).toBe(0)
+      expect(env.mockWin.listenerCount('resize')).toBe(0)
+      const countAfterDetach = positions.length
+      anchorRect = { left: 100, top: 10, bottom: 40, width: 32 }
+      env.mockWin.dispatch('scroll', { target: outsideEl })
+      env.mockWin.dispatch('resize')
+      expect(positions.length).toBe(countAfterDetach)
+    } finally {
+      env.restore()
+    }
+  })
+
+  test('falls back to window.scrollX/scrollY when anchorEl is absent or disconnected, and re-clamps on resize', () => {
+    const env = setupMockWindow({ innerWidth: 1000, innerHeight: 800, scrollX: 10, scrollY: 100 })
+    try {
+      let anchorConnected = false
+      const disconnectedAnchor = {
+        isConnected: false,
+        getBoundingClientRect: () => ({ left: 0, top: 0 }),
+      } as unknown as HTMLElement
+
+      const baseAnchor = { x: 850, y: 300 }
+      let latest = { left: 0, top: 0 }
+      const controller = createFloatingPositionController({
+        getFloatingEl: () => null,
+        getAnchorEl: () => (anchorConnected ? disconnectedAnchor : null),
+        positionMode: 'fixed',
+        computeBasePosition: delta =>
+          clampFloatingPlacement({
+            desiredLeft: baseAnchor.x + delta.dx - 170,
+            aboveTop: baseAnchor.y + delta.dy - 46 - 10,
+            belowTop: baseAnchor.y + delta.dy + 14,
+            width: 340,
+            height: 46,
+            viewportWidth: env.mockWin.innerWidth,
+            viewportHeight: env.mockWin.innerHeight,
+          }),
+        onPositionChange: pos => {
+          latest = pos
+        },
+      })
+
+      controller.updateBase()
+      controller.attach()
+      // 850 - 170 = 680 > 1000 - 340 - 10 = 650 -> clamped to 650; top = 300 - 46 - 10 = 244
+      expect(latest).toEqual({ left: 650, top: 244 })
+
+      // Window scroll down by +120px, right by +30px
+      anchorConnected = true // still disconnected (isConnected: false) -> uses window scroll fallback
+      env.mockWin.scrollX = 40
+      env.mockWin.scrollY = 220
+      env.mockWin.dispatch('scroll', { target: {} })
+      expect(latest).toEqual({ left: 620, top: 124 })
+
+      // Viewport shrinks on resize -> re-clamps against new viewport while preserving scrolled offset
+      env.mockWin.innerWidth = 500
+      env.mockWin.dispatch('resize')
+      // maxLeft = 500 - 340 - 10 = 150; scrolled anchor y = 300 - 120 = 180 -> 180 - 46 - 10 = 124
+      expect(latest).toEqual({ left: 150, top: 124 })
+
+      controller.detach()
+    } finally {
+      env.restore()
+    }
+  })
+
+  test('absolute mode (default) stores document coordinates, ignores window scroll, tracks inner container scroll, and updates on resize', () => {
+    const env = setupMockWindow({ innerWidth: 1000, innerHeight: 800, scrollX: 20, scrollY: 300 })
+    try {
+      const floatingEl = {
+        nodeType: 1,
+        contains: (t: any) => t === floatingEl,
+      } as unknown as HTMLElement
+
+      // Anchor sits at viewport (200, 400) while window is scrolled to (20, 300) -> doc (220, 700)
+      let anchorRect = { left: 200, top: 400, bottom: 430, width: 32 }
+      const anchorEl = {
+        isConnected: true,
+        getBoundingClientRect: () => ({ ...anchorRect }),
+      } as unknown as HTMLElement
+
+      const emitted: Array<{ left: number; top: number }> = []
+      const controller = createFloatingPositionController({
+        getFloatingEl: () => floatingEl,
+        getAnchorEl: () => anchorEl,
+        computeBasePosition: () =>
+          clampFloatingPlacement({
+            desiredLeft: anchorRect.left,
+            aboveTop: anchorRect.top - 200 - 8,
+            belowTop: anchorRect.bottom + 8,
+            width: 300,
+            height: 200,
+            viewportWidth: env.mockWin.innerWidth,
+            viewportHeight: env.mockWin.innerHeight,
+          }),
+        onPositionChange: pos => emitted.push(pos),
+      })
+
+      controller.updateBase()
+      controller.attach()
+      // Viewport base (200, 192) + scroll (20, 300) = document (220, 492)
+      expect(emitted).toEqual([{ left: 220, top: 492 }])
+
+      // Pure window scroll: scrollY increases by +150, anchor viewport top drops by -150 -> doc coords unchanged!
+      env.mockWin.scrollY = 450
+      anchorRect = { left: 200, top: 250, bottom: 280, width: 32 }
+      env.mockWin.dispatch('scroll', { target: { nodeType: 9 } })
+      // Zero JS emissions on window scroll!
+      expect(emitted).toHaveLength(1)
+
+      // Inner scrollable container shifts anchorEl relative to document by (-15, -40)
+      anchorRect = { left: 185, top: 210, bottom: 240, width: 32 }
+      env.mockWin.dispatch('scroll', { target: { nodeType: 1 } })
+      expect(emitted).toEqual([
+        { left: 220, top: 492 },
+        { left: 205, top: 452 },
+      ])
+
+      // Resize recalculates viewport clamped placement + current window scroll
+      env.mockWin.innerWidth = 400 // maxLeft = 400 - 300 - 10 = 90 < 185 -> clamped viewport left = 90
+      // anchor top = 210 -> aboveTop = 210 - 208 = 2 < 10 -> flips below: 240 + 8 = 248
+      env.mockWin.dispatch('resize')
+      expect(emitted[emitted.length - 1]).toEqual({
+        left: 90 + 20,
+        top: 248 + 450,
+      })
+
+      controller.detach()
+    } finally {
+      env.restore()
+    }
+  })
+})
+
+describe('editorHistory.ts — undo/redo stack and logical selection offsets', () => {
+  class MockClassList {
+    private set: Set<string>
+    constructor(names: string[] = []) {
+      this.set = new Set(names)
+    }
+    contains(c: string) {
+      return this.set.has(c)
+    }
+    add(c: string) {
+      this.set.add(c)
+    }
+    remove(c: string) {
+      this.set.delete(c)
+    }
+  }
+
+  class MockText {
+    nodeType = 3
+    nodeValue: string
+    parentNode: MockEl | null = null
+    constructor(val: string) {
+      this.nodeValue = val
+    }
+  }
+
+  class MockEl {
+    nodeType = 1
+    tagName: string
+    classList: MockClassList
+    attrs = new Map<string, string>()
+    childNodes: Array<MockEl | MockText> = []
+    parentNode: MockEl | null = null
+    constructor(tag: string, children: Array<MockEl | MockText | string> = [], classes: string[] = [], attrs: Record<string, string> = {}) {
+      this.tagName = tag.toUpperCase()
+      this.classList = new MockClassList(classes)
+      for (const [k, v] of Object.entries(attrs)) {
+        this.attrs.set(k, v)
+      }
+      for (const ch of children) {
+        const node = typeof ch === 'string' ? new MockText(ch) : ch
+        node.parentNode = this
+        this.childNodes.push(node)
+      }
+    }
+    hasAttribute(name: string) {
+      return this.attrs.has(name)
+    }
+    getAttribute(name: string) {
+      return this.attrs.get(name) ?? null
+    }
+    set textContent(val: string) {
+      this.childNodes = val ? [new MockText(val)] : []
+    }
+    get textContent(): string {
+      return this.childNodes.map(c => (c.nodeType === 3 ? c.nodeValue : (c as MockEl).textContent)).join('')
+    }
+    cloneNode(deep = false): MockEl {
+      const copy = new MockEl(
+        this.tagName,
+        deep ? this.childNodes.map(c => (c.nodeType === 3 ? new MockText(c.nodeValue) : (c as MockEl).cloneNode(true))) : [],
+        [],
+        Object.fromEntries(this.attrs.entries())
+      )
+      for (const c of ['tgb-editor-ce', 'spoiler', 'init']) {
+        if (this.classList.contains(c)) copy.classList.add(c)
+      }
+      return copy
+    }
+    querySelector(selector: string): MockEl | null {
+      return this.querySelectorAll(selector)[0] ?? null
+    }
+    querySelectorAll(selector: string): MockEl[] {
+      const out: MockEl[] = []
+      const walk = (el: MockEl) => {
+        for (const ch of el.childNodes) {
+          if (ch.nodeType === 1) {
+            const childEl = ch as MockEl
+            if (selector === '.tgb-editor-ce[data-custom-emoji-id]') {
+              if (childEl.classList.contains('tgb-editor-ce') && childEl.hasAttribute('data-custom-emoji-id')) {
+                out.push(childEl)
+              }
+            }
+            walk(childEl)
+          }
+        }
+      }
+      walk(this)
+      return out
+    }
+    get innerHTML(): string {
+      return this.childNodes
+        .map(c => {
+          if (c.nodeType === 3) return c.nodeValue
+          const el = c as MockEl
+          const tag = el.tagName.toLowerCase()
+          if (tag === 'br') return '<br>'
+          const attrs = Array.from(el.attrs.entries())
+            .map(([k, v]) => ` ${k}="${v}"`)
+            .join('')
+          const cls = ['tgb-editor-ce', 'spoiler', 'init'].filter(name => el.classList.contains(name)).join(' ')
+          const clsAttr = cls ? ` class="${cls}"` : ''
+          return `<${tag}${clsAttr}${attrs}>${el.innerHTML}</${tag}>`
+        })
+        .join('')
+    }
+  }
+
+  function createMockDoc() {
+    return {
+      createRange() {
+        const range: any = {
+          startContainer: null,
+          startOffset: 0,
+          endContainer: null,
+          endOffset: 0,
+          setStart(node: any, offset: number) {
+            this.startContainer = node
+            this.startOffset = offset
+          },
+          setEnd(node: any, offset: number) {
+            this.endContainer = node
+            this.endOffset = offset
+          },
+        }
+        return range
+      },
+    } as unknown as Document
+  }
+
+  test('selection offsets round-trip across plain text, Unicode emoji, custom emoji chips, <br>, and formatting tags', () => {
+    const mockDoc = createMockDoc()
+    const chip = new MockEl(
+      'span',
+      [new MockEl('img')],
+      ['tgb-editor-ce'],
+      { contenteditable: 'false', 'data-custom-emoji-id': '5368324170671202286', 'data-emoji-alt': '✦' }
+    )
+    const boldText = new MockText('hi')
+    const boldEl = new MockEl('b', [boldText])
+    const emojiText = new MockText('😀!')
+    const afterChipText = new MockText('ok')
+    const quoteText = new MockText('q')
+    const quoteEl = new MockEl('blockquote', [quoteText])
+    const root = new MockEl('div', [boldEl, new MockText(' '), emojiText, chip, afterChipText, new MockEl('br'), quoteEl])
+
+    // 1. Selecting inside <b>hi</b> -> offsets (0, 2) restore inside <b>
+    const boldOffsets = getEditorSelectionOffsets(root as unknown as Node, {
+      startContainer: boldText as unknown as Node,
+      startOffset: 0,
+      endContainer: boldText as unknown as Node,
+      endOffset: 2,
+    })
+    expect(boldOffsets).toEqual({ start: 0, end: 2 })
+    const restoredBold = restoreEditorSelectionOffsets(root as unknown as Node, boldOffsets.start, boldOffsets.end, mockDoc) as any
+    expect(restoredBold.startContainer).toBe(boldText)
+    expect(restoredBold.startOffset).toBe(0)
+    expect(restoredBold.endContainer).toBe(boldText)
+    expect(restoredBold.endOffset).toBe(2)
+
+    // 2. Selecting " 😀" starting right after <b> -> prefers forward start (" ", 0), not (boldText, 2)
+    const afterBoldOffsets = getEditorSelectionOffsets(root as unknown as Node, {
+      startContainer: root.childNodes[1] as unknown as Node,
+      startOffset: 0,
+      endContainer: emojiText as unknown as Node,
+      endOffset: 2, // end of 😀 (UTF-16 length 2)
+    })
+    expect(afterBoldOffsets).toEqual({ start: 2, end: 5 })
+    const restoredAfterBold = restoreEditorSelectionOffsets(root as unknown as Node, afterBoldOffsets.start, afterBoldOffsets.end, mockDoc) as any
+    expect(restoredAfterBold.startContainer).toBe(root.childNodes[1])
+    expect(restoredAfterBold.startOffset).toBe(0)
+    expect(restoredAfterBold.endContainer).toBe(emojiText)
+    expect(restoredAfterBold.endOffset).toBe(2)
+
+    // 3. Custom emoji chip is atomic length 1: selecting just the chip gives (6, 7)
+    // "hi" (2) + " " (1) + "😀!" (3) = 6 before chip, 7 after chip
+    const chipOffsets = getEditorSelectionOffsets(root as unknown as Node, {
+      startContainer: root as unknown as Node,
+      startOffset: 3,
+      endContainer: root as unknown as Node,
+      endOffset: 4,
+    })
+    expect(chipOffsets).toEqual({ start: 6, end: 7 })
+    const restoredChip = restoreEditorSelectionOffsets(root as unknown as Node, 6, 7, mockDoc) as any
+    expect(restoredChip.startContainer).toBe(root)
+    expect(restoredChip.startOffset).toBe(3)
+    expect(restoredChip.endContainer).toBe(root)
+    expect(restoredChip.endOffset).toBe(4)
+
+    // Caret right after chip (offset 7)
+    const afterChipPos = resolveEditorDomPosition(root as unknown as Node, 7)
+    expect(afterChipPos.node).toBe(root)
+    expect(afterChipPos.offset).toBe(4)
+
+    // 4. Inside blockquote vs after blockquote
+    // 7 + "ok" (2) + <br> (1) = 10 -> inside quote at "q" end is 11, outside quote (root, 7) is 12
+    const inQuoteOffsets = getEditorSelectionOffsets(root as unknown as Node, {
+      startContainer: quoteText as unknown as Node,
+      startOffset: 1,
+      endContainer: quoteText as unknown as Node,
+      endOffset: 1,
+    })
+    expect(inQuoteOffsets).toEqual({ start: 11, end: 11 })
+    const inQuotePos = resolveEditorDomPosition(root as unknown as Node, 11)
+    expect(inQuotePos.node).toBe(quoteText)
+    expect(inQuotePos.offset).toBe(1)
+
+    const outQuoteOffsets = getEditorSelectionOffsets(root as unknown as Node, {
+      startContainer: root as unknown as Node,
+      startOffset: 7,
+      endContainer: root as unknown as Node,
+      endOffset: 7,
+    })
+    expect(outQuoteOffsets).toEqual({ start: 12, end: 12 })
+    const outQuotePos = resolveEditorDomPosition(root as unknown as Node, 12)
+    expect(outQuotePos.node).toBe(root)
+    expect(outQuotePos.offset).toBe(7)
+  })
+
+  test('snapshotEditorHtml strips mounted chip internals down to data-emoji-alt', () => {
+    const chip = new MockEl(
+      'span',
+      [new MockEl('span', [new MockEl('svg')], ['tgb-tgs-host'])],
+      ['tgb-editor-ce', 'init'],
+      { contenteditable: 'false', 'data-custom-emoji-id': '123', 'data-emoji-alt': '✦' }
+    )
+    const root = new MockEl('div', ['hi', chip])
+    expect(snapshotEditorHtml(root as unknown as HTMLElement)).toBe(
+      'hi<span class="tgb-editor-ce" contenteditable="false" data-custom-emoji-id="123" data-emoji-alt="✦">✦</span>'
+    )
+  })
+
+  test('EditorHistoryManager handles push, undo, redo for emoji, custom chips, formatting, coalescing, redo invalidation, and max cap', () => {
+    const mgr = new EditorHistoryManager()
+    mgr.reset({ html: '', selStart: 0, selEnd: 0 })
+    expect(mgr.canUndo()).toBe(false)
+    expect(mgr.canRedo()).toBe(false)
+
+    // Coalesced typing burst within 800ms
+    expect(mgr.push({ html: 'h', selStart: 1, selEnd: 1 }, { coalesceKey: 'insert', now: 1000 })).toBe(true)
+    expect(mgr.push({ html: 'hi', selStart: 2, selEnd: 2 }, { coalesceKey: 'insert', now: 1150 })).toBe(true)
+    expect(mgr.size()).toBe(2)
+
+    // Duplicate exact entry ignored
+    expect(mgr.push({ html: 'hi', selStart: 2, selEnd: 2 })).toBe(false)
+
+    // Same html with updated cursor updates current entry without pushing a duplicate step
+    expect(mgr.push({ html: 'hi', selStart: 0, selEnd: 2 })).toBe(false)
+    expect(mgr.current()).toEqual({ html: 'hi', selStart: 0, selEnd: 2 })
+    expect(mgr.size()).toBe(2)
+
+    // Formatting tag toggle (discrete)
+    mgr.push({ html: '<b>hi</b>', selStart: 0, selEnd: 2 })
+    // Unicode emoji insertion (discrete)
+    mgr.push({ html: '<b>hi</b>😀', selStart: 4, selEnd: 4 })
+    // Custom emoji chip insertion (discrete)
+    const chipHtml = '<b>hi</b>😀<span class="tgb-editor-ce" contenteditable="false" data-custom-emoji-id="42" data-emoji-alt="✦">✦</span>'
+    mgr.push({ html: chipHtml, selStart: 5, selEnd: 5 })
+    expect(mgr.size()).toBe(5)
+
+    // Undo step by step
+    expect(mgr.undo()).toEqual({ html: '<b>hi</b>😀', selStart: 4, selEnd: 4 })
+    expect(mgr.undo()).toEqual({ html: '<b>hi</b>', selStart: 0, selEnd: 2 })
+    expect(mgr.undo()).toEqual({ html: 'hi', selStart: 0, selEnd: 2 })
+    expect(mgr.canUndo()).toBe(true)
+    expect(mgr.canRedo()).toBe(true)
+
+    // Redo forward
+    expect(mgr.redo()).toEqual({ html: '<b>hi</b>', selStart: 0, selEnd: 2 })
+    expect(mgr.redo()).toEqual({ html: '<b>hi</b>😀', selStart: 4, selEnd: 4 })
+
+    // New edit invalidates redo tail
+    expect(mgr.canRedo()).toBe(true)
+    mgr.push({ html: '<del>hi</del>', selStart: 0, selEnd: 2 })
+    expect(mgr.canRedo()).toBe(false)
+    expect(mgr.redo()).toBeNull()
+
+    // Bounded capacity check (MAX_HISTORY = 100)
+    expect(MAX_HISTORY).toBe(100)
+    const capped = new EditorHistoryManager(MAX_HISTORY)
+    capped.reset({ html: '0', selStart: 1, selEnd: 1 })
+    for (let i = 1; i <= 150; i++) {
+      capped.push({ html: String(i), selStart: 1, selEnd: 1 })
+    }
+    expect(capped.size()).toBe(MAX_HISTORY)
+    expect(capped.current()?.html).toBe('150')
+    let steps = 0
+    while (capped.undo()) steps++
+    expect(steps).toBe(MAX_HISTORY - 1)
+    expect(capped.current()?.html).toBe('51')
+  })
+})
+
+describe('spoilers.ts — inner wrapper normalization for strikethrough stacking', () => {
+  test('initSpoilers wraps bare text and direct inline children in <span class="tgb-spoiler-inner"> while leaving single-span spoilers untouched', () => {
+    const origDoc = (globalThis as any).document
+
+    class MockClassList {
+      private set = new Set<string>()
+      constructor(names: string[] = []) {
+        for (const n of names) this.set.add(n)
+      }
+      contains(c: string) {
+        return this.set.has(c)
+      }
+      add(c: string) {
+        this.set.add(c)
+      }
+      toggle(c: string) {
+        if (this.set.has(c)) this.set.delete(c)
+        else this.set.add(c)
+      }
+    }
+
+    class MockNode {
+      nodeType: number
+      nodeValue: string | null = null
+      parentElement: MockElement | null = null
+      parentNode: MockElement | null = null
+      constructor(nodeType: number) {
+        this.nodeType = nodeType
+      }
+    }
+
+    class MockText extends MockNode {
+      constructor(text: string) {
+        super(3)
+        this.nodeValue = text
+      }
+    }
+
+    class MockElement extends MockNode {
+      tagName: string
+      classList: MockClassList
+      className = ''
+      childNodes: MockNode[] = []
+      listeners = new Map<string, Array<(e?: any) => void>>()
+
+      constructor(tag: string, classes: string[] = [], children: MockNode[] = []) {
+        super(1)
+        this.tagName = tag.toUpperCase()
+        this.classList = new MockClassList(classes)
+        this.className = classes.join(' ')
+        for (const ch of children) {
+          this.appendChild(ch)
+        }
+      }
+
+      get firstChild(): MockNode | null {
+        return this.childNodes[0] ?? null
+      }
+
+      appendChild(node: MockNode): MockNode {
+        if (node.parentNode) {
+          const idx = node.parentNode.childNodes.indexOf(node)
+          if (idx >= 0) node.parentNode.childNodes.splice(idx, 1)
+        }
+        node.parentNode = this
+        node.parentElement = this
+        this.childNodes.push(node)
+        return node
+      }
+
+      addEventListener(type: string, fn: (e?: any) => void) {
+        if (!this.listeners.has(type)) this.listeners.set(type, [])
+        this.listeners.get(type)!.push(fn)
+      }
+
+      closest() {
+        return null
+      }
+
+      querySelectorAll() {
+        return []
+      }
+    }
+
+    // 1. Bare text inside .spoiler (like <s><span class="spoiler">secret</span></s>)
+    const bareSpoiler = new MockElement('span', ['spoiler'], [new MockText('secret')])
+    // 2. Multiple / non-span inline children inside .spoiler
+    const delChild = new MockElement('del', [], [new MockText('struck')])
+    const multiSpoiler = new MockElement('span', ['spoiler'], [delChild, new MockText(' more')])
+    // 3. Already wrapped in a single <span>
+    const existingInner = new MockElement('span', [], [new MockText('already wrapped')])
+    const wrappedSpoiler = new MockElement('span', ['spoiler'], [existingInner])
+
+    ;(globalThis as any).document = {
+      querySelectorAll(selector: string) {
+        if (selector === '.spoiler') {
+          return [bareSpoiler, multiSpoiler, wrappedSpoiler]
+        }
+        return []
+      },
+      createElement(tag: string) {
+        return new MockElement(tag)
+      },
+    }
+
+    try {
+      initSpoilers()
+
+      // bareSpoiler wrapped in <span class="tgb-spoiler-inner">
+      expect(bareSpoiler.classList.contains('spoiler-init')).toBe(true)
+      expect(bareSpoiler.childNodes).toHaveLength(1)
+      const bareInner = bareSpoiler.firstChild as MockElement
+      expect(bareInner.tagName).toBe('SPAN')
+      expect(bareInner.className).toBe('tgb-spoiler-inner')
+      expect((bareInner.firstChild as MockText).nodeValue).toBe('secret')
+
+      // multiSpoiler wrapped all children inside <span class="tgb-spoiler-inner">
+      expect(multiSpoiler.childNodes).toHaveLength(1)
+      const multiInner = multiSpoiler.firstChild as MockElement
+      expect(multiInner.tagName).toBe('SPAN')
+      expect(multiInner.className).toBe('tgb-spoiler-inner')
+      expect(multiInner.childNodes).toHaveLength(2)
+      expect(multiInner.childNodes[0]).toBe(delChild)
+
+      // wrappedSpoiler left untouched (same existingInner node, not double-wrapped)
+      expect(wrappedSpoiler.childNodes).toHaveLength(1)
+      expect(wrappedSpoiler.firstChild).toBe(existingInner)
+      expect(existingInner.className).toBe('')
+    } finally {
+      if (origDoc === undefined) delete (globalThis as any).document
+      else (globalThis as any).document = origDoc
+    }
+  })
+
+  test('sanitizeCommentSnippetHtml renders inline HTML and custom emojis without raw tag truncation', () => {
+    const htmlSnippet = sanitizeCommentSnippetHtml(
+      '<p><s>喵喵 <i class="custom-emoji" data-custom-emoji-id="4981340762533790955">✦</i></s><script>alert(1)</script></p><p>第二行</p>',
+      '~~喵喵 <tg-emoji emoji-id="4981340762533790955">✦</tg-emoji>~~'
+    )
+    expect(htmlSnippet).toBe(
+      '<s>喵喵 <i data-custom-emoji-id="4981340762533790955" class="custom-emoji">✦</i></s> 第二行'
+    )
+
+    const mdFallback = sanitizeCommentSnippetHtml(
+      null,
+      '~~喵喵~~ <tg-emoji emoji-id="4981340762533790955">✦</tg-emoji><script>alert(1)</script>',
+      '[图片]'
+    )
+    expect(mdFallback).toBe(
+      '[图片] <del>喵喵</del> <i data-custom-emoji-id="4981340762533790955" class="custom-emoji">✦</i>&lt;script&gt;alert(1)&lt;/script&gt;'
+    )
+  })
+
+  test('normalizeAnonDisplayName and pickAnonIdentity deterministically assign anon avatars and colored rings', () => {
+    expect(normalizeAnonDisplayName(null)).toBe('Anon')
+    expect(normalizeAnonDisplayName('')).toBe('Anon')
+    expect(normalizeAnonDisplayName('Anonymous')).toBe('Anon')
+    expect(normalizeAnonDisplayName('Anonymous #64b6')).toBe('Anon #64b6')
+    expect(normalizeAnonDisplayName('Anon #a528')).toBe('Anon #a528')
+
+    const avatars = Array.from({length: 9}, (_, i) => `/anons/anon-${i + 1}.webp`)
+    const id1 = pickAnonIdentity('Anonymous #64b6', avatars)
+    const id2 = pickAnonIdentity('Anon #64b6', avatars)
+    // Legacy and normalized forms map to the exact same avatar & ring color across messages
+    expect(id1).toEqual(id2)
+    expect(avatars).toContain(id1.avatarUrl!)
+    expect(ANON_RING_PALETTE).toContain(id1.ringColor as any)
+
+    // Without avatars provided, still assigns a deterministic colored ring
+    const noAvatar = pickAnonIdentity('Anon #64b6', [])
+    expect(noAvatar.avatarUrl).toBeNull()
+    expect(noAvatar.ringColor).toBe(id1.ringColor)
+
+    // Distinct anon users get good spread across avatars and ring colors
+    const distinctCombos = new Set<string>()
+    for (let i = 0; i < 40; i++) {
+      const hex = i.toString(16).padStart(4, '0')
+      const res = pickAnonIdentity(`Anon #${hex}`, avatars)
+      distinctCombos.add(`${res.avatarUrl}|${res.ringColor}`)
+    }
+    expect(distinctCombos.size).toBeGreaterThan(20)
   })
 })

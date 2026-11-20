@@ -11,6 +11,11 @@ import AltchaWidget from "./AltchaWidget.vue"
 import AppleEmoji from "./AppleEmoji.vue"
 import CustomEmoji from "./CustomEmoji.vue"
 import ReactionSelector from "./ReactionSelector.vue"
+import TextFormatter from "./TextFormatter.vue"
+import RichCommentInput from "./RichCommentInput.vue"
+import SymbolMenu from "./SymbolMenu.vue"
+import AttachmentModal from "./AttachmentModal.vue"
+import StickerMedia from "./StickerMedia.vue"
 
 export {
   TgBlog,
@@ -25,6 +30,11 @@ export {
   AppleEmoji,
   CustomEmoji,
   ReactionSelector,
+  TextFormatter,
+  RichCommentInput,
+  SymbolMenu,
+  AttachmentModal,
+  StickerMedia,
 }
 
 export type { ViewedImage, TrackedImage } from "./ImageViewer.vue"

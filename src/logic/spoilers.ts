@@ -34,9 +34,29 @@ export function initSpoilers()
 
   spoilers.forEach(spoiler =>
   {
+    // Leave live rich-editor spoilers untouched
+    if (typeof spoiler.closest === 'function' && spoiler.closest('[contenteditable="true"]')) return
+
     // Already initialized
     if (spoiler.classList.contains("spoiler-init")) return
     spoiler.classList.add("spoiler-init")
+
+    // Wrap bare text/inline nodes in an inner <span> so outer text-decoration (e.g. <s>/<del>)
+    // cannot propagate onto direct text inside .spoiler above the spoiler background
+    const first = spoiler.firstChild
+    const alreadyWrappedInSpan =
+      spoiler.childNodes.length === 1 &&
+      first !== null &&
+      first.nodeType === 1 &&
+      (first as Element).tagName.toUpperCase() === "SPAN"
+    if (!alreadyWrappedInSpan && first) {
+      const inner = document.createElement("span")
+      inner.className = "tgb-spoiler-inner"
+      while (spoiler.firstChild) {
+        inner.appendChild(spoiler.firstChild)
+      }
+      spoiler.appendChild(inner)
+    }
 
     // Toggle all spoilers at once if they are in the same post
     const post = findParent("post", spoiler)

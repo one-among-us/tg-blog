@@ -1,22 +1,28 @@
 import sanitizeHtml from 'sanitize-html'
+import {parseMarkdownToHtml} from './markdown'
 import type {
   AltchaChallenge,
   AuthMeResponse,
   CommentDTO,
+  CommentMediaDTO,
   CommentReactionToggleResponse,
   CommentsResponse,
   CreateCommentPayload,
+  CustomEmojisResponse,
   InteractionsResponse,
   MagicLinkRequestPayload,
   PollVoteResponse,
   Post,
+  PostViewResponse,
   ReactionTogglePayload,
   ReactionToggleResponse,
+  StickersResponse,
   StreamAllowedReactionsUpdatedEvent,
   StreamCommentDeletedEvent,
   StreamCommentReactionUpdatedEvent,
   StreamPollUpdatedEvent,
   StreamPostDeletedEvent,
+  StreamPostViewsUpdatedEvent,
   StreamReactionUpdatedEvent,
   UpdateProfilePayload,
   UserDTO,
@@ -125,12 +131,45 @@ export class LifeApiClient {
     return this.request<CommentDTO>(`/posts/${postId}/comments`, {
       method: 'POST',
       body: JSON.stringify({
-        body: payload.body,
+        body: payload.body ?? '',
+        media: payload.media ?? null,
         parent_id: payload.parent_id ?? null,
         as_anonymous: !!payload.as_anonymous,
         altcha_payload: payload.altcha_payload ?? null,
       }),
     })
+  }
+
+  async uploadCommentMedia(file: File): Promise<CommentMediaDTO> {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await this.request<CommentMediaDTO | { media: CommentMediaDTO }>('/comments/media', {
+      method: 'POST',
+      body: form,
+    })
+    if (typeof res === 'object' && res !== null && 'media' in res && res.media) {
+      return res.media
+    }
+    return res as CommentMediaDTO
+  }
+
+  recordViews(postIds: number[]): Promise<PostViewResponse> {
+    const unique = Array.from(new Set(postIds.filter(id => Number.isFinite(id))))
+    if (!unique.length) {
+      return Promise.resolve({ views: {} })
+    }
+    return this.request<PostViewResponse>('/posts/view', {
+      method: 'POST',
+      body: JSON.stringify({ post_ids: unique.slice(0, 50) }),
+    })
+  }
+
+  getCustomEmojis(): Promise<CustomEmojisResponse> {
+    return this.request<CustomEmojisResponse>('/emojis/custom')
+  }
+
+  getStickers(): Promise<StickersResponse> {
+    return this.request<StickersResponse>('/stickers')
   }
 
   deleteComment(commentId: number): Promise<{ ok?: boolean }> {
@@ -201,6 +240,7 @@ export interface LifeStreamHandlers {
   onPostCreated?: (post: Post) => void
   onPostUpdated?: (post: Post) => void
   onPostDeleted?: (event: StreamPostDeletedEvent) => void
+  onPostViewsUpdated?: (event: StreamPostViewsUpdatedEvent) => void
   onReactionUpdated?: (event: StreamReactionUpdatedEvent) => void
   onPollUpdated?: (event: StreamPollUpdatedEvent) => void
   onCommentCreated?: (comment: CommentDTO) => void
@@ -310,6 +350,7 @@ export class LifeStreamClient {
     bindJson<Post>('post.created', this.handlers.onPostCreated)
     bindJson<Post>('post.updated', this.handlers.onPostUpdated)
     bindJson<StreamPostDeletedEvent>('post.deleted', this.handlers.onPostDeleted)
+    bindJson<StreamPostViewsUpdatedEvent>('post.views.updated', this.handlers.onPostViewsUpdated)
     bindJson<StreamReactionUpdatedEvent>('reaction.updated', this.handlers.onReactionUpdated)
     bindJson<StreamPollUpdatedEvent>('poll.updated', this.handlers.onPollUpdated)
     bindJson<CommentDTO>('comment.created', this.handlers.onCommentCreated)
@@ -380,6 +421,9 @@ export class LifeStreamClient {
   }
 }
 
+const CUSTOM_EMOJI_ID_RE = /^\d+$/
+const PRE_LANGUAGE_RE = /^[A-Za-z0-9_+-]+$/
+
 const commentSanitizeOptions: sanitizeHtml.IOptions = {
   allowedTags: [
     'p', 'br', 'a', 'b', 'strong', 'i', 'em', 'u', 's', 'del',
@@ -389,11 +433,13 @@ const commentSanitizeOptions: sanitizeHtml.IOptions = {
   allowedAttributes: {
     a: ['href', 'title', 'target', 'rel'],
     code: ['class'],
-    pre: ['class'],
+    pre: ['class', 'language'],
     span: ['class'],
+    i: ['class', 'data-custom-emoji-id'],
   },
   allowedClasses: {
     span: ['spoiler'],
+    i: ['custom-emoji'],
     code: ['language-*'],
     pre: ['language-*'],
   },
@@ -409,6 +455,34 @@ const commentSanitizeOptions: sanitizeHtml.IOptions = {
         rel: 'noopener noreferrer nofollow',
       },
     }),
+    i: (tagName, attribs) => {
+      const nextAttribs: Record<string, string> = {}
+      const rawId = attribs['data-custom-emoji-id']?.trim()
+      if (rawId && CUSTOM_EMOJI_ID_RE.test(rawId)) {
+        nextAttribs['data-custom-emoji-id'] = rawId
+        if (attribs.class) {
+          nextAttribs.class = attribs.class
+        }
+      }
+      return {
+        tagName,
+        attribs: nextAttribs,
+      }
+    },
+    pre: (tagName, attribs) => {
+      const nextAttribs: Record<string, string> = {}
+      if (attribs.class) {
+        nextAttribs.class = attribs.class
+      }
+      const rawLang = attribs.language?.trim()
+      if (rawLang && PRE_LANGUAGE_RE.test(rawLang)) {
+        nextAttribs.language = rawLang
+      }
+      return {
+        tagName,
+        attribs: nextAttribs,
+      }
+    },
   },
 }
 
@@ -433,4 +507,44 @@ export function sanitizeCommentHtml(bodyHtml?: string | null, bodyText?: string 
     return escapeHtml(bodyText)
   }
   return ''
+}
+
+const commentSnippetSanitizeOptions: sanitizeHtml.IOptions = {
+  ...commentSanitizeOptions,
+  allowedTags: ['b', 'strong', 'i', 'em', 'u', 's', 'del', 'code', 'span'],
+  allowedAttributes: {
+    span: ['class'],
+    i: ['class', 'data-custom-emoji-id'],
+  },
+}
+
+/**
+ * Render a single-line sanitized inline HTML snippet for comment reply banners & quote bars.
+ */
+export function sanitizeCommentSnippetHtml(
+  bodyHtml?: string | null,
+  bodyText?: string | null,
+  mediaPrefix?: string | null
+): string {
+  let source = ''
+  if (bodyHtml && bodyHtml.trim()) {
+    source = bodyHtml
+  } else if (bodyText && bodyText.trim()) {
+    source = parseMarkdownToHtml(bodyText)
+  }
+  const singleLine = source
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<\/(?:p|div|blockquote|pre|li|h[1-6])>/gi, ' ')
+    .replace(/<(?:p|div|blockquote|pre|li|h[1-6])\b[^>]*>/gi, ' ')
+  const cleanTextHtml = singleLine
+    ? sanitizeHtml(singleLine, commentSnippetSanitizeOptions).replace(/\s{2,}/g, ' ').trim()
+    : ''
+  const prefix = (mediaPrefix ?? '').trim()
+  if (prefix && cleanTextHtml) {
+    return `${escapeHtml(prefix)} ${cleanTextHtml}`
+  }
+  if (prefix) {
+    return escapeHtml(prefix)
+  }
+  return cleanTextHtml
 }

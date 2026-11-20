@@ -126,6 +126,39 @@ export interface TgBlogMessages {
     viewOriginalWithSize: (size: string) => string
     loadingOriginal: string
     viewingOriginal: string
+
+    // --- Interactive mode v3: Rich Media & Composer ---
+    mediaPhoto: string
+    mediaSticker: string
+    mediaAnimation: string
+    mediaVideo: string
+    mediaDocument: string
+    attachPhoto: string
+    emojiAndStickers: string
+    emojiTab: string
+    stickersTab: string
+    siteCustomEmojis: string
+    standardEmojis: string
+    searchEmojisPlaceholder: string
+    noStickersFound: string
+    backspace: string
+    sendPhoto: string
+    sendingPhoto: string
+    captionPlaceholder: string
+    uploadFailed: string
+    formatBold: string
+    formatItalic: string
+    formatUnderline: string
+    formatStrikethrough: string
+    formatMonospace: string
+    formatSpoiler: string
+    formatBlockquote: string
+    formatLink: string
+    formatClear: string
+    formatLinkPlaceholder: string
+    formatToolbarLabel: string
+    cancel: string
+    apply: string
 }
 
 /** English defaults matching tg-blog's historical literals. */
@@ -139,7 +172,7 @@ export const defaultMessages: TgBlogMessages = {
     linkCopied: 'Link copied!',
     poll: 'Poll',
     quiz: 'Quiz',
-    anonymousPrefix: 'Anonymous ',
+    anonymousPrefix: 'Anon ',
     pollResults: (count) => `Final Results - ${count} Responses`,
     photoIndex: (index, total) => `Photo ${index} of ${total}`,
     dateFormat: 'YYYY-MM-DD H:mm',
@@ -209,6 +242,155 @@ export const defaultMessages: TgBlogMessages = {
     viewOriginalWithSize: (size) => `View Original (${size})`,
     loadingOriginal: 'Loading original...',
     viewingOriginal: 'Viewing Original',
+
+    // Interactive mode v3: Rich Media & Composer
+    mediaPhoto: '[Photo]',
+    mediaSticker: '[Sticker]',
+    mediaAnimation: '[GIF]',
+    mediaVideo: '[Video]',
+    mediaDocument: '[File]',
+    attachPhoto: 'Attach photo',
+    emojiAndStickers: 'Emoji & Stickers',
+    emojiTab: 'Emoji',
+    stickersTab: 'Stickers',
+    siteCustomEmojis: 'Custom Emojis',
+    standardEmojis: 'Emojis',
+    searchEmojisPlaceholder: 'Search emojis...',
+    noStickersFound: 'No stickers available',
+    backspace: 'Delete',
+    sendPhoto: 'Send Photo',
+    sendingPhoto: 'Sending...',
+    captionPlaceholder: 'Add a caption...',
+    uploadFailed: 'Failed to upload image',
+    formatBold: 'Bold',
+    formatItalic: 'Italic',
+    formatUnderline: 'Underline',
+    formatStrikethrough: 'Strikethrough',
+    formatMonospace: 'Monospace',
+    formatSpoiler: 'Spoiler',
+    formatBlockquote: 'Quote',
+    formatLink: 'Add link',
+    formatClear: 'Clear formatting',
+    formatLinkPlaceholder: 'Enter URL...',
+    formatToolbarLabel: 'Text formatting',
+    cancel: 'Cancel',
+    apply: 'Apply',
+}
+
+/** Simplified Chinese (zh-CN) preset matching all tg-blog UI strings. */
+export const zhCnMessages: TgBlogMessages = {
+    searchPlaceholder: '搜索...',
+    loadFailed: '加载文章失败：',
+    forwardedFrom: '转发自：',
+    replyTo: '回复：',
+    voiceMessage: '语音消息',
+    copyShareLink: '复制分享链接',
+    linkCopied: '链接已复制！',
+    poll: '投票',
+    quiz: '测验',
+    anonymousPrefix: '匿名',
+    pollResults: (count) => `最终结果 - 共 ${count} 票`,
+    photoIndex: (index, total) => `第 ${index} 张，共 ${total} 张`,
+    dateFormat: 'YYYY-MM-DD H:mm',
+
+    // Reactions
+    addReaction: '添加回应',
+
+    // Polls
+    pollVote: '提交投票',
+    pollRetractVote: '撤回投票',
+    pollClosed: '已结束',
+    pollExplanation: '解析',
+    pollMultipleChoice: '可选择多个选项',
+
+    // Comments
+    reply: '回复',
+    commentsCount: (count) => `${count}`,
+    noComments: '还没有评论，来聊聊吧！',
+    loadingComments: '加载评论中...',
+    commentsLoadFailed: '加载评论失败。',
+    retry: '重试',
+    writeCommentPlaceholder: '写下你的回复...',
+    replyingTo: (name) => `正在回复 @${name}`,
+    cancelReply: '取消',
+    postComment: '发送',
+    postingComment: '发送中...',
+    deleteComment: '删除',
+    confirmDelete: '确认删除？',
+    commentDeleted: '[已删除]',
+    signInToComment: '登录后即可参与讨论。',
+    signIn: '登录',
+    signOut: '退出登录',
+    commentAsAnonymous: '匿名发表',
+    commentingAnonymously: '当前将以匿名身份发表',
+    notifyRepliesOn: '回复邮件通知：开',
+    notifyRepliesOff: '回复邮件通知：关',
+
+    // Badges
+    badgeOwner: '站长',
+    badgeVerified: '已认证',
+    badgeTelegram: 'Telegram',
+    badgeAnonymous: '未认证',
+
+    // ALTCHA
+    altchaPrompt: '人机验证',
+    altchaVerifying: '验证中...',
+    altchaVerified: '已验证',
+    altchaError: '验证失败，点击重试',
+
+    // Auth Modal
+    authTitle: '登录',
+    authSubtitle: '登录后可获得认证徽章并接收回复邮件通知。',
+    authContinueWithGithub: '使用 GitHub 继续',
+    authContinueWithGoogle: '使用 Google 继续',
+    authContinueWithTelegram: '使用 Telegram 继续',
+    authContinueWithOidc: (providerName) => `使用 ${providerName} 继续`,
+    authOrEmail: '或使用邮箱登录',
+    authEmailPlaceholder: 'you@example.com',
+    authDisplayNamePlaceholder: '昵称（可选）',
+    authSendMagicLink: '发送登录链接',
+    authSendingMagicLink: '发送中...',
+    authMagicLinkSent: (email) => `登录链接已发送至 ${email}，请查收邮件完成登录！`,
+    authClose: '关闭',
+
+    // Original Photo Viewer
+    viewOriginal: '查看原图',
+    viewOriginalWithSize: (size) => `查看原图 (${size})`,
+    loadingOriginal: '加载原图中...',
+    viewingOriginal: '正在查看原图',
+
+    // Interactive mode v3: Rich Media & Composer
+    mediaPhoto: '[图片]',
+    mediaSticker: '[贴纸]',
+    mediaAnimation: '[动图]',
+    mediaVideo: '[视频]',
+    mediaDocument: '[文件]',
+    attachPhoto: '添加图片',
+    emojiAndStickers: '表情与贴纸',
+    emojiTab: '表情',
+    stickersTab: '贴纸',
+    siteCustomEmojis: '自定义表情',
+    standardEmojis: '表情符号',
+    searchEmojisPlaceholder: '搜索表情...',
+    noStickersFound: '暂无贴纸',
+    backspace: '删除',
+    sendPhoto: '发送图片',
+    sendingPhoto: '发送中...',
+    captionPlaceholder: '添加说明文字...',
+    uploadFailed: '图片上传失败',
+    formatBold: '加粗',
+    formatItalic: '斜体',
+    formatUnderline: '下划线',
+    formatStrikethrough: '删除线',
+    formatMonospace: '等宽代码',
+    formatSpoiler: '剧透隐藏',
+    formatBlockquote: '引用',
+    formatLink: '添加链接',
+    formatClear: '清除格式',
+    formatLinkPlaceholder: '输入链接地址...',
+    formatToolbarLabel: '文本格式',
+    cancel: '取消',
+    apply: '确定',
 }
 
 export const tgbMessagesKey: InjectionKey<Reactive<TgBlogMessages>> = Symbol('tgb-messages')

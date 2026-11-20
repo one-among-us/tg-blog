@@ -131,17 +131,31 @@ body
   @include unselectable
   cursor: pointer
   transition: all .4s ease
-  background-color: $color-text-light
+  background-color: #b49871
   margin: 0 1px
   border-radius: 3px
+  -webkit-box-decoration-break: clone
+  box-decoration-break: clone
 
   span
     opacity: 0
 
-.spoiler.spoiler-visible
-  background-color: transparent
+  &:not(.spoiler-visible)
+    position: relative
+    z-index: 2
+    background-color: #b49871
+    color: transparent
 
-  span
+    > *, span, del, s, strike, u, b, strong, em, a, img, i, code
+      opacity: 0
+
+.spoiler.spoiler-visible
+  position: relative
+  z-index: auto
+  background-color: transparent
+  color: inherit
+
+  > *, span, del, s, strike, u, b, strong, em, a, img, i, code
     filter: blur(0)
     opacity: 1
 

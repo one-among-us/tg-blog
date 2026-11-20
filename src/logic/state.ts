@@ -180,6 +180,7 @@ export function applyCommentDeleteInList(
     deleted: true,
     body_text: '',
     body_html: '',
+    media: null,
     can_delete: false,
   }
 

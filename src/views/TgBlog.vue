@@ -1,5 +1,5 @@
 <template>
-    <div class="tg-blog" :class="{margins: margins}">
+    <div ref="blogRootEl" class="tg-blog" :class="{margins: margins}">
         <slot></slot>
 
         <div class="search">
@@ -30,7 +30,7 @@
 
         <AudioPlayer :audio="audio" v-if="audio"
                      @prev="audioNext(-1)" @next="audioNext(1)"/>
-        <ImageViewer :imgs="activeImgList" v-model:index="img" />
+        <ImageViewer :imgs="viewerImgs" v-model:index="viewerImgIndex" />
         <AuthModal v-if="isInteractive && apiClient"
                    :open="authModalOpen"
                    :api="apiClient"
@@ -47,15 +47,18 @@
 import {
     AllowedReactionItem,
     CommentDTO,
+    CustomEmojiAsset,
     MergedReaction,
     Post,
     PostInteractionState,
     ReactionTogglePayload,
+    StickerPack,
     StreamAllowedReactionsUpdatedEvent,
     StreamCommentDeletedEvent,
     StreamCommentReactionUpdatedEvent,
     StreamPollUpdatedEvent,
     StreamPostDeletedEvent,
+    StreamPostViewsUpdatedEvent,
     StreamReactionUpdatedEvent,
     TGFile,
     UpdateProfilePayload,
@@ -74,10 +77,10 @@ import {
     shouldIncrementCommentCount,
 } from "@/logic/state";
 import {CommentStreamListener, TgBlogInteractiveContext, tgbInteractiveKey} from "@/logic/interactive";
-import {resolvePostsUrl, resolveRelativeUrl} from "@/logic/url";
+import {resolveApiAssetUrl, resolvePostsUrl, resolveRelativeUrl} from "@/logic/url";
 import PostView from "@/views/PostView.vue";
 import {initSpoilers} from '@/logic/spoilers';
-import ImageViewer, {TrackedImage} from "@/views/ImageViewer.vue";
+import ImageViewer, {TrackedImage, ViewedImage} from "@/views/ImageViewer.vue";
 import {applyTranslations, createMessages, TgBlogMessages, TgBlogTranslations, tgbMessagesKey} from "@/logic/messages";
 import {computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpdated, provide, reactive, ref, watch} from "vue";
 
@@ -101,6 +104,8 @@ const props = withDefaults(defineProps<{
     sharedId?: number | null
     /** Base URL for Apple emoji PNGs (e.g. jsdelivr emoji-datasource-apple). Set to "" to disable and use native emojis. */
     appleEmojiBaseUrl?: string
+    /** Optional list of default avatar URLs rotated deterministically for anonymous commenters */
+    anonAvatars?: string[]
 }>(), {
     margins: true,
     appleEmojiBaseUrl: DEFAULT_APPLE_EMOJI_BASE_URL,
@@ -114,6 +119,7 @@ provide(tgbMessagesKey, msg)
 // Initialized here, applied via watch registered after rebuildPosts is defined below
 let pendingMessages = props.messages
 
+const blogRootEl = ref<HTMLElement | null>(null)
 const searchEl = ref<HTMLInputElement>()
 const purl = computed(() => resolvePostsUrl(props.postsUrl))
 
@@ -141,6 +147,8 @@ const upwardScrollReady = ref(false)
 // Audio player will be open when audio != null, and image viewer will be open when img != -1
 const audio = ref<TGFile | null>(null)
 const img = ref(-1)
+const standaloneImgs = ref<ViewedImage[] | null>(null)
+const standaloneImgIdx = ref(-1)
 
 // The indicies of the post that's currently shaking
 const replyShake = ref<number[]>([])
@@ -159,6 +167,11 @@ const apiTelegramBotUsername = ref<string | null>(null)
 const oidcProviderName = ref<string | null>(null)
 const allowAnonComments = ref(false)
 const allowedReactions = ref<AllowedReactionItem[] | null>(null)
+const customEmojiCatalog = ref<CustomEmojiAsset[]>([])
+const customEmojiCatalogLoading = ref(false)
+const customEmojiCatalogReady = ref(false)
+const stickerPacks = ref<StickerPack[]>([])
+const stickersLoading = ref(false)
 const authLoaded = ref(false)
 const authModalOpen = ref(false)
 
@@ -167,6 +180,15 @@ const resolvedTelegramBotUsername = computed(
 )
 
 const channelCustomEmojis = computed(() => extractCustomEmojiAssets(posts.value, purl.value))
+const allCustomEmojis = computed((): Record<string, string> => {
+    const merged: Record<string, string> = {...channelCustomEmojis.value}
+    for (const ce of customEmojiCatalog.value) {
+        if (ce.id && ce.url && !merged[ce.id]) {
+            merged[ce.id] = ce.url
+        }
+    }
+    return merged
+})
 const epochEmojiBase = computed(() => inferEpochEmojiBase(posts.value, purl.value))
 
 const hydratedIds = new Set<number>()
@@ -179,6 +201,15 @@ const reactionInFlightMap = new Map<number, number>()
 const commentSubscribers = new Map<number, Set<CommentStreamListener>>()
 const sseCreatedPosts = new Map<number, Post>()
 const deletedPostIds = new Set<number>()
+const viewedPostIds = new Set<number>()
+const queuedViewIds = new Set<number>()
+const pendingViewTimers = new Map<number, ReturnType<typeof setTimeout>>()
+let viewObserver: IntersectionObserver | null = null
+let viewFlushTimer: ReturnType<typeof setTimeout> | null = null
+let customEmojisLoaded = false
+let customEmojisPromise: Promise<CustomEmojiAsset[]> | null = null
+let stickersLoaded = false
+let stickersPromise: Promise<StickerPack[]> | null = null
 let streamClient: LifeStreamClient | null = null
 let isClientMounted = false
 let sharedHandled = false
@@ -347,6 +378,77 @@ function notifyLocalCommentDeleted(postId: number, commentId: number): void {
     }
 }
 
+async function ensureCustomEmojis(force = false): Promise<CustomEmojiAsset[]> {
+    const client = apiClient.value
+    if (!client || typeof window === 'undefined') return customEmojiCatalog.value
+    if (customEmojisLoaded && !force) return customEmojiCatalog.value
+    if (customEmojisPromise && !force) return customEmojisPromise
+
+    customEmojiCatalogLoading.value = true
+    const req = (async () => {
+        try {
+            const res = await client.getCustomEmojis()
+            if (apiClient.value !== client) return customEmojiCatalog.value
+            const list = Array.isArray(res?.emojis) ? res.emojis : []
+            customEmojiCatalog.value = list.map(item => ({
+                ...item,
+                url: item.url ? resolveApiAssetUrl(item.url, props.apiUrl, purl.value) : item.url,
+            }))
+            customEmojisLoaded = true
+            return customEmojiCatalog.value
+        } catch (err) {
+            console.warn('[tg-blog] Failed to load custom emojis:', err)
+            return customEmojiCatalog.value
+        } finally {
+            customEmojiCatalogLoading.value = false
+            customEmojiCatalogReady.value = true
+            if (customEmojisPromise === req) customEmojisPromise = null
+        }
+    })()
+    customEmojisPromise = req
+    return req
+}
+
+async function ensureStickers(force = false): Promise<StickerPack[]> {
+    const client = apiClient.value
+    if (!client || typeof window === 'undefined') return stickerPacks.value
+    if (stickersLoaded && !force) return stickerPacks.value
+    if (stickersPromise && !force) return stickersPromise
+
+    stickersLoading.value = true
+    const req = (async () => {
+        try {
+            const res = await client.getStickers()
+            if (apiClient.value !== client) return stickerPacks.value
+            const packs = Array.isArray(res?.packs) ? res.packs : []
+            stickerPacks.value = packs.map(pack => ({
+                ...pack,
+                stickers: (pack.stickers ?? []).map(st => ({
+                    ...st,
+                    url: st.url ? resolveApiAssetUrl(st.url, props.apiUrl, purl.value) : st.url,
+                    thumb: st.thumb ? resolveApiAssetUrl(st.thumb, props.apiUrl, purl.value) : st.thumb,
+                })),
+            }))
+            stickersLoaded = true
+            return stickerPacks.value
+        } catch (err) {
+            console.warn('[tg-blog] Failed to load stickers:', err)
+            return stickerPacks.value
+        } finally {
+            stickersLoading.value = false
+            if (stickersPromise === req) stickersPromise = null
+        }
+    })()
+    stickersPromise = req
+    return req
+}
+
+function openMediaViewer(imgs: ViewedImage[], index = 0): void {
+    if (!imgs.length) return
+    standaloneImgs.value = imgs
+    standaloneImgIdx.value = Math.max(0, Math.min(index, imgs.length - 1))
+}
+
 // Always provide a reactive interactive context so dynamic apiUrl changes work seamlessly
 const interactiveCtx: TgBlogInteractiveContext = {
     api: apiClient,
@@ -356,10 +458,20 @@ const interactiveCtx: TgBlogInteractiveContext = {
     allowAnonComments,
     authLoaded,
     channelCustomEmojis,
+    customEmojiCatalog,
+    customEmojiCatalogLoading,
+    customEmojiCatalogReady,
+    allCustomEmojis,
+    stickerPacks,
+    stickersLoading,
     epochEmojiBase,
     allowedReactions,
+    anonAvatars: computed(() => props.anonAvatars ?? []),
     openAuthModal,
     ensureAuthInfo: () => ensureAuthInfo(false),
+    ensureCustomEmojis,
+    ensureStickers,
+    openMediaViewer,
     refreshAuthAndInteractions,
     logout: handleLogout,
     updateProfile: handleUpdateProfile,
@@ -545,6 +657,113 @@ function handleStreamPostDeleted(ev: StreamPostDeletedEvent): void {
     }
 }
 
+function handleStreamPostViewsUpdated(ev: StreamPostViewsUpdatedEvent): void {
+    if (!ev?.views) return
+    for (const [idStr, viewsStr] of Object.entries(ev.views)) {
+        const pid = Number(idStr)
+        if (Number.isFinite(pid) && typeof viewsStr === 'string') {
+            ensurePostInteraction(pid).views = viewsStr
+        }
+    }
+}
+
+function clearViewTrackingTimers(): void {
+    for (const timer of pendingViewTimers.values()) {
+        clearTimeout(timer)
+    }
+    pendingViewTimers.clear()
+    if (viewFlushTimer) {
+        clearTimeout(viewFlushTimer)
+        viewFlushTimer = null
+    }
+}
+
+function scheduleViewFlush(): void {
+    if (viewFlushTimer || !isInteractive.value || typeof window === 'undefined') return
+    viewFlushTimer = setTimeout(() => {
+        viewFlushTimer = null
+        void flushQueuedViews()
+    }, 500)
+}
+
+async function flushQueuedViews(): Promise<void> {
+    const client = apiClient.value
+    if (!client || !isInteractive.value || typeof window === 'undefined') return
+    if (queuedViewIds.size === 0) return
+
+    const allIds = Array.from(queuedViewIds)
+    queuedViewIds.clear()
+
+    for (let i = 0; i < allIds.length; i += 50) {
+        const chunk = allIds.slice(i, i + 50)
+        try {
+            const res = await client.recordViews(chunk)
+            if (apiClient.value !== client) return
+            if (res?.views) {
+                for (const [idStr, viewsStr] of Object.entries(res.views)) {
+                    const pid = Number(idStr)
+                    if (Number.isFinite(pid) && typeof viewsStr === 'string') {
+                        ensurePostInteraction(pid).views = viewsStr
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('[tg-blog] Failed to record post views:', err)
+        }
+    }
+}
+
+function setupViewObserver(): void {
+    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return
+    if (!isInteractive.value || !blogRootEl.value) {
+        viewObserver?.disconnect()
+        viewObserver = null
+        return
+    }
+    if (!viewObserver) {
+        viewObserver = new IntersectionObserver((entries) => {
+            for (const entry of entries) {
+                const rawId = (entry.target as HTMLElement).id || ''
+                const match = /^message-(\d+)$/.exec(rawId)
+                if (!match) continue
+                const pid = Number(match[1])
+                if (!Number.isFinite(pid) || viewedPostIds.has(pid)) continue
+
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
+                    if (!pendingViewTimers.has(pid)) {
+                        const timer = setTimeout(() => {
+                            pendingViewTimers.delete(pid)
+                            if (viewedPostIds.has(pid)) return
+                            viewedPostIds.add(pid)
+                            queuedViewIds.add(pid)
+                            scheduleViewFlush()
+                        }, 300)
+                        pendingViewTimers.set(pid, timer)
+                    }
+                } else {
+                    const existing = pendingViewTimers.get(pid)
+                    if (existing) {
+                        clearTimeout(existing)
+                        pendingViewTimers.delete(pid)
+                    }
+                }
+            }
+        }, {threshold: [0.35]})
+    } else {
+        viewObserver.disconnect()
+    }
+
+    const postEls = blogRootEl.value.querySelectorAll<HTMLElement>('.post[id^="message-"]')
+    postEls.forEach(node => {
+        const match = /^message-(\d+)$/.exec(node.id)
+        if (!match) return
+        const pid = Number(match[1])
+        if (!viewedPostIds.has(pid)) {
+            viewObserver?.observe(node)
+        }
+    })
+}
+
 function startStream(): void {
     if (!isInteractive.value || !props.apiUrl || typeof window === 'undefined') return
     streamClient?.close()
@@ -554,6 +773,7 @@ function startStream(): void {
             onPostCreated: handleStreamPostCreated,
             onPostUpdated: handleStreamPostUpdated,
             onPostDeleted: handleStreamPostDeleted,
+            onPostViewsUpdated: handleStreamPostViewsUpdated,
             onReactionUpdated: handleStreamReactionUpdated,
             onPollUpdated: handleStreamPollUpdated,
             onCommentCreated: handleStreamCommentCreated,
@@ -576,6 +796,11 @@ function startStream(): void {
 function resetInteractiveCaches(): void {
     streamClient?.close()
     streamClient = null
+    clearViewTrackingTimers()
+    viewObserver?.disconnect()
+    viewObserver = null
+    viewedPostIds.clear()
+    queuedViewIds.clear()
     hydratedIds.clear()
     hydratingIds.clear()
     postHydratedAt.clear()
@@ -595,6 +820,14 @@ function resetInteractiveCaches(): void {
     oidcProviderName.value = null
     allowAnonComments.value = false
     allowedReactions.value = null
+    customEmojiCatalog.value = []
+    customEmojiCatalogLoading.value = false
+    customEmojiCatalogReady.value = false
+    customEmojisLoaded = false
+    customEmojisPromise = null
+    stickerPacks.value = []
+    stickersLoaded = false
+    stickersPromise = null
     authLoaded.value = false
     authModalOpen.value = false
 }
@@ -603,10 +836,12 @@ watch(() => props.apiUrl, (nextUrl, prevUrl) => {
     if (nextUrl === prevUrl) return
     resetInteractiveCaches()
     if (isClientMounted && nextUrl) {
+        void ensureCustomEmojis()
         if (visiblePostIds.value.length) {
             void hydrateInteractions(visiblePostIds.value, true)
         }
         startStream()
+        void nextTick(() => setupViewObserver())
     }
 })
 
@@ -684,6 +919,7 @@ watch(visiblePostIds, (ids) =>
         void hydrateInteractions(ids)
         streamClient?.updatePostIds(ids)
     }
+    void nextTick(() => setupViewObserver())
 })
 
 const globalPostImgIndexById = computed((): {[postId: number]: number} =>
@@ -712,6 +948,19 @@ const searchedImageContext = computed((): {imgs: TrackedImage[], postImgIndexByI
 
 const activeImgList = computed(() => searchedImageContext.value.imgs)
 
+const viewerImgs = computed((): ViewedImage[] => standaloneImgs.value ?? activeImgList.value)
+const viewerImgIndex = computed({
+    get: () => (standaloneImgs.value ? standaloneImgIdx.value : img.value),
+    set: (val: number) => {
+        if (standaloneImgs.value) {
+            standaloneImgIdx.value = val
+            if (val < 0) standaloneImgs.value = null
+        } else {
+            img.value = val
+        }
+    },
+})
+
 watch(activeImgList, (newImgs, oldImgs) =>
 {
     if (img.value < 0) return
@@ -727,6 +976,8 @@ watch(activeImgList, (newImgs, oldImgs) =>
 
 function openImage(post: Post, imageOffset: number)
 {
+    standaloneImgs.value = null
+    standaloneImgIdx.value = -1
     const start = searchedImageContext.value.postImgIndexById[post.id]
     if (start === undefined) return
     img.value = start + imageOffset
@@ -1102,6 +1353,10 @@ onMounted(async () =>
     isClientMounted = true
     document.addEventListener('keydown', onKey)
     window.addEventListener('hashchange', onHashChange)
+    if (isInteractive.value)
+    {
+        void ensureCustomEmojis()
+    }
 
     try
     {
@@ -1139,6 +1394,8 @@ onMounted(async () =>
                 await hydrateInteractions(visiblePostIds.value)
             }
             startStream()
+            await nextTick()
+            setupViewObserver()
         }
     }
     catch (e)
@@ -1153,6 +1410,9 @@ onUnmounted(() =>
     if (typeof document !== 'undefined') document.removeEventListener('keydown', onKey)
     if (typeof window !== 'undefined') window.removeEventListener('hashchange', onHashChange)
     if (upwardReadyTimer) clearTimeout(upwardReadyTimer)
+    clearViewTrackingTimers()
+    viewObserver?.disconnect()
+    viewObserver = null
     topObserver?.disconnect()
     streamClient?.close()
     streamClient = null
