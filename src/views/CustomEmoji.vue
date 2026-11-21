@@ -19,7 +19,7 @@
              alt=""
              loading="lazy"
              @error="tryNext(currentSrc)" />
-        <span v-else class="fallback-star" aria-hidden="true">✦</span>
+        <span v-else class="fallback-star" aria-hidden="true">{{ alt || '✦' }}</span>
     </span>
 </template>
 
@@ -34,6 +34,7 @@ import {resolveRelativeUrl} from '@/logic/url'
 const props = defineProps<{
     id: string
     src?: string | null
+    alt?: string | null
     postsUrl: string
 }>()
 

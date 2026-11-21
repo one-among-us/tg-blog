@@ -47,6 +47,7 @@
                                       :aria-label="msg.captionPlaceholder"
                                       :readonly="sending"
                                       :custom-emoji-urls="customEmojiUrls"
+                                      :custom-emoji-alts="customEmojiAlts"
                                       :epoch-emoji-base="epochEmojiBase"
                                       :posts-url="postsUrl"
                                       @submit="handleSend" />
@@ -76,7 +77,7 @@
                             :anchor-el="smileyBtnEl"
                             :hide-stickers="true"
                             @select-emoji="e => captionInputRef?.insertEmoji(e)"
-                            @select-custom-emoji="ce => captionInputRef?.insertCustomEmoji({ id: ce.id, url: ce.url })"
+                            @select-custom-emoji="ce => captionInputRef?.insertCustomEmoji({ id: ce.id, url: ce.url, alt: ce.alt })"
                             @backspace="() => captionInputRef?.backspaceAtSelection()"
                             @close="symbolMenuOpen = false" />
             </div>
@@ -100,6 +101,7 @@ const props = withDefaults(defineProps<{
     sending?: boolean
     error?: string | null
     customEmojiUrls?: Record<string, string>
+    customEmojiAlts?: Record<string, string>
     epochEmojiBase?: string | null
     postsUrl?: string
 }>(), {

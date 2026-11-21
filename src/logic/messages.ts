@@ -159,6 +159,19 @@ export interface TgBlogMessages {
     formatToolbarLabel: string
     cancel: string
     apply: string
+    pendingReviewBadge: string
+    composerSettings: string
+    reviewQueueBtn: string
+    reviewModalTitle: string
+    reviewTabPending: string
+    reviewTabWhitelist: string
+    reviewApprove: string
+    reviewApproveWhitelist: string
+    reviewReject: string
+    reviewWhitelistRemove: string
+    reviewEmpty: string
+    reviewWhitelistEmpty: string
+    reviewOpenPost: (postId: number) => string
 }
 
 /** English defaults matching tg-blog's historical literals. */
@@ -258,6 +271,19 @@ export const defaultMessages: TgBlogMessages = {
     searchEmojisPlaceholder: 'Search emojis...',
     noStickersFound: 'No stickers available',
     backspace: 'Delete',
+    pendingReviewBadge: 'Pending review',
+    composerSettings: 'Settings',
+    reviewQueueBtn: 'Review Queue',
+    reviewModalTitle: 'Moderation Review',
+    reviewTabPending: 'Pending',
+    reviewTabWhitelist: 'Whitelisted Senders',
+    reviewApprove: 'Approve',
+    reviewApproveWhitelist: 'Approve & Whitelist Sender',
+    reviewReject: 'Reject & Delete',
+    reviewWhitelistRemove: 'Remove',
+    reviewEmpty: 'No comments awaiting review.',
+    reviewWhitelistEmpty: 'No whitelisted senders yet.',
+    reviewOpenPost: (postId) => `Post #${postId}`,
     sendPhoto: 'Send Photo',
     sendingPhoto: 'Sending...',
     captionPlaceholder: 'Add a caption...',
@@ -374,6 +400,18 @@ export const zhCnMessages: TgBlogMessages = {
     searchEmojisPlaceholder: '搜索表情...',
     noStickersFound: '暂无贴纸',
     backspace: '删除',
+    pendingReviewBadge: '待审核',
+    reviewQueueBtn: '审核队列',
+    reviewModalTitle: '评论审核',
+    reviewTabPending: '待审核',
+    reviewTabWhitelist: '白名单发送者',
+    reviewApprove: '通过',
+    reviewApproveWhitelist: '通过并加入白名单',
+    reviewReject: '拒绝并删除',
+    reviewWhitelistRemove: '移除',
+    reviewEmpty: '暂无待审核评论。',
+    reviewWhitelistEmpty: '暂无白名单发送者。',
+    reviewOpenPost: (postId) => `动态 #${postId}`,
     sendPhoto: '发送图片',
     sendingPhoto: '发送中...',
     captionPlaceholder: '添加说明文字...',
@@ -391,6 +429,7 @@ export const zhCnMessages: TgBlogMessages = {
     formatToolbarLabel: '文本格式',
     cancel: '取消',
     apply: '确定',
+    composerSettings: '设置',
 }
 
 export const tgbMessagesKey: InjectionKey<Reactive<TgBlogMessages>> = Symbol('tgb-messages')

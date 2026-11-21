@@ -16,6 +16,7 @@ import RichCommentInput from "./RichCommentInput.vue"
 import SymbolMenu from "./SymbolMenu.vue"
 import AttachmentModal from "./AttachmentModal.vue"
 import StickerMedia from "./StickerMedia.vue"
+import ModerationModal from "./ModerationModal.vue"
 
 export {
   TgBlog,
@@ -35,6 +36,7 @@ export {
   SymbolMenu,
   AttachmentModal,
   StickerMedia,
+  ModerationModal,
 }
 
 export type { ViewedImage, TrackedImage } from "./ImageViewer.vue"

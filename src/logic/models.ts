@@ -221,6 +221,7 @@ export interface CustomEmojiAsset {
   id: string
   url: string
   format?: string | null
+  alt?: string | null
 }
 
 export interface StickerItem {
@@ -269,7 +270,53 @@ export interface CommentDTO {
   deleted: boolean
   is_mine: boolean
   can_delete: boolean
+  moderation_status?: 'approved' | 'pending' | 'rejected' | string
   reactions?: MergedReaction[]
+}
+
+export interface ModerationWhitelistEntryDTO {
+  id: number
+  kind: string
+  key: string
+  label?: string | null
+  created_at: string
+}
+
+export interface ModerationCommentDTO {
+  id: number
+  post_id: number
+  parent_id: number | null
+  source: string
+  author: CommentAuthorDTO
+  body_text: string
+  body_html: string
+  media?: CommentMediaDTO | null
+  created_at: string
+  moderation_status: string
+  moderation_meta?: Record<string, any> | null
+  sender_whitelisted: boolean
+  can_whitelist: boolean
+  whitelist_kind?: string | null
+  whitelist_label?: string | null
+}
+
+export interface ModerationQueueResponse {
+  pending_count: number
+  comments: ModerationCommentDTO[]
+  whitelist: ModerationWhitelistEntryDTO[]
+}
+
+export interface ModerationDecisionPayload {
+  action: 'approve' | 'reject'
+  whitelist_sender?: boolean
+}
+
+export interface ModerationDecisionResponse {
+  ok: boolean
+  comment_id: number
+  post_id: number
+  moderation_status: string
+  whitelisted: boolean
 }
 
 export interface CommentsResponse {
@@ -312,6 +359,7 @@ export interface AuthMeResponse {
   providers: string[]
   allow_anon_comments: boolean
   telegram_bot_username?: string | null
+  telegram_client_id?: string | null
   oidc_provider_name?: string | null
 }
 

@@ -64,9 +64,9 @@
                                             :key="ce.id"
                                             type="button"
                                             class="EmojiButton"
-                                            :title="ce.id"
+                                            :title="ce.alt || ce.id"
                                             @click="emit('select-custom-emoji', ce)">
-                                        <CustomEmoji :id="ce.id" :src="ce.url" :posts-url="postsUrl" />
+                                        <CustomEmoji :id="ce.id" :src="ce.url" :alt="ce.alt" :posts-url="postsUrl" />
                                     </button>
                                 </div>
                             </div>
@@ -235,7 +235,9 @@ const mergedCustomEmojis = computed((): CustomEmojiAsset[] => {
 const filteredCustomEmojis = computed((): CustomEmojiAsset[] => {
     const q = trimmedQuery.value
     if (!q) return mergedCustomEmojis.value
-    return mergedCustomEmojis.value.filter(ce => ce.id.includes(q))
+    return mergedCustomEmojis.value.filter(ce =>
+        ce.id.includes(q) || (!!ce.alt && ce.alt.includes(q))
+    )
 })
 
 const filteredCategories = computed(() => {

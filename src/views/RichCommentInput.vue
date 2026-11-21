@@ -62,6 +62,7 @@ const props = withDefaults(defineProps<{
     readonly?: boolean
     maxLength?: number
     customEmojiUrls?: Record<string, string>
+    customEmojiAlts?: Record<string, string>
     epochEmojiBase?: string | null
     postsUrl?: string
 }>(), {
@@ -117,17 +118,24 @@ function buildCandidatesForId(id: string): string[] {
     return buildCustomEmojiCandidates(primary)
 }
 
-function createCustomEmojiChip(id: string, alt = '✦'): HTMLSpanElement {
+function resolveCustomEmojiAlt(id: string, explicitAlt?: string | null): string {
+    const trimmed = explicitAlt?.trim() || ''
+    if (trimmed && trimmed !== '✦') return trimmed
+    return props.customEmojiAlts?.[id]?.trim() || trimmed || '✦'
+}
+
+function createCustomEmojiChip(id: string, alt?: string | null): HTMLSpanElement {
+    const resolvedAlt = resolveCustomEmojiAlt(id, alt)
     const chip = document.createElement('span')
     chip.className = 'tgb-editor-ce'
     chip.setAttribute('contenteditable', 'false')
     chip.setAttribute('data-custom-emoji-id', id)
-    chip.setAttribute('data-emoji-alt', alt)
+    chip.setAttribute('data-emoji-alt', resolvedAlt)
     const candidates = buildCandidatesForId(id)
     if (candidates.length) {
-        emojiDomManager.mountElement(chip, candidates, alt)
+        emojiDomManager.mountElement(chip, candidates, resolvedAlt)
     } else {
-        chip.textContent = alt || '✦'
+        chip.textContent = resolvedAlt
     }
     return chip
 }
@@ -139,7 +147,7 @@ function mountCustomEmojisInDom() {
     for (const node of legacyNodes) {
         const id = node.getAttribute('data-custom-emoji-id')?.trim()
         if (!id || !isValidCustomEmojiId(id)) continue
-        const alt = node.textContent?.trim() || '✦'
+        const alt = resolveCustomEmojiAlt(id, node.textContent)
         const chip = createCustomEmojiChip(id, alt)
         node.replaceWith(chip)
     }
@@ -147,7 +155,8 @@ function mountCustomEmojisInDom() {
     for (const chip of chipNodes) {
         const id = chip.getAttribute('data-custom-emoji-id')?.trim()
         if (!id || !isValidCustomEmojiId(id)) continue
-        const alt = chip.getAttribute('data-emoji-alt') || chip.textContent?.trim() || '✦'
+        const alt = resolveCustomEmojiAlt(id, chip.getAttribute('data-emoji-alt') || chip.textContent)
+        chip.setAttribute('data-emoji-alt', alt)
         const candidates = buildCandidatesForId(id)
         if (candidates.length) {
             emojiDomManager.mountElement(chip, candidates, alt)
@@ -983,7 +992,7 @@ function hydrateCustomInContainer(container: HTMLElement) {
     for (const node of nodes) {
         const id = node.getAttribute('data-custom-emoji-id')?.trim()
         if (!id || !isValidCustomEmojiId(id)) continue
-        const alt = node.textContent?.trim() || '✦'
+        const alt = resolveCustomEmojiAlt(id, node.textContent)
         node.replaceWith(createCustomEmojiChip(id, alt))
     }
 }
@@ -1175,13 +1184,13 @@ function insertEmoji(emoji: string) {
     })
 }
 
-function insertCustomEmoji(asset: { id: string; url?: string | null; alt?: string }) {
+function insertCustomEmoji(asset: { id: string; url?: string | null; alt?: string | null }) {
     if (!editorEl.value || !isValidCustomEmojiId(asset.id)) return
     editorEl.value.focus()
     recordProgrammaticEdit(() => {
         const range = restoreOrEndRange()
         if (!range) return
-        const alt = asset.alt || '✦'
+        const alt = resolveCustomEmojiAlt(asset.id, asset.alt)
         const selectedLen = range.collapsed ? 0 : extractRangeTextWithEmojis(range).length
         if (props.maxLength > 0 && getTextLength() - selectedLen + alt.length > props.maxLength) {
             return

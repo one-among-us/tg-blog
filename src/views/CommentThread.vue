@@ -58,10 +58,14 @@
                              @click.capture="onBubbleClickCapture"
                              @contextmenu="onBubbleContextMenu(item.comment, $event)"
                              @pointerdown="onBubblePointerDown(item.comment, $event)">
+                            <div class="bubble-media-group"
+                                 :class="{
+                                     'sticker-card': isStickerCard(item),
+                                     'sticker-solo': isStickerOnlyBubble(item) && !isStickerCard(item)
+                                 }">
                             <!-- Header row on incoming firstInGroup: sender + badge -->
                             <div v-if="item.firstInGroup && !item.isOwn"
-                                 class="message-title"
-                                 :class="{ 'sticker-title-pill': isStickerOnlyBubble(item) }">
+                                 class="message-title">
                                 <span class="sender-title" :style="{ color: senderColor(item.comment) }">
                                     {{ displayAuthorName(item.comment) }}
                                 </span>
@@ -214,11 +218,15 @@
                                     </span>
                                 </a>
                             </template>
+                            </div>
 
                             <!-- Message text (+ inline bottom-right timestamp when there are no reactions) -->
                             <div v-if="commentHasBody(item.comment) || !item.comment.media || (item.comment.media.media_type === 'document' && (item.comment.reactions?.length ?? 0) === 0)"
                                  class="text-content">
                                 <span v-if="commentHasBody(item.comment)" class="comment-body" v-html="renderBody(item.comment)"></span>
+                                <span v-if="item.comment.moderation_status === 'pending'" class="badge badge-pending-review">
+                                    {{ msg.pendingReviewBadge }}
+                                </span>
                                 <span v-if="(item.comment.reactions?.length ?? 0) === 0"
                                       class="message-timestamp in-text"
                                       :title="formatFullDate(item.comment.created_at)">
@@ -240,6 +248,7 @@
                                     <CustomEmoji v-if="r.custom_emoji_id"
                                                  :id="r.custom_emoji_id"
                                                  :src="customEmojiSrc(r.custom_emoji_id)"
+                                                 :alt="mergedCustomEmojiAlts[r.custom_emoji_id] ?? r.emoji"
                                                  :posts-url="resolvedPostsUrl" />
                                     <AppleEmoji v-else-if="r.emoji" :emoji="r.emoji" class="reaction-emoji" />
                                     <span class="reaction-count" v-if="r.count">{{ r.count }}</span>
@@ -305,71 +314,110 @@
 
         <!-- Composer (one-among-us/web embedded send button + compact auth strip) -->
         <div class="composer">
-            <div v-if="me" class="user-bar">
-                <div class="user-pill">
-                    <template v-if="asAnonymous && allowAnon">
-                        <img v-if="activeAnonIdentity?.avatarUrl"
-                             :src="activeAnonIdentity.avatarUrl"
-                             class="avatar sm anon-ringed"
+            <div class="composer-bar" :class="{ 'has-composer': canCompose, 'menu-open': composerSettingsOpen }">
+                <div class="composer-auth-row">
+                    <template v-if="me && !isPostingAnon">
+                        <div class="composer-avatar signed-in" :title="me.display_name">
+                            <img v-if="safeAvatar(me.avatar_url)"
+                                 :src="safeAvatar(me.avatar_url)!"
+                                 referrerpolicy="no-referrer"
+                                 class="composer-avatar-img"
+                                 alt="" />
+                            <span v-else class="composer-avatar-fallback" :style="meFallbackStyle">
+                                {{ avatarInitial(me.display_name) }}
+                            </span>
+                        </div>
+                        <span class="composer-author-name">{{ me.display_name }}</span>
+                    </template>
+                    <template v-else-if="me">
+                        <div class="composer-avatar"
+                             :class="{ 'anon-ringed': !!activeAnonTag }"
                              :style="activeAnonRingStyle"
-                             alt="" />
-                        <span v-else
-                              class="avatar sm avatar-fallback anon anon-ringed"
-                              :style="activeAnonRingStyle">
-                            {{ avatarInitial(activeAnonLabel) }}
-                        </span>
-                        <span class="user-name anon">{{ activeAnonLabel }}</span>
+                             :title="activeAnonLabel">
+                            <img v-if="activeAnonIdentity?.avatarUrl"
+                                 :src="activeAnonIdentity.avatarUrl"
+                                 class="composer-avatar-img"
+                                 alt="" />
+                            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                        <span class="composer-author-name anon">{{ activeAnonLabel }}</span>
                     </template>
                     <template v-else>
-                        <img v-if="safeAvatar(me.avatar_url)" :src="safeAvatar(me.avatar_url)!"
-                             referrerpolicy="no-referrer" class="avatar sm" alt="" />
-                        <span v-else class="avatar sm avatar-fallback">{{ avatarInitial(me.display_name) }}</span>
-                        <span class="user-name">{{ me.display_name }}</span>
+                        <button type="button"
+                                class="composer-avatar"
+                                :class="{ 'anon-ringed': !!activeAnonTag }"
+                                :style="activeAnonRingStyle"
+                                :title="msg.signIn"
+                                :aria-label="`${activeAnonLabel} - ${msg.signIn}`"
+                                @click="ctx.openAuthModal()">
+                            <img v-if="activeAnonIdentity?.avatarUrl"
+                                 :src="activeAnonIdentity.avatarUrl"
+                                 class="composer-avatar-img"
+                                 alt="" />
+                            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </button>
+                        <span v-if="activeAnonTag" class="composer-author-name anon">{{ activeAnonTag }}</span>
                     </template>
                 </div>
-                <div class="user-controls">
-                    <button v-if="me.email_verified" type="button" class="chip-btn"
-                            :class="{ active: me.notify_replies }"
-                            :disabled="togglingNotify"
-                            @click="toggleNotify"
-                            :title="me.notify_replies ? msg.notifyRepliesOn : msg.notifyRepliesOff">
-                        {{ me.notify_replies ? msg.notifyRepliesOn : msg.notifyRepliesOff }}
-                    </button>
-                    <label v-if="allowAnon" class="anon-toggle">
-                        <input type="checkbox" v-model="asAnonymous" />
-                        <span>{{ msg.commentAsAnonymous }}</span>
-                    </label>
-                    <button type="button" class="chip-btn subtle" @click="handleLogout">
-                        {{ msg.signOut }}
-                    </button>
-                </div>
-            </div>
 
-            <div v-else class="guest-bar" :class="{ 'has-composer': canCompose }">
-                <div class="guest-auth-row">
-                    <button type="button"
-                            class="guest-avatar"
-                            :class="{ 'anon-ringed': !!activeAnonTag }"
-                            :style="activeAnonRingStyle"
-                            :title="msg.signIn"
-                            :aria-label="`${activeAnonLabel} - ${msg.signIn}`"
-                            @click="ctx.openAuthModal()">
-                        <img v-if="activeAnonIdentity?.avatarUrl"
-                             :src="activeAnonIdentity.avatarUrl"
-                             class="guest-avatar-img"
-                             alt="" />
-                        <svg v-else viewBox="0 0 24 24" aria-hidden="true">
-                            <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                        </svg>
-                    </button>
-                    <span v-if="activeAnonTag" class="guest-anon-name">{{ activeAnonTag }}</span>
-                </div>
-                <div class="guest-meta-row">
-                    <span v-if="allowAnon" class="guest-hint">{{ msg.commentingAnonymously }}</span>
-                    <span v-else class="guest-hint">{{ msg.signInToComment }}</span>
-                    <button type="button" class="signin-btn" @click="ctx.openAuthModal()">
-                        {{ msg.signIn }}
-                    </button>
+                <div class="composer-meta-row">
+                    <div v-if="me" class="composer-settings-wrap">
+                        <button ref="settingsTriggerEl"
+                                type="button"
+                                class="signin-btn composer-settings-btn"
+                                :class="{ open: composerSettingsOpen }"
+                                :aria-expanded="composerSettingsOpen"
+                                aria-haspopup="menu"
+                                @click.stop="toggleComposerSettings">
+                            <svg class="settings-gear-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.26.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>
+                            </svg>
+                            <span>{{ msg.composerSettings }}</span>
+                        </button>
+                        <div v-if="composerSettingsOpen"
+                             ref="settingsMenuEl"
+                             class="composer-settings-menu"
+                             role="menu"
+                             @click.stop>
+                            <button v-if="me.email_verified"
+                                    type="button"
+                                    class="settings-menu-item"
+                                    role="menuitemcheckbox"
+                                    :aria-checked="me.notify_replies"
+                                    :disabled="togglingNotify"
+                                    @click="toggleNotify">
+                                <span class="settings-item-label">{{ me.notify_replies ? msg.notifyRepliesOn : msg.notifyRepliesOff }}</span>
+                                <span class="settings-switch" :class="{ on: me.notify_replies }" aria-hidden="true"></span>
+                            </button>
+                            <button v-if="allowAnon"
+                                    type="button"
+                                    class="settings-menu-item"
+                                    role="menuitemcheckbox"
+                                    :aria-checked="asAnonymous"
+                                    @click="asAnonymous = !asAnonymous">
+                                <span class="settings-item-label">{{ msg.commentAsAnonymous }}</span>
+                                <span class="settings-switch" :class="{ on: asAnonymous }" aria-hidden="true"></span>
+                            </button>
+                            <div v-if="me.email_verified || allowAnon" class="settings-menu-divider"></div>
+                            <button type="button"
+                                    class="settings-menu-item danger"
+                                    role="menuitem"
+                                    @click="handleLogout">
+                                <span class="settings-item-label">{{ msg.signOut }}</span>
+                            </button>
+                        </div>
+                    </div>
+                    <template v-else>
+                        <span v-if="allowAnon" class="guest-hint">{{ msg.commentingAnonymously }}</span>
+                        <span v-else class="guest-hint">{{ msg.signInToComment }}</span>
+                        <button type="button" class="signin-btn" @click="ctx.openAuthModal()">
+                            {{ msg.signIn }}
+                        </button>
+                    </template>
                 </div>
             </div>
 
@@ -408,6 +456,7 @@
                                       :readonly="submitting"
                                       :max-length="4000"
                                       :custom-emoji-urls="mergedCustomEmojiUrls"
+                                      :custom-emoji-alts="mergedCustomEmojiAlts"
                                       :epoch-emoji-base="epochEmojiBase"
                                       :posts-url="resolvedPostsUrl"
                                       @text-length="n => draftTextLength = n"
@@ -471,6 +520,7 @@
                          :sending="submitting"
                          :error="attachError"
                          :custom-emoji-urls="mergedCustomEmojiUrls"
+                         :custom-emoji-alts="mergedCustomEmojiAlts"
                          :epoch-emoji-base="epochEmojiBase"
                          :posts-url="resolvedPostsUrl"
                          @close="closeAttachModal"
@@ -586,6 +636,9 @@ const confirmDeleteId = ref<number | null>(null)
 let confirmTimer: ReturnType<typeof setTimeout> | null = null
 const deletingId = ref<number | null>(null)
 const togglingNotify = ref(false)
+const composerSettingsOpen = ref(false)
+const settingsTriggerEl = ref<HTMLElement | null>(null)
+const settingsMenuEl = ref<HTMLElement | null>(null)
 
 const highlightedId = ref<number | null>(null)
 let highlightTimer: ReturnType<typeof setTimeout> | null = null
@@ -598,6 +651,15 @@ const reactionInFlightMap = new Map<number, number>()
 
 const channelCustomEmojis = computed(() => ctx?.channelCustomEmojis.value ?? {})
 const mergedCustomEmojiUrls = computed(() => ctx?.allCustomEmojis.value ?? channelCustomEmojis.value)
+const mergedCustomEmojiAlts = computed((): Record<string, string> => {
+    const map: Record<string, string> = {}
+    for (const ce of ctx?.customEmojiCatalog.value ?? []) {
+        if (ce.id && ce.alt) {
+            map[ce.id] = ce.alt
+        }
+    }
+    return map
+})
 const epochEmojiBase = computed(() => ctx?.epochEmojiBase.value ?? null)
 const resolvedPostsUrl = computed(() => props.postsUrl ?? '')
 const draftCharCount = computed(() => draftTextLength.value || (draft.value.trim() ? draft.value.trim().length : 0))
@@ -669,8 +731,19 @@ const activeAnonRingStyle = computed<Record<string, string>>(() =>
     activeAnonIdentity.value ? {'--tgb-anon-ring': activeAnonIdentity.value.ringColor} : {},
 )
 
+const meFallbackStyle = computed<Record<string, string>>(() => {
+    const name = me.value?.display_name || ''
+    return {
+        background: SENDER_PALETTE[hashName(name) % SENDER_PALETTE.length],
+        color: '#fff',
+    }
+})
+
 watch(me, (newMe) => {
-    if (!newMe) asAnonymous.value = false
+    if (!newMe) {
+        asAnonymous.value = false
+        composerSettingsOpen.value = false
+    }
 })
 
 watch(needsAltcha, (needed) => {
@@ -821,6 +894,10 @@ function commentHasBody(c: CommentDTO): boolean {
 
 function isStickerOnlyBubble(item: ChatBubbleItem): boolean {
     return item.comment.media?.media_type === 'sticker' && !commentHasBody(item.comment)
+}
+
+function isStickerCard(item: ChatBubbleItem): boolean {
+    return isStickerOnlyBubble(item) && ((item.firstInGroup && !item.isOwn) || !!item.parentComment)
 }
 
 function mediaTypeLabel(media?: CommentMediaDTO | null): string {
@@ -1240,7 +1317,9 @@ function recordCreatedComment(created: CommentDTO) {
     }
 
     upsertComment({...created, is_mine: true})
-    ctx?.notifyLocalCommentCreated(created)
+    if (created.moderation_status !== 'pending') {
+        ctx?.notifyLocalCommentCreated(created)
+    }
     replyTarget.value = null
     altchaPayload.value = null
     showManualAltcha.value = false
@@ -1298,7 +1377,11 @@ function onSelectEmoji(emoji: string) {
 }
 
 function onSelectCustomEmoji(asset: CustomEmojiAsset) {
-    richInputRef.value?.insertCustomEmoji({id: asset.id, url: asset.url})
+    richInputRef.value?.insertCustomEmoji({
+        id: asset.id,
+        url: asset.url,
+        alt: asset.alt ?? mergedCustomEmojiAlts.value[asset.id] ?? null,
+    })
 }
 
 function onSymbolBackspace() {
@@ -1454,13 +1537,40 @@ async function toggleNotify() {
 
 async function handleLogout() {
     if (!ctx) return
+    composerSettingsOpen.value = false
     await ctx.logout()
+}
+
+function toggleComposerSettings() {
+    composerSettingsOpen.value = !composerSettingsOpen.value
+}
+
+function onDocumentClickForSettings(e: MouseEvent) {
+    if (!composerSettingsOpen.value) return
+    const target = e.target as Node | null
+    if (
+        target &&
+        (settingsMenuEl.value?.contains(target) || settingsTriggerEl.value?.contains(target))
+    ) {
+        return
+    }
+    composerSettingsOpen.value = false
+}
+
+function onDocumentKeydownForSettings(e: KeyboardEvent) {
+    if (composerSettingsOpen.value && e.key === 'Escape') {
+        composerSettingsOpen.value = false
+    }
 }
 
 let unsubscribe: (() => void) | null = null
 
 onMounted(() => {
     ownCommentIds.value = loadOwnCommentIds()
+    if (typeof document !== 'undefined') {
+        document.addEventListener('click', onDocumentClickForSettings)
+        document.addEventListener('keydown', onDocumentKeydownForSettings)
+    }
     if (!ctx) return
     void fetchComments()
     unsubscribe = ctx.subscribeComments(props.postId, {
@@ -1499,6 +1609,10 @@ onUnmounted(() => {
     cancelBubbleLongPress()
     cleanupTouchListeners()
     clearBubbleGhostClickGuard()
+    if (typeof document !== 'undefined') {
+        document.removeEventListener('click', onDocumentClickForSettings)
+        document.removeEventListener('keydown', onDocumentKeydownForSettings)
+    }
     if (confirmTimer) clearTimeout(confirmTimer)
     if (highlightTimer) clearTimeout(highlightTimer)
 })
@@ -1739,23 +1853,49 @@ onUnmounted(() => {
         padding: 0
         min-width: 0
 
-        .inline-reply-quote
-            background: rgba(253, 249, 241, 0.94)
-            box-shadow: 0 1px 3px rgba(112, 81, 42, 0.12)
-            backdrop-filter: blur(8px)
-            margin-bottom: 4px
-
         .comment-reactions
             margin-top: 4px
 
-.sticker-title-pill
-    background: rgba(253, 249, 241, 0.92)
-    border-radius: 10px
-    padding: 2px 8px
-    margin-bottom: 4px
-    width: fit-content
-    max-width: 100%
-    box-shadow: 0 1px 2px rgba(112, 81, 42, 0.1)
+.bubble-media-group
+    display: contents
+
+    &.sticker-card
+        display: flex
+        flex-direction: column
+        width: 164px
+        max-width: 100%
+        background: var(--tgb-bubble-bg)
+        border-radius: 14px
+        overflow: hidden
+        box-shadow: 0 1px 2px rgba(112, 81, 42, 0.1)
+
+        .message-title
+            margin: 0
+            padding: 5px 10px 4px
+            border-bottom: 1px solid rgba(112, 81, 42, 0.08)
+            min-width: 0
+
+        .inline-reply-quote
+            margin: 4px 6px 2px
+            border-radius: 8px
+            background: rgba(112, 81, 42, 0.06)
+            box-shadow: none
+            backdrop-filter: none
+
+        .comment-media-sticker
+            width: 100%
+            height: auto
+            aspect-ratio: 1 / 1
+            margin: 0
+            padding: 0
+            border-radius: 0
+
+    &.sticker-solo
+        display: block
+
+        .comment-media-sticker
+            border-radius: 14px
+            overflow: hidden
 
 .svg-appendix
     position: absolute
@@ -1851,6 +1991,13 @@ onUnmounted(() => {
     padding: 2px
     background: rgba(36, 161, 222, 0.14)
     color: #1982b8
+
+.badge-pending-review
+    padding: 1px 6px
+    background: rgba(245, 158, 11, 0.16)
+    color: #b45309
+    margin-left: 4px
+    vertical-align: middle
 
 .badge-anon
     background: rgba(112, 81, 42, 0.08)
@@ -1948,12 +2095,15 @@ onUnmounted(() => {
     background: #1a140e
 
 .comment-media-sticker
+    position: relative
     width: 136px
     height: 136px
     margin: 0
     display: flex
     align-items: center
     justify-content: center
+    border-radius: 12px
+    overflow: hidden
 
 .message-timestamp.media-pill
     position: absolute
@@ -2205,42 +2355,44 @@ onUnmounted(() => {
     flex-direction: column
     gap: 6px
 
-.user-bar, .guest-bar
+.composer-bar
     display: flex
     align-items: center
     justify-content: space-between
     flex-wrap: wrap
     gap: 6px
-
-.guest-bar
     position: relative
     z-index: 1
 
-.guest-auth-row
+    &.menu-open
+        z-index: 5
+
+.composer-auth-row
     display: inline-flex
     align-items: center
     gap: 8px
+    min-width: 0
 
-.guest-meta-row
+.composer-meta-row
     display: inline-flex
     align-items: center
     gap: 8px
     margin-left: auto
 
-.guest-bar.has-composer
+.composer-bar.has-composer
     align-items: flex-end
 
-    .guest-auth-row, .guest-meta-row
+    .composer-auth-row, .composer-meta-row
         align-items: flex-end
 
-    .guest-avatar
+    .composer-avatar
         margin-left: 12px
         margin-bottom: -16px
 
     .signin-btn
         margin-bottom: 0
 
-.guest-avatar
+.composer-avatar
     width: 30px
     aspect-ratio: 1
     padding: 0
@@ -2254,12 +2406,15 @@ onUnmounted(() => {
     color: $color-text-light
     border: 1px solid rgba(112, 81, 42, 0.14)
     box-sizing: border-box
-    cursor: pointer
     user-select: none
     transition: transform 0.16s ease, box-shadow 0.16s ease
 
-    &:hover
-        transform: translateY(-1px)
+    &.signed-in
+        width: 40px
+        border: 2px solid #fdf9f1
+        padding: 1px
+        background: #fdf9f1
+        box-shadow: 0 0 0 1px rgba(112, 81, 42, 0.14), 0 1px 4px rgba(112, 81, 42, 0.2)
 
     &.anon-ringed
         width: 40px
@@ -2268,7 +2423,13 @@ onUnmounted(() => {
         background: #fdf9f1
         box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 1px 4px rgba(112, 81, 42, 0.2)
 
-    .guest-avatar-img
+    &:is(button)
+        cursor: pointer
+
+        &:hover
+            transform: translateY(-1px)
+
+    .composer-avatar-img
         width: 100%
         height: auto
         aspect-ratio: 1
@@ -2276,81 +2437,128 @@ onUnmounted(() => {
         object-fit: cover
         display: block
 
+    .composer-avatar-fallback
+        width: 100%
+        height: 100%
+        border-radius: 50%
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        font-size: 0.92em
+        font-weight: 700
+        user-select: none
+
     svg
         width: 18px
         height: 18px
 
-.guest-anon-name
+.composer-author-name
     font-size: 0.78em
     font-weight: 600
-    color: #8a7357
-    white-space: nowrap
-
-.user-pill
-    display: inline-flex
-    align-items: center
-    gap: 6px
-    font-size: 0.84em
-    font-weight: 600
     color: $color-text-main
+    white-space: nowrap
+    overflow: hidden
+    text-overflow: ellipsis
+    max-width: 180px
 
-    .user-name.anon
+    &.anon
         color: #8a7357
 
-.avatar.sm
-    width: 18px
-    height: 18px
-    border-radius: 50%
-    object-fit: cover
-    box-sizing: border-box
-
-    &.anon-ringed
-        width: 22px
-        height: 22px
-        border: 2px solid var(--tgb-anon-ring, #8a7357)
-        padding: 1px
-        background: #fdf9f1
-
-.user-controls
-    display: flex
-    align-items: center
-    flex-wrap: wrap
-    gap: 6px
-
-.anon-toggle
+.composer-settings-wrap
+    position: relative
     display: inline-flex
     align-items: center
-    gap: 4px
-    font-size: 0.78em
-    color: $color-text-light
-    cursor: pointer
-    user-select: none
 
-    input
-        margin: 0
-        accent-color: $color-text-special
+.composer-settings-btn
+    .settings-gear-icon
+        width: 13px
+        height: 13px
+        flex-shrink: 0
 
-.chip-btn
-    background: rgba(253, 249, 241, 0.8)
-    border: 1px solid rgba(112, 81, 42, 0.12)
-    border-radius: 999px
-    padding: 2px 8px
-    font-size: 0.75em
-    font-family: inherit
+    &.open
+        color: $color-text-special
+
+.composer-settings-menu
+    position: absolute
+    right: 0
+    bottom: calc(100% + 6px)
+    z-index: 20
+    min-width: 186px
+    padding: 5px
+    border-radius: 12px
+    background: #fdf9f1
+    border: 1px solid rgba(112, 81, 42, 0.14)
+    box-shadow: 0 10px 26px rgba(48, 30, 12, 0.16)
+    display: flex
+    flex-direction: column
+    gap: 2px
+
+.settings-menu-item
+    width: 100%
+    box-sizing: border-box
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 10px
+    padding: 7px 10px
+    border: none
+    border-radius: 8px
+    background: transparent
     color: $color-text-main
+    font-family: inherit
+    font-size: 0.8em
+    font-weight: 500
+    text-align: left
     cursor: pointer
-    transition: background 0.15s ease, border-color 0.15s ease
-
-    &.active
-        background: rgba(255, 131, 115, 0.16)
-        border-color: rgba(255, 131, 115, 0.45)
-        color: $color-text-special-dark
-
-    &.subtle
-        color: $color-text-light
+    transition: background 0.14s ease, color 0.14s ease
 
     &:hover:not(:disabled)
-        background: rgba(255, 244, 235, 0.95)
+        background: rgba(255, 131, 115, 0.12)
+
+    &:disabled
+        opacity: 0.55
+        cursor: wait
+
+    &.danger
+        color: #c93b3b
+
+        &:hover:not(:disabled)
+            background: rgba(201, 59, 59, 0.08)
+
+.settings-item-label
+    white-space: nowrap
+
+.settings-switch
+    position: relative
+    width: 28px
+    height: 16px
+    border-radius: 999px
+    background: rgba(112, 81, 42, 0.22)
+    flex-shrink: 0
+    transition: background 0.16s ease
+
+    &::after
+        content: ""
+        position: absolute
+        top: 2px
+        left: 2px
+        width: 12px
+        height: 12px
+        border-radius: 50%
+        background: #fff
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18)
+        transition: transform 0.16s ease
+
+    &.on
+        background: $color-text-special
+
+        &::after
+            transform: translateX(12px)
+
+.settings-menu-divider
+    height: 1px
+    margin: 2px 6px
+    background: rgba(112, 81, 42, 0.1)
 
 .signin-btn
     display: inline-flex

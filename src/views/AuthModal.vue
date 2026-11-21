@@ -17,7 +17,7 @@
                         <span class="loading-spinner" aria-hidden="true"></span>
                     </div>
                     <template v-else>
-                        <div class="oauth-list" v-if="hasGithub || hasGoogle || hasOidc || hasTelegramWidget">
+                        <div class="oauth-list" v-if="hasGithub || hasGoogle || hasOidc || hasTelegram">
                             <a v-if="hasGithub" class="oauth-btn github" :href="githubLoginUrl">
                                 <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
                                     <path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49 0-.24-.01-.88-.01-1.72-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.55-1.14-4.55-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05a9.38 9.38 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9 0 1.37-.01 2.48-.01 2.82 0 .27.18.59.69.49A10.26 10.26 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/>
@@ -39,12 +39,27 @@
                                 <span>{{ msg.authContinueWithOidc(oidcProviderName?.trim() || 'SSO') }}</span>
                             </a>
 
-                            <div v-if="hasTelegramWidget" class="telegram-widget-wrap">
-                                <div ref="tgWidgetEl" class="telegram-widget-host"></div>
+                            <button v-if="hasTelegramOidc"
+                                    type="button"
+                                    class="oauth-btn telegram telegram-oidc-btn"
+                                    :disabled="sending"
+                                    @click="startTelegramOidcLogin">
+                                <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path fill="#2AABEE" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                                </svg>
+                                <span>{{ msg.authContinueWithTelegram }}</span>
+                            </button>
+
+                            <div v-else-if="hasTelegramLegacy" class="oauth-btn telegram telegram-oauth-btn">
+                                <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path fill="#2AABEE" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                                </svg>
+                                <span>{{ msg.authContinueWithTelegram }}</span>
+                                <div ref="tgWidgetEl" class="telegram-widget-overlay" aria-label="Telegram Login"></div>
                             </div>
                         </div>
 
-                        <div class="divider" v-if="(hasGithub || hasGoogle || hasOidc || hasTelegramWidget) && hasEmail">
+                        <div class="divider" v-if="(hasGithub || hasGoogle || hasOidc || hasTelegram) && hasEmail">
                             <span>{{ msg.authOrEmail }}</span>
                         </div>
 
@@ -88,6 +103,7 @@ const props = withDefaults(defineProps<{
     providers: string[]
     authLoaded?: boolean
     telegramBotUsername?: string | null
+    telegramClientId?: string | null
     oidcProviderName?: string | null
 }>(), {
     authLoaded: true,
@@ -115,6 +131,10 @@ const tgCallbackName = `__tgbTelegramAuthCallback_${instanceUid}_${Math.random()
 
 const normalizedProviders = computed(() => props.providers.map(p => p.toLowerCase()))
 const validTelegramBotUsername = computed(() => normalizeTelegramBotUsername(props.telegramBotUsername))
+const normalizedTelegramClientId = computed(() => {
+    const raw = (props.telegramClientId ?? '').trim()
+    return /^\d+$/.test(raw) ? raw : null
+})
 const hasGithub = computed(() => normalizedProviders.value.includes('github'))
 const hasGoogle = computed(() => normalizedProviders.value.includes('google'))
 const hasOidc = computed(() => normalizedProviders.value.includes('oidc'))
@@ -126,11 +146,18 @@ const hasEmail = computed(() =>
         normalizedProviders.value.includes('magic-link')
     )
 )
-const hasTelegramWidget = computed(() =>
+const hasTelegramOidc = computed(() =>
+    props.authLoaded &&
+    normalizedProviders.value.includes('telegram') &&
+    !!normalizedTelegramClientId.value
+)
+const hasTelegramLegacy = computed(() =>
+    !hasTelegramOidc.value &&
     props.authLoaded &&
     normalizedProviders.value.includes('telegram') &&
     !!validTelegramBotUsername.value
 )
+const hasTelegram = computed(() => hasTelegramOidc.value || hasTelegramLegacy.value)
 
 const githubLoginUrl = computed(() => props.api.getOAuthLoginUrl('github', nextPath.value))
 const googleLoginUrl = computed(() => props.api.getOAuthLoginUrl('google', nextPath.value))
@@ -183,20 +210,106 @@ function cleanupTelegramCallback() {
     }
 }
 
+let tgOidcScriptPromise: Promise<void> | null = null
+
+function ensureTelegramOidcScript(): Promise<void> {
+    if (typeof window === 'undefined') return Promise.reject(new Error('No window'))
+    if ((window as any).Telegram?.Login?.auth) return Promise.resolve()
+    if (tgOidcScriptPromise) return tgOidcScriptPromise
+    tgOidcScriptPromise = new Promise<void>((resolve, reject) => {
+        const existing = document.querySelector<HTMLScriptElement>('script[src^="https://oauth.telegram.org/js/telegram-login.js"]')
+        if (existing) {
+            if ((window as any).Telegram?.Login?.auth) {
+                resolve()
+                return
+            }
+            existing.addEventListener('load', () => resolve(), {once: true})
+            existing.addEventListener('error', () => {
+                tgOidcScriptPromise = null
+                reject(new Error('Failed to load Telegram Login script'))
+            }, {once: true})
+            return
+        }
+        const script = document.createElement('script')
+        script.async = true
+        script.src = 'https://oauth.telegram.org/js/telegram-login.js?3'
+        script.onload = () => resolve()
+        script.onerror = () => {
+            tgOidcScriptPromise = null
+            reject(new Error('Failed to load Telegram Login script'))
+        }
+        document.head.appendChild(script)
+    })
+    return tgOidcScriptPromise
+}
+
+async function handleTelegramAuthPayload(payload: Record<string, any>) {
+    errorMsg.value = null
+    try {
+        await props.api.telegramCallback(payload)
+        emit('authenticated')
+        close()
+    } catch (err: any) {
+        errorMsg.value = err?.message || 'Telegram sign-in failed'
+    }
+}
+
+async function startTelegramOidcLogin() {
+    if (!normalizedTelegramClientId.value || sending.value) return
+    errorMsg.value = null
+    const clientId = Number(normalizedTelegramClientId.value)
+    const invokeAuth = () => {
+        const tgLogin = (window as any).Telegram?.Login
+        if (!tgLogin?.auth) {
+            errorMsg.value = 'Telegram sign-in is unavailable'
+            return
+        }
+        tgLogin.auth(
+            {
+                client_id: Number.isSafeInteger(clientId) ? clientId : normalizedTelegramClientId.value,
+                scope: ['profile', 'write'],
+            },
+            async (result: any) => {
+                if (!result || result.error) {
+                    if (result?.error && result.error !== 'popup_closed') {
+                        errorMsg.value = String(result.error)
+                    }
+                    return
+                }
+                if (result.id_token) {
+                    await handleTelegramAuthPayload({id_token: result.id_token})
+                } else if (result.id && result.hash) {
+                    await handleTelegramAuthPayload(result)
+                } else {
+                    errorMsg.value = 'Telegram sign-in returned no credentials'
+                }
+            },
+        )
+    }
+
+    if ((window as any).Telegram?.Login?.auth) {
+        invokeAuth()
+        return
+    }
+    try {
+        await ensureTelegramOidcScript()
+        invokeAuth()
+    } catch (err: any) {
+        errorMsg.value = err?.message || 'Failed to load Telegram sign-in'
+    }
+}
+
 function mountTelegramWidget() {
-    if (typeof window === 'undefined' || !tgWidgetEl.value || !hasTelegramWidget.value || !validTelegramBotUsername.value) return
+    if (hasTelegramOidc.value) {
+        void ensureTelegramOidcScript().catch(() => {})
+        return
+    }
+    if (typeof window === 'undefined' || !tgWidgetEl.value || !hasTelegramLegacy.value || !validTelegramBotUsername.value) return
     cleanupTelegramCallback()
     tgWidgetEl.value.innerHTML = ''
 
     ;(window as any)[tgCallbackName] = async (tgUser: Record<string, any>) => {
-        errorMsg.value = null
-        try {
-            await props.api.telegramCallback(tgUser)
-            emit('authenticated')
-            close()
-        } catch (err: any) {
-            errorMsg.value = err?.message || 'Telegram sign-in failed'
-        }
+        await handleTelegramAuthPayload(tgUser)
     }
 
     const script = document.createElement('script')
@@ -227,7 +340,7 @@ watch(
     }
 )
 
-watch(hasTelegramWidget, async (ready) => {
+watch(hasTelegram, async (ready) => {
     if (props.open && ready) {
         await nextTick()
         mountTelegramWidget()
@@ -357,10 +470,41 @@ onUnmounted(() => {
         height: 18px
         flex-shrink: 0
 
-.telegram-widget-wrap
+.telegram-oidc-btn
+    font-family: inherit
+    cursor: pointer
+    width: 100%
+
+    &:disabled
+        opacity: 0.6
+        cursor: wait
+
+.telegram-oauth-btn
+    position: relative
+    overflow: hidden
+    cursor: pointer
+    user-select: none
+
+    &:focus-within
+        border-color: rgba(255, 131, 115, 0.75)
+        box-shadow: 0 0 0 2px rgba(255, 131, 115, 0.2)
+
+.telegram-widget-overlay
+    position: absolute
+    inset: 0
     display: flex
+    align-items: center
     justify-content: center
-    padding-top: 2px
+    opacity: 0.001
+    cursor: pointer
+
+    :deep(iframe)
+        width: 100% !important
+        height: 100% !important
+        transform: scale(1.9, 1.5)
+        transform-origin: center
+        border: 0 !important
+        cursor: pointer
 
 .divider
     display: flex

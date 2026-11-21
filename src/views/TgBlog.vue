@@ -4,6 +4,14 @@
 
         <div class="search">
             <input v-model="search" ref="searchEl" :placeholder="msg.searchPlaceholder">
+            <button v-if="isInteractive && me?.role === 'owner'"
+                    type="button"
+                    class="owner-mod-btn clickable"
+                    :class="{ 'has-pending': pendingReviewCount > 0 }"
+                    @click="openModerationModal()">
+                <span>🛡️ {{ msg.reviewQueueBtn }}</span>
+                <span v-if="pendingReviewCount > 0" class="owner-mod-count">{{ pendingReviewCount }}</span>
+            </button>
             <i-ic-round-search />
         </div>
 
@@ -37,9 +45,17 @@
                    :providers="authProviders"
                    :auth-loaded="authLoaded"
                    :telegram-bot-username="resolvedTelegramBotUsername"
+                   :telegram-client-id="apiTelegramClientId"
                    :oidc-provider-name="oidcProviderName"
                    @close="authModalOpen = false"
                    @authenticated="refreshAuthAndInteractions" />
+        <ModerationModal v-if="isInteractive && apiClient && me?.role === 'owner'"
+                         :open="modModalOpen"
+                         :api="apiClient"
+                         :focus-comment-id="reviewFocusCommentId"
+                         @close="modModalOpen = false"
+                         @updated="n => pendingReviewCount = n"
+                         @jump-post="onModJumpPost" />
     </div>
 </template>
 
@@ -86,6 +102,7 @@ import {computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpda
 
 const AudioPlayer = defineAsyncComponent(() => import("./AudioPlayer.vue"))
 const AuthModal = defineAsyncComponent(() => import("./AuthModal.vue"))
+const ModerationModal = defineAsyncComponent(() => import("./ModerationModal.vue"))
 
 // Post URL for loading the posts
 const props = withDefaults(defineProps<{
@@ -164,6 +181,7 @@ const pollVotingMap = reactive<Record<number, boolean>>({})
 const me = ref<UserDTO | null>(null)
 const authProviders = ref<string[]>([])
 const apiTelegramBotUsername = ref<string | null>(null)
+const apiTelegramClientId = ref<string | null>(null)
 const oidcProviderName = ref<string | null>(null)
 const allowAnonComments = ref(false)
 const allowedReactions = ref<AllowedReactionItem[] | null>(null)
@@ -174,6 +192,10 @@ const stickerPacks = ref<StickerPack[]>([])
 const stickersLoading = ref(false)
 const authLoaded = ref(false)
 const authModalOpen = ref(false)
+const modModalOpen = ref(false)
+const pendingReviewCount = ref(0)
+const reviewFocusCommentId = ref<number | null>(null)
+let reviewQueryHandled = false
 
 const resolvedTelegramBotUsername = computed(
     () => props.telegramBotUsername || apiTelegramBotUsername.value || null
@@ -265,6 +287,11 @@ async function hydrateInteractions(ids: number[], force = false): Promise<void> 
             if (apiClient.value !== client) return
             allowAnonComments.value = !!res.allow_anon_comments
             me.value = res.me ?? null
+            if (me.value?.role === 'owner') {
+                void refreshModerationCount()
+            } else {
+                pendingReviewCount.value = 0
+            }
             if (Array.isArray(res.allowed_reactions)) {
                 allowedReactions.value = res.allowed_reactions
             }
@@ -300,6 +327,7 @@ async function ensureAuthInfo(force = false): Promise<void> {
         authProviders.value = res.providers ?? []
         allowAnonComments.value = !!res.allow_anon_comments
         apiTelegramBotUsername.value = res.telegram_bot_username ?? null
+        apiTelegramClientId.value = res.telegram_client_id ?? null
         oidcProviderName.value = res.oidc_provider_name ?? null
         authLoaded.value = true
     } catch (err) {
@@ -307,10 +335,55 @@ async function ensureAuthInfo(force = false): Promise<void> {
     }
 }
 
+async function refreshModerationCount(): Promise<void> {
+    const client = apiClient.value
+    if (!client || me.value?.role !== 'owner') {
+        pendingReviewCount.value = 0
+        return
+    }
+    try {
+        const res = await client.getModerationQueue()
+        if (apiClient.value !== client) return
+        pendingReviewCount.value = res.pending_count ?? 0
+    } catch {
+        // Non-fatal background count check
+    }
+}
+
+function openModerationModal(focusId?: number | null): void {
+    if (focusId !== undefined) reviewFocusCommentId.value = focusId
+    modModalOpen.value = true
+}
+
+function onModJumpPost(postId: number): void {
+    modModalOpen.value = false
+    clickReply(postId)
+}
+
+function handleReviewQueryOnLoad(): void {
+    if (reviewQueryHandled || typeof window === 'undefined' || !isInteractive.value) return
+    const raw = new URL(window.location.href).searchParams.get('review')
+    if (raw === null) return
+    const parsed = Number(raw)
+    if (Number.isFinite(parsed) && parsed > 0) {
+        reviewFocusCommentId.value = parsed
+    }
+    if (me.value?.role === 'owner') {
+        reviewQueryHandled = true
+        modModalOpen.value = true
+    } else if (!me.value) {
+        openAuthModal()
+    }
+}
+
 async function refreshAuthAndInteractions(): Promise<void> {
     await ensureAuthInfo(true)
     hydratedIds.clear()
     await hydrateInteractions(visiblePostIds.value, true)
+    if (reviewFocusCommentId.value !== null && me.value?.role === 'owner' && !reviewQueryHandled) {
+        reviewQueryHandled = true
+        modModalOpen.value = true
+    }
     commentSubscribers.forEach(set => {
         set.forEach(listener => listener.onAuthChanged())
     })
@@ -455,6 +528,7 @@ const interactiveCtx: TgBlogInteractiveContext = {
     me,
     providers: authProviders,
     telegramBotUsername: resolvedTelegramBotUsername,
+    telegramClientId: apiTelegramClientId,
     allowAnonComments,
     authLoaded,
     channelCustomEmojis,
@@ -817,6 +891,7 @@ function resetInteractiveCaches(): void {
     me.value = null
     authProviders.value = []
     apiTelegramBotUsername.value = null
+    apiTelegramClientId.value = null
     oidcProviderName.value = null
     allowAnonComments.value = false
     allowedReactions.value = null
@@ -1393,6 +1468,7 @@ onMounted(async () =>
             {
                 await hydrateInteractions(visiblePostIds.value)
             }
+            handleReviewQueryOnLoad()
             startStream()
             await nextTick()
             setupViewObserver()
@@ -1453,6 +1529,39 @@ onUpdated((): void =>
 
     input:focus-visible
         outline: none
+
+.owner-mod-btn
+    display: inline-flex
+    align-items: center
+    gap: 5px
+    margin-right: 8px
+    padding: 3px 9px
+    border: 1px solid rgba(112, 81, 42, 0.2)
+    border-radius: 999px
+    background: rgba(112, 81, 42, 0.08)
+    color: $color-text-main
+    font-size: 0.78em
+    font-weight: 600
+    white-space: nowrap
+    flex-shrink: 0
+
+    &.has-pending
+        border-color: rgba(245, 158, 11, 0.55)
+        background: rgba(245, 158, 11, 0.16)
+        color: #92400e
+
+.owner-mod-count
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    min-width: 16px
+    height: 16px
+    padding: 0 4px
+    border-radius: 999px
+    background: #d97706
+    color: #fff
+    font-size: 0.9em
+    line-height: 1
 
 .top-sentinel
     height: 1px

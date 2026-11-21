@@ -11,6 +11,9 @@ import type {
   CustomEmojisResponse,
   InteractionsResponse,
   MagicLinkRequestPayload,
+  ModerationDecisionPayload,
+  ModerationDecisionResponse,
+  ModerationQueueResponse,
   PollVoteResponse,
   Post,
   PostViewResponse,
@@ -233,6 +236,32 @@ export class LifeApiClient {
 
   getCaptchaChallenge(signal?: AbortSignal): Promise<AltchaChallenge> {
     return this.request<AltchaChallenge>('/captcha/challenge', { signal })
+  }
+
+  getModerationQueue(): Promise<ModerationQueueResponse> {
+    return this.request<ModerationQueueResponse>('/moderation/comments')
+  }
+
+  decideModerationComment(
+    commentId: number,
+    payload: ModerationDecisionPayload
+  ): Promise<ModerationDecisionResponse> {
+    return this.request<ModerationDecisionResponse>(
+      `/moderation/comments/${commentId}/decision`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          action: payload.action,
+          whitelist_sender: !!payload.whitelist_sender,
+        }),
+      }
+    )
+  }
+
+  removeModerationWhitelist(entryId: number): Promise<{ ok: boolean; id: number }> {
+    return this.request<{ ok: boolean; id: number }>(`/moderation/whitelist/${entryId}`, {
+      method: 'DELETE',
+    })
   }
 }
 

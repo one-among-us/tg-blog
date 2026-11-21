@@ -25,6 +25,7 @@ export interface TgBlogInteractiveContext {
   me: Ref<UserDTO | null>
   providers: Ref<string[]>
   telegramBotUsername: Ref<string | null>
+  telegramClientId?: Ref<string | null>
   allowAnonComments: Ref<boolean>
   authLoaded: Ref<boolean>
   channelCustomEmojis: ComputedRef<Record<string, string>>
