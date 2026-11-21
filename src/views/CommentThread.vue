@@ -29,7 +29,12 @@
                 <template v-else>
                     <!-- Incoming 32px circular avatar pinned bottom-left on lastInGroup -->
                     <div v-if="!item.isOwn" class="avatar-slot">
-                        <template v-if="item.lastInGroup">
+                        <button v-if="item.lastInGroup"
+                                type="button"
+                                class="avatar-btn clickable"
+                                :title="displayAuthorName(item.comment)"
+                                :aria-label="displayAuthorName(item.comment)"
+                                @click.stop="toggleAuthorCard(item.comment, $event)">
                             <img v-if="commentAvatarUrl(item.comment)"
                                  :src="commentAvatarUrl(item.comment)!"
                                  referrerpolicy="no-referrer"
@@ -42,7 +47,7 @@
                                   :style="avatarFallbackStyle(item.comment)">
                                 {{ avatarInitial(displayAuthorName(item.comment)) }}
                             </span>
-                        </template>
+                        </button>
                     </div>
 
                     <!-- Bubble content + exact Telegram Web A SVG appendix -->
@@ -59,12 +64,9 @@
                              @contextmenu="onBubbleContextMenu(item.comment, $event)"
                              @pointerdown="onBubblePointerDown(item.comment, $event)">
                             <div class="bubble-media-group"
-                                 :class="{
-                                     'sticker-card': isStickerCard(item),
-                                     'sticker-solo': isStickerOnlyBubble(item) && !isStickerCard(item)
-                                 }">
-                            <!-- Header row on incoming firstInGroup: sender + badge -->
-                            <div v-if="item.firstInGroup && !item.isOwn"
+                                 :class="{ 'sticker-solo': isStickerOnlyBubble(item) }">
+                            <!-- Header row on incoming firstInGroup (hidden for native transparent stickers) -->
+                            <div v-if="item.firstInGroup && !item.isOwn && !isStickerOnlyBubble(item)"
                                  class="message-title">
                                 <span class="sender-title" :style="{ color: senderColor(item.comment) }">
                                     {{ displayAuthorName(item.comment) }}
@@ -535,6 +537,82 @@
                           :anchor="selectorAnchor"
                           @select="onSelectCommentReactionChoice"
                           @close="reactionTargetId = null" />
+
+        <Teleport to="body">
+            <div v-if="authorCardComment"
+                 ref="authorCardEl"
+                 class="tgb-author-card"
+                 :style="authorCardStyle"
+                 role="dialog"
+                 :aria-label="displayAuthorName(authorCardComment)"
+                 @click.stop>
+                <div class="author-card-head">
+                    <img v-if="commentAvatarUrl(authorCardComment)"
+                         :src="commentAvatarUrl(authorCardComment)!"
+                         referrerpolicy="no-referrer"
+                         class="author-card-avatar"
+                         :class="avatarClass(authorCardComment)"
+                         :style="avatarRingStyle(authorCardComment)"
+                         alt="" />
+                    <span v-else
+                          class="author-card-avatar avatar-fallback"
+                          :class="avatarClass(authorCardComment)"
+                          :style="avatarFallbackStyle(authorCardComment)">
+                        {{ avatarInitial(displayAuthorName(authorCardComment)) }}
+                    </span>
+                    <div class="author-card-titles">
+                        <div class="author-card-name-row">
+                            <span class="author-card-name">{{ displayAuthorName(authorCardComment) }}</span>
+                            <span v-if="authorCardComment.author.role === 'owner'" class="badge badge-owner">
+                                {{ msg.badgeOwner }}
+                            </span>
+                        </div>
+                        <a v-if="authorProfileUrl(authorCardComment) && authorCardComment.author.username"
+                           :href="authorProfileUrl(authorCardComment)!"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="author-card-handle link">
+                            @{{ authorCardComment.author.username }}
+                        </a>
+                        <div v-else-if="authorCardComment.author.username" class="author-card-handle">
+                            @{{ authorCardComment.author.username }}
+                        </div>
+                    </div>
+                    <button type="button"
+                            class="author-card-close clickable"
+                            :aria-label="msg.userInfoClose"
+                            @click="closeAuthorCard">
+                        ✕
+                    </button>
+                </div>
+                <div class="author-card-meta">
+                    <span v-if="isTelegramSynced(authorCardComment)" class="badge badge-telegram">
+                        <svg class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                        </svg>
+                        <span>{{ msg.badgeTelegram }}</span>
+                    </span>
+                    <span v-else-if="authorCardComment.author.verified" class="badge badge-verified">
+                        <svg v-if="authorCardComment.author.provider === 'github'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.26c0 4.53 2.87 8.37 6.84 9.73.5.09.68-.22.68-.49v-1.72c-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.55-1.14-4.55-5.08 0-1.12.39-2.04 1.03-2.76-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05a9.38 9.38 0 0 1 5 0c1.91-1.32 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.64 1.03 2.76 0 3.95-2.34 4.82-4.57 5.07.36.32.68.94.68 1.9v2.82c0 .27.18.59.69.49A10.26 10.26 0 0 0 22 12.26C22 6.58 17.52 2 12 2Z"/>
+                        </svg>
+                        <svg v-else-if="authorCardComment.author.provider === 'google'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.7-5.4 3.7-3.2 0-5.9-2.7-5.9-6s2.7-6 5.9-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/>
+                        </svg>
+                        <svg v-else-if="authorCardComment.author.provider === 'telegram'" class="badge-svg" viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="currentColor" d="M20.665 3.717l-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/>
+                        </svg>
+                        <svg v-else class="badge-svg" viewBox="0 0 16 16" aria-hidden="true">
+                            <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 8.5l3.2 3.2L13 4.8"/>
+                        </svg>
+                        <span>{{ providerLabel(authorCardComment.author.provider) }}</span>
+                    </span>
+                    <span v-else class="badge badge-anon">
+                        {{ msg.badgeAnonymous }}
+                    </span>
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
 
@@ -552,6 +630,7 @@ import {
 import {solveAltchaChallenge} from '@/logic/altcha'
 import {sanitizeCommentHtml, sanitizeCommentSnippetHtml} from '@/logic/api'
 import {replaceTextEmojisWithApple, useAppleEmojiBaseUrl} from '@/logic/appleEmoji'
+import {clampFloatingPlacement, isEventInsideElement} from '@/logic/floatingPosition'
 import {sizeFmt} from '@/logic/formatter'
 import {
     buildAvailableReactions,
@@ -639,6 +718,10 @@ const togglingNotify = ref(false)
 const composerSettingsOpen = ref(false)
 const settingsTriggerEl = ref<HTMLElement | null>(null)
 const settingsMenuEl = ref<HTMLElement | null>(null)
+const authorCardComment = ref<CommentDTO | null>(null)
+const authorCardEl = ref<HTMLElement | null>(null)
+const authorCardAnchorEl = ref<HTMLElement | null>(null)
+const authorCardPos = ref<{ left: number; top: number }>({left: 16, top: 16})
 
 const highlightedId = ref<number | null>(null)
 let highlightTimer: ReturnType<typeof setTimeout> | null = null
@@ -834,8 +917,17 @@ function avatarClass(c: CommentDTO): Record<string, boolean> {
     }
 }
 
+const PROVIDER_OAUTH_LABELS: Record<string, string> = {
+    google: 'Google OAuth',
+    telegram: 'Telegram OAuth',
+    github: 'GitHub OAuth',
+    oidc: 'OIDC OAuth',
+}
+
 function providerLabel(provider?: string | null): string {
-    if (!provider) return msg.badgeVerified
+    const normalized = (provider || '').trim().toLowerCase()
+    if (!normalized) return msg.badgeVerified
+    if (PROVIDER_OAUTH_LABELS[normalized]) return PROVIDER_OAUTH_LABELS[normalized]
     return `${msg.badgeVerified} (${provider})`
 }
 
@@ -894,10 +986,6 @@ function commentHasBody(c: CommentDTO): boolean {
 
 function isStickerOnlyBubble(item: ChatBubbleItem): boolean {
     return item.comment.media?.media_type === 'sticker' && !commentHasBody(item.comment)
-}
-
-function isStickerCard(item: ChatBubbleItem): boolean {
-    return isStickerOnlyBubble(item) && ((item.firstInGroup && !item.isOwn) || !!item.parentComment)
 }
 
 function mediaTypeLabel(media?: CommentMediaDTO | null): string {
@@ -1545,7 +1633,61 @@ function toggleComposerSettings() {
     composerSettingsOpen.value = !composerSettingsOpen.value
 }
 
+const authorCardStyle = computed(() => ({
+    left: `${authorCardPos.value.left}px`,
+    top: `${authorCardPos.value.top}px`,
+}))
+
+function authorProfileUrl(c: CommentDTO): string | null {
+    const raw = (c.author?.username || '').trim().replace(/^@+/, '')
+    if (!raw) return null
+    if ((isTelegramSynced(c) || c.author?.provider === 'telegram') && /^[a-zA-Z0-9_]{3,64}$/.test(raw)) {
+        return `https://t.me/${raw}`
+    }
+    if (c.author?.provider === 'github' && /^[a-zA-Z0-9-]{1,39}$/.test(raw)) {
+        return `https://github.com/${raw}`
+    }
+    return null
+}
+
+function positionAuthorCard() {
+    if (typeof window === 'undefined' || !authorCardComment.value || !authorCardAnchorEl.value) return
+    const rect = authorCardAnchorEl.value.getBoundingClientRect()
+    const cardW = authorCardEl.value?.offsetWidth || 236
+    const cardH = authorCardEl.value?.offsetHeight || 104
+    authorCardPos.value = clampFloatingPlacement({
+        desiredLeft: rect.left,
+        aboveTop: rect.top - cardH - 8,
+        belowTop: rect.bottom + 8,
+        width: cardW,
+        height: cardH,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+    })
+}
+
+function closeAuthorCard() {
+    authorCardComment.value = null
+    authorCardAnchorEl.value = null
+}
+
+function toggleAuthorCard(comment: CommentDTO, event: MouseEvent) {
+    const anchor = event.currentTarget as HTMLElement | null
+    if (authorCardComment.value?.id === comment.id && authorCardAnchorEl.value === anchor) {
+        closeAuthorCard()
+        return
+    }
+    authorCardComment.value = comment
+    authorCardAnchorEl.value = anchor
+    void nextTick(() => {
+        positionAuthorCard()
+    })
+}
+
 function onDocumentClickForSettings(e: MouseEvent) {
+    if (authorCardComment.value && !isEventInsideElement(e, authorCardEl.value) && !isEventInsideElement(e, authorCardAnchorEl.value)) {
+        closeAuthorCard()
+    }
     if (!composerSettingsOpen.value) return
     const target = e.target as Node | null
     if (
@@ -1558,8 +1700,9 @@ function onDocumentClickForSettings(e: MouseEvent) {
 }
 
 function onDocumentKeydownForSettings(e: KeyboardEvent) {
-    if (composerSettingsOpen.value && e.key === 'Escape') {
-        composerSettingsOpen.value = false
+    if (e.key === 'Escape') {
+        if (composerSettingsOpen.value) composerSettingsOpen.value = false
+        if (authorCardComment.value) closeAuthorCard()
     }
 }
 
@@ -1570,6 +1713,10 @@ onMounted(() => {
     if (typeof document !== 'undefined') {
         document.addEventListener('click', onDocumentClickForSettings)
         document.addEventListener('keydown', onDocumentKeydownForSettings)
+    }
+    if (typeof window !== 'undefined') {
+        window.addEventListener('scroll', positionAuthorCard, {passive: true})
+        window.addEventListener('resize', positionAuthorCard, {passive: true})
     }
     if (!ctx) return
     void fetchComments()
@@ -1612,6 +1759,10 @@ onUnmounted(() => {
     if (typeof document !== 'undefined') {
         document.removeEventListener('click', onDocumentClickForSettings)
         document.removeEventListener('keydown', onDocumentKeydownForSettings)
+    }
+    if (typeof window !== 'undefined') {
+        window.removeEventListener('scroll', positionAuthorCard)
+        window.removeEventListener('resize', positionAuthorCard)
     }
     if (confirmTimer) clearTimeout(confirmTimer)
     if (highlightTimer) clearTimeout(highlightTimer)
@@ -1759,6 +1910,21 @@ onUnmounted(() => {
     height: 32px
     flex-shrink: 0
 
+.avatar-btn
+    padding: 0
+    margin: 0
+    border: none
+    background: transparent
+    display: block
+    width: 32px
+    height: 32px
+    border-radius: 50%
+    cursor: pointer
+    transition: transform 0.14s ease
+
+    &:hover
+        transform: scale(1.06)
+
 .bubble-avatar
     width: 32px
     height: 32px
@@ -1859,43 +2025,30 @@ onUnmounted(() => {
 .bubble-media-group
     display: contents
 
-    &.sticker-card
+    &.sticker-solo
         display: flex
         flex-direction: column
-        width: 164px
-        max-width: 100%
-        background: var(--tgb-bubble-bg)
-        border-radius: 14px
-        overflow: hidden
-        box-shadow: 0 1px 2px rgba(112, 81, 42, 0.1)
+        align-items: flex-start
 
-        .message-title
-            margin: 0
-            padding: 5px 10px 4px
-            border-bottom: 1px solid rgba(112, 81, 42, 0.08)
-            min-width: 0
+        .Message.own &
+            align-items: flex-end
 
         .inline-reply-quote
-            margin: 4px 6px 2px
-            border-radius: 8px
-            background: rgba(112, 81, 42, 0.06)
-            box-shadow: none
-            backdrop-filter: none
+            width: auto
+            max-width: 240px
+            margin: 0 0 4px
+            padding: 4px 9px
+            border-radius: 10px
+            background: rgba(255, 252, 249, 0.94)
+            box-shadow: 0 1px 3px rgba(112, 81, 42, 0.14)
+            backdrop-filter: blur(6px)
 
         .comment-media-sticker
-            width: 100%
-            height: auto
-            aspect-ratio: 1 / 1
-            margin: 0
-            padding: 0
+            width: 152px
+            height: 152px
+            background: transparent
             border-radius: 0
-
-    &.sticker-solo
-        display: block
-
-        .comment-media-sticker
-            border-radius: 14px
-            overflow: hidden
+            overflow: visible
 
 .svg-appendix
     position: absolute
@@ -2362,18 +2515,23 @@ onUnmounted(() => {
     flex-wrap: wrap
     gap: 6px
     position: relative
-    z-index: 1
 
     &.menu-open
-        z-index: 5
+        .composer-meta-row
+            z-index: 5
 
 .composer-auth-row
+    position: relative
+    z-index: 3
+    margin-left: 10px
     display: inline-flex
     align-items: center
     gap: 8px
     min-width: 0
 
 .composer-meta-row
+    position: relative
+    z-index: 2
     display: inline-flex
     align-items: center
     gap: 8px
@@ -2382,18 +2540,21 @@ onUnmounted(() => {
 .composer-bar.has-composer
     align-items: flex-end
 
-    .composer-auth-row, .composer-meta-row
+    .composer-auth-row
+        align-items: center
+        margin-bottom: -14px
+
+    .composer-meta-row
         align-items: flex-end
 
     .composer-avatar
         margin-left: 12px
-        margin-bottom: -16px
 
     .signin-btn
         margin-bottom: 0
 
 .composer-avatar
-    width: 30px
+    width: 40px
     aspect-ratio: 1
     padding: 0
     border-radius: 50%
@@ -2405,23 +2566,24 @@ onUnmounted(() => {
     background: #eee5d7
     color: $color-text-light
     border: 1px solid rgba(112, 81, 42, 0.14)
+    box-shadow: 0 2px 6px rgba(112, 81, 42, 0.22), 0 1px 2px rgba(112, 81, 42, 0.14)
     box-sizing: border-box
     user-select: none
     transition: transform 0.16s ease, box-shadow 0.16s ease
 
     &.signed-in
         width: 40px
-        border: 2px solid #fdf9f1
-        padding: 1px
-        background: #fdf9f1
-        box-shadow: 0 0 0 1px rgba(112, 81, 42, 0.14), 0 1px 4px rgba(112, 81, 42, 0.2)
+        border: none
+        padding: 0
+        background: transparent
+        box-shadow: 0 2px 8px rgba(112, 81, 42, 0.28), 0 1px 3px rgba(112, 81, 42, 0.18)
 
     &.anon-ringed
         width: 40px
         border: 2px solid var(--tgb-anon-ring, #8a7357)
         padding: 1px
         background: #fdf9f1
-        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 1px 4px rgba(112, 81, 42, 0.2)
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 2px 8px rgba(112, 81, 42, 0.28), 0 1px 3px rgba(112, 81, 42, 0.18)
 
     &:is(button)
         cursor: pointer
@@ -2633,6 +2795,8 @@ onUnmounted(() => {
 // Web A Rich Composer inside #add-comment
 .add-comment
     position: relative
+    border-radius: 12px
+    box-shadow: 0 2px 8px rgba(112, 81, 42, 0.12), 0 1px 2px rgba(112, 81, 42, 0.08)
 
 .composer-smiley-btn
     position: absolute
@@ -2766,4 +2930,145 @@ onUnmounted(() => {
         box-shadow: 0 1px 2px rgba(112, 81, 42, 0.12)
     25%, 65%
         box-shadow: 0 0 0 2.5px rgba(255, 131, 115, 0.65), 0 4px 12px rgba(255, 131, 115, 0.2)
+</style>
+
+<style lang="sass">
+.tgb-author-card
+    position: fixed
+    z-index: 1000020
+    min-width: 220px
+    max-width: 290px
+    padding: 12px 13px
+    border-radius: 16px
+    background: #fdf9f1
+    border: 1px solid rgba(112, 81, 42, 0.14)
+    box-shadow: 0 12px 28px rgba(48, 30, 12, 0.18), 0 2px 6px rgba(112, 81, 42, 0.12)
+    color: #3f2b14
+    font-family: inherit
+    box-sizing: border-box
+
+    .author-card-head
+        display: flex
+        align-items: center
+        gap: 10px
+
+    .author-card-avatar
+        width: 44px
+        height: 44px
+        border-radius: 50%
+        object-fit: cover
+        flex-shrink: 0
+        display: inline-flex
+        align-items: center
+        justify-content: center
+        box-sizing: border-box
+        box-shadow: 0 1px 4px rgba(112, 81, 42, 0.2)
+
+        &.anon-ringed
+            border: 2px solid var(--tgb-anon-ring, #8a7357)
+            padding: 1px
+            background: #fdf9f1
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.72), 0 1px 4px rgba(112, 81, 42, 0.2)
+
+        &.avatar-fallback
+            font-size: 1em
+            font-weight: 700
+            background: rgba(112, 81, 42, 0.16)
+            color: #3f2b14
+
+            &.owner
+                background: #ff8373
+                color: #fff
+
+            &.telegram
+                background: #24a1de
+                color: #fff
+
+            &.anon
+                background: rgba(112, 81, 42, 0.12)
+                color: #70512a
+
+    .author-card-titles
+        min-width: 0
+        flex: 1
+
+    .author-card-name-row
+        display: flex
+        align-items: center
+        gap: 5px
+        min-width: 0
+
+    .author-card-name
+        font-size: 0.92em
+        font-weight: 700
+        color: #3f2b14
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+    .author-card-handle
+        margin-top: 2px
+        font-size: 0.78em
+        color: #70512a
+        white-space: nowrap
+        overflow: hidden
+        text-overflow: ellipsis
+
+        &.link
+            display: inline-block
+            color: #1982b8
+            text-decoration: none
+
+            &:hover
+                text-decoration: underline
+
+    .author-card-close
+        align-self: flex-start
+        background: none
+        border: none
+        padding: 2px 4px
+        color: #70512a
+        font-size: 0.85em
+        cursor: pointer
+        border-radius: 6px
+
+        &:hover
+            background: rgba(112, 81, 42, 0.08)
+
+    .author-card-meta
+        display: flex
+        align-items: center
+        flex-wrap: wrap
+        gap: 6px
+        margin-top: 9px
+
+    .badge
+        display: inline-flex
+        align-items: center
+        gap: 4px
+        padding: 2px 7px
+        border-radius: 999px
+        font-size: 0.74em
+        font-weight: 600
+        line-height: 1.35
+
+    .badge-svg
+        width: 11px
+        height: 11px
+
+    .badge-owner
+        background: #ff8373
+        color: #fff
+
+    .badge-telegram
+        background: rgba(36, 161, 222, 0.14)
+        color: #1982b8
+
+    .badge-verified
+        background: rgba(47, 158, 68, 0.13)
+        color: #2b8a3e
+
+    .badge-anon
+        background: rgba(112, 81, 42, 0.08)
+        color: #70512a
 </style>

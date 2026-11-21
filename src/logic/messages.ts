@@ -161,6 +161,7 @@ export interface TgBlogMessages {
     apply: string
     pendingReviewBadge: string
     composerSettings: string
+    userInfoClose: string
     reviewQueueBtn: string
     reviewModalTitle: string
     reviewTabPending: string
@@ -273,6 +274,7 @@ export const defaultMessages: TgBlogMessages = {
     backspace: 'Delete',
     pendingReviewBadge: 'Pending review',
     composerSettings: 'Settings',
+    userInfoClose: 'Close user info',
     reviewQueueBtn: 'Review Queue',
     reviewModalTitle: 'Moderation Review',
     reviewTabPending: 'Pending',
@@ -430,6 +432,7 @@ export const zhCnMessages: TgBlogMessages = {
     cancel: '取消',
     apply: '确定',
     composerSettings: '设置',
+    userInfoClose: '关闭用户信息',
 }
 
 export const tgbMessagesKey: InjectionKey<Reactive<TgBlogMessages>> = Symbol('tgb-messages')

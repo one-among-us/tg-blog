@@ -1,17 +1,11 @@
 <template>
     <div ref="blogRootEl" class="tg-blog" :class="{margins: margins}">
-        <slot></slot>
+        <slot :is-owner="isInteractive && me?.role === 'owner'"
+              :pending-review-count="pendingReviewCount"
+              :open-moderation="openModerationModal"></slot>
 
         <div class="search">
             <input v-model="search" ref="searchEl" :placeholder="msg.searchPlaceholder">
-            <button v-if="isInteractive && me?.role === 'owner'"
-                    type="button"
-                    class="owner-mod-btn clickable"
-                    :class="{ 'has-pending': pendingReviewCount > 0 }"
-                    @click="openModerationModal()">
-                <span>🛡️ {{ msg.reviewQueueBtn }}</span>
-                <span v-if="pendingReviewCount > 0" class="owner-mod-count">{{ pendingReviewCount }}</span>
-            </button>
             <i-ic-round-search />
         </div>
 
@@ -1529,39 +1523,6 @@ onUpdated((): void =>
 
     input:focus-visible
         outline: none
-
-.owner-mod-btn
-    display: inline-flex
-    align-items: center
-    gap: 5px
-    margin-right: 8px
-    padding: 3px 9px
-    border: 1px solid rgba(112, 81, 42, 0.2)
-    border-radius: 999px
-    background: rgba(112, 81, 42, 0.08)
-    color: $color-text-main
-    font-size: 0.78em
-    font-weight: 600
-    white-space: nowrap
-    flex-shrink: 0
-
-    &.has-pending
-        border-color: rgba(245, 158, 11, 0.55)
-        background: rgba(245, 158, 11, 0.16)
-        color: #92400e
-
-.owner-mod-count
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    min-width: 16px
-    height: 16px
-    padding: 0 4px
-    border-radius: 999px
-    background: #d97706
-    color: #fff
-    font-size: 0.9em
-    line-height: 1
 
 .top-sentinel
     height: 1px
