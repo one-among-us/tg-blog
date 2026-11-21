@@ -578,6 +578,9 @@ const interactiveCtx: TgBlogInteractiveContext = {
     ensureCustomEmojis,
     ensureStickers,
     openMediaViewer,
+    playFile: (file: TGFile) => {
+        audio.value = file
+    },
     refreshAuthAndInteractions,
     logout: handleLogout,
     updateProfile: handleUpdateProfile,
@@ -674,6 +677,12 @@ function handleStreamCommentCreated(comment: CommentDTO): void {
     }
     const subs = commentSubscribers.get(comment.post_id)
     subs?.forEach(listener => listener.onCreated(comment))
+}
+
+function handleStreamCommentUpdated(comment: CommentDTO): void {
+    seenCommentIds.add(comment.id)
+    const subs = commentSubscribers.get(comment.post_id)
+    subs?.forEach(listener => listener.onUpdated?.(comment))
 }
 
 function handleStreamCommentDeleted(ev: StreamCommentDeletedEvent): void {
@@ -883,6 +892,7 @@ function startStream(): void {
             onReactionUpdated: handleStreamReactionUpdated,
             onPollUpdated: handleStreamPollUpdated,
             onCommentCreated: handleStreamCommentCreated,
+            onCommentUpdated: handleStreamCommentUpdated,
             onCommentDeleted: handleStreamCommentDeleted,
             onCommentReactionUpdated: handleStreamCommentReactionUpdated,
             onAllowedReactionsUpdated: (ev: StreamAllowedReactionsUpdatedEvent) => {

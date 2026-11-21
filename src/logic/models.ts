@@ -203,18 +203,40 @@ export interface CommentAuthorDTO {
 }
 
 export interface CommentMediaDTO {
-  media_type: 'photo' | 'sticker' | 'animation' | 'video' | 'document' | string
-  url: string
+  media_type: 'photo' | 'sticker' | 'animation' | 'video' | 'document' | 'album' | string
+  url?: string | null
   thumb?: string | null
   width?: number | null
   height?: number | null
   size?: number | null
+  duration?: number | null
   file_name?: string | null
   mime_type?: string | null
+  title?: string | null
+  performer?: string | null
+  spoiler?: boolean | null
   emoji?: string | null
   is_animated?: boolean | null
   is_video?: boolean | null
   sticker_id?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  address?: string | null
+  phone_number?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  value?: number | null
+  id?: string | null
+  question?: string | null
+  options?: { text: string; voter_count?: number }[] | null
+  is_closed?: boolean | null
+  is_anonymous?: boolean | null
+  type?: string | null
+  allow_multiple_answers?: boolean | null
+  total_voter_count?: number | null
+  images?: CommentMediaDTO[] | null
+  files?: CommentMediaDTO[] | null
+  tg_msg_ids?: number[] | null
 }
 
 export interface CustomEmojiAsset {

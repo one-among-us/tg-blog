@@ -25,8 +25,8 @@
         <StickerMedia :url="f.url"
                       :thumb="f.thumb"
                       :emoji="f.sticker_emoji"
-                      :is-animated="f.url.toLowerCase().split('?')[0].endsWith('.tgs')"
-                      :is-video="f.url.toLowerCase().split('?')[0].endsWith('.webm')" />
+                      :is-animated="Boolean((f as any).is_animated || f.mime_type === 'application/x-tgsticker' || f.url?.toLowerCase().split('?')[0].endsWith('.tgs'))"
+                      :is-video="Boolean((f as any).is_video || f.mime_type === 'video/webm' || f.url?.toLowerCase().split('?')[0].endsWith('.webm'))" />
     </div>
 
     <!-- Videos -->
@@ -38,7 +38,9 @@
 
     <!-- GIFs -->
     <div class="video no-head" v-if="f.media_type === 'animation'" :class="{'has-head': hasHead}">
-        <video :src="f.url" preload="metadata" muted loop playsinline disablepictureinpicture ref="gif"
+        <img v-if="f.mime_type === 'image/gif' || f.url?.toLowerCase().split('?')[0].split('#')[0].endsWith('.gif')"
+             :src="f.url" alt="GIF" loading="lazy" :class="spoilerClasses" @click="f.spoiler = false" />
+        <video v-else :src="f.url" preload="metadata" muted loop playsinline disablepictureinpicture ref="gif"
                :class="spoilerClasses" @click="f.spoiler = false; gif.play()">
             <img v-if="f.thumb" :src="f.thumb" alt="">
         </video>

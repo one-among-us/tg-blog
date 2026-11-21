@@ -8,6 +8,7 @@ import type {
   StickerPack,
   StreamCommentDeletedEvent,
   StreamCommentReactionUpdatedEvent,
+  TGFile,
   UpdateProfilePayload,
   UserDTO,
 } from './models'
@@ -15,6 +16,7 @@ import type {ViewedImage} from '@/views/ImageViewer.vue'
 
 export interface CommentStreamListener {
   onCreated: (comment: CommentDTO) => void
+  onUpdated?: (comment: CommentDTO) => void
   onDeleted: (event: StreamCommentDeletedEvent) => void
   onReactionUpdated?: (event: StreamCommentReactionUpdatedEvent) => void
   onAuthChanged: () => void
@@ -43,6 +45,7 @@ export interface TgBlogInteractiveContext {
   ensureCustomEmojis: (force?: boolean) => Promise<CustomEmojiAsset[]>
   ensureStickers: (force?: boolean) => Promise<StickerPack[]>
   openMediaViewer?: (imgs: ViewedImage[], index?: number) => void
+  playFile?: (file: TGFile) => void
   refreshAuthAndInteractions: () => Promise<void>
   logout: () => Promise<void>
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>

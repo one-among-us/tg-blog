@@ -125,107 +125,40 @@
                                 </div>
                             </button>
 
-                            <!-- Rich Comment Media (photo, sticker, animation, document) -->
-                            <template v-if="item.comment.media && safeMediaSrc(item.comment.media.url)">
-                                <!-- Photo -->
-                                <div v-if="item.comment.media.media_type === 'photo'"
-                                     class="comment-media comment-media-photo"
-                                     :class="{ 'has-caption': commentHasBody(item.comment) }">
-                                    <img :src="safeMediaSrc(item.comment.media.thumb || item.comment.media.url)"
-                                         :alt="item.comment.body_text || msg.mediaPhoto"
-                                         class="clickable"
-                                         loading="lazy"
-                                         @click.stop="openCommentPhoto(item.comment)" />
-                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
-                                          class="message-timestamp media-pill"
-                                          :title="formatFullDate(item.comment.created_at)">
-                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
-                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
-                                    </span>
-                                </div>
-
-                                <!-- Sticker (.webp / .png / .tgs / .webm) -->
-                                <div v-else-if="item.comment.media.media_type === 'sticker'"
-                                     class="comment-media comment-media-sticker">
-                                    <StickerMedia :url="safeMediaSrc(item.comment.media.url)"
-                                                  :thumb="safeMediaSrc(item.comment.media.thumb)"
-                                                  :emoji="item.comment.media.emoji"
-                                                  :is-animated="item.comment.media.is_animated"
-                                                  :is-video="item.comment.media.is_video" />
-                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
-                                          class="message-timestamp media-pill"
-                                          :title="formatFullDate(item.comment.created_at)">
-                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
-                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
-                                    </span>
-                                </div>
-
-                                <!-- Animation / GIF -->
-                                <div v-else-if="item.comment.media.media_type === 'animation'"
-                                     class="comment-media comment-media-animation"
-                                     :class="{ 'has-caption': commentHasBody(item.comment) }">
-                                    <img v-if="isGifMedia(item.comment.media.url)"
-                                         :src="safeMediaSrc(item.comment.media.url)"
-                                         alt="GIF"
-                                         loading="lazy" />
-                                    <video v-else
-                                           :src="safeMediaSrc(item.comment.media.url)"
-                                           :poster="safeMediaSrc(item.comment.media.thumb) || undefined"
-                                           preload="metadata"
-                                           autoplay
-                                           loop
-                                           muted
-                                           playsinline
-                                           disablepictureinpicture />
-                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
-                                          class="message-timestamp media-pill"
-                                          :title="formatFullDate(item.comment.created_at)">
-                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
-                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
-                                    </span>
-                                </div>
-
-                                <!-- Video -->
-                                <div v-else-if="item.comment.media.media_type === 'video'"
-                                     class="comment-media comment-media-video"
-                                     :class="{ 'has-caption': commentHasBody(item.comment) }">
-                                    <video :src="safeMediaSrc(item.comment.media.url)"
-                                           :poster="safeMediaSrc(item.comment.media.thumb) || undefined"
-                                           controls
-                                           preload="metadata"
-                                           playsinline />
-                                    <span v-if="!commentHasBody(item.comment) && (item.comment.reactions?.length ?? 0) === 0"
-                                          class="message-timestamp media-pill"
-                                          :title="formatFullDate(item.comment.created_at)">
-                                        <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
-                                        <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
-                                    </span>
-                                </div>
-
-                                <!-- Document / Downloadable file -->
-                                <a v-else
-                                   class="comment-media-doc"
-                                   :href="safeMediaSrc(item.comment.media.url)"
-                                   :download="item.comment.media.file_name || ''"
-                                   target="_blank"
-                                   rel="noopener noreferrer">
-                                    <span class="doc-icon" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24">
-                                            <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
-                                        </svg>
-                                    </span>
-                                    <span class="doc-info">
-                                        <span class="doc-name">{{ item.comment.media.file_name || msg.mediaDocument }}</span>
-                                        <span v-if="item.comment.media.size" class="doc-size">{{ sizeFmt(item.comment.media.size) }}</span>
-                                    </span>
-                                </a>
-                            </template>
+                            <!-- Rich Comment Media (reuses channel PostMediaContent renderer for albums & all media types) -->
+                            <div v-if="hasCommentMedia(item.comment)"
+                                 class="comment-media"
+                                 :class="{
+                                     'comment-media-photo': getCommentMedia(item.comment).images.length > 0,
+                                     'comment-media-sticker': getCommentMedia(item.comment).stickerSolo,
+                                     'has-caption': commentHasBody(item.comment),
+                                 }">
+                                <PostMediaContent
+                                    :images="getCommentMedia(item.comment).images"
+                                    :files="getCommentMedia(item.comment).files"
+                                    :has-head="!!(item.parentComment && !item.parentComment.deleted)"
+                                    :interactive="false"
+                                    :max-width="256"
+                                    :max-height="260"
+                                    :scale="1"
+                                    :bleed="false"
+                                    :compact="true"
+                                    @click-img="idx => openCommentPhoto(item.comment, idx)"
+                                    @play-file="onPlayCommentFile"
+                                />
+                                <span v-if="shouldShowMediaPill(item.comment)"
+                                      class="message-timestamp media-pill"
+                                      :title="formatFullDate(item.comment.created_at)">
+                                    <span class="ts-date">{{ formatShortDate(item.comment.created_at) }}</span>
+                                    <span class="ts-time">{{ formatShortTime(item.comment.created_at) }}</span>
+                                </span>
+                            </div>
                             </div>
 
                             <!-- Message text (+ inline bottom-right timestamp when there are no reactions) -->
-                            <div v-if="commentHasBody(item.comment) || !item.comment.media || (item.comment.media.media_type === 'document' && (item.comment.reactions?.length ?? 0) === 0)"
+                            <div v-if="commentHasBody(item.comment) || !hasCommentMedia(item.comment) || (!shouldShowMediaPill(item.comment) && (item.comment.reactions?.length ?? 0) === 0)"
                                  class="text-content">
-                                <span v-if="commentHasBody(item.comment)" class="comment-body" v-html="renderBody(item.comment)"></span>
+                                <span v-if="commentHasBody(item.comment)" class="comment-body" v-html="renderBody(item.comment)" @click="onCommentTextClick"></span>
                                 <span v-if="item.comment.moderation_status === 'pending'" class="badge badge-pending-review">
                                     {{ msg.pendingReviewBadge }}
                                 </span>
@@ -631,7 +564,12 @@ import {solveAltchaChallenge} from '@/logic/altcha'
 import {sanitizeCommentHtml, sanitizeCommentSnippetHtml} from '@/logic/api'
 import {replaceTextEmojisWithApple, useAppleEmojiBaseUrl} from '@/logic/appleEmoji'
 import {clampFloatingPlacement, isEventInsideElement} from '@/logic/floatingPosition'
-import {sizeFmt} from '@/logic/formatter'
+import {
+    commentMediaLabel,
+    commentMediaThumbBadge,
+    commentMediaThumbUrl,
+    normalizeCommentMedia,
+} from '@/logic/messageMedia'
 import {
     buildAvailableReactions,
     canonicalReactionKey,
@@ -661,7 +599,8 @@ import AppleEmoji from '@/views/AppleEmoji.vue'
 import CustomEmoji from '@/views/CustomEmoji.vue'
 import type {ViewedImage} from '@/views/ImageViewer.vue'
 import RichCommentInput from '@/views/RichCommentInput.vue'
-import StickerMedia from '@/views/StickerMedia.vue'
+import PostMediaContent from '@/views/PostMediaContent.vue'
+import type {TGFile} from '@/logic/models'
 
 const ReactionSelector = defineAsyncComponent(() => import('@/views/ReactionSelector.vue'))
 const SymbolMenu = defineAsyncComponent(() => import('@/views/SymbolMenu.vue'))
@@ -980,17 +919,30 @@ function safeMediaSrc(raw?: string | null): string {
     return resolveApiAssetUrl(raw, activeApi.value?.baseUrl, resolvedPostsUrl.value)
 }
 
-function isGifMedia(url?: string | null): boolean {
-    if (!url) return false
-    return url.toLowerCase().split('?')[0].split('#')[0].endsWith('.gif')
-}
-
 function commentHasBody(c: CommentDTO): boolean {
     return !!(c.body_html?.trim() || c.body_text?.trim())
 }
 
+function getCommentMedia(c: CommentDTO) {
+    return normalizeCommentMedia(c.media, safeMediaSrc)
+}
+
+function hasCommentMedia(c: CommentDTO): boolean {
+    const nm = getCommentMedia(c)
+    return nm.images.length > 0 || nm.files.length > 0
+}
+
+function shouldShowMediaPill(c: CommentDTO): boolean {
+    if (commentHasBody(c) || (c.reactions?.length ?? 0) > 0) return false
+    const nm = getCommentMedia(c)
+    if (nm.images.length === 0 && nm.files.length === 0) return false
+    return nm.files.every(
+        f => f.media_type === 'sticker' || f.media_type === 'animation' || f.media_type === 'video_file' || f.media_type === 'location'
+    )
+}
+
 function isStickerOnlyBubble(item: ChatBubbleItem): boolean {
-    return item.comment.media?.media_type === 'sticker' && !commentHasBody(item.comment)
+    return getCommentMedia(item.comment).stickerSolo && !commentHasBody(item.comment)
 }
 
 function mediaTypeLabel(media?: CommentMediaDTO | null): string {
@@ -999,45 +951,47 @@ function mediaTypeLabel(media?: CommentMediaDTO | null): string {
         case 'photo': return msg.mediaPhoto
         case 'sticker': return media.emoji ? `${media.emoji} ${msg.mediaSticker}` : msg.mediaSticker
         case 'animation': return msg.mediaAnimation
-        case 'video': return msg.mediaVideo
-        case 'document': return media.file_name || msg.mediaDocument
-        default: return msg.mediaDocument
+        case 'video':
+        case 'video_file': return msg.mediaVideo
+        case 'document':
+        case 'file': return media.file_name || msg.mediaDocument
+        default: return commentMediaLabel(media)
     }
 }
 
 function replyThumbUrl(media: CommentMediaDTO): string | null {
-    const candidate = media.thumb || (media.media_type === 'photo' ? media.url : null) || (
-        media.media_type === 'sticker' && !media.is_animated && !media.is_video && !media.url?.toLowerCase().endsWith('.tgs') && !media.url?.toLowerCase().endsWith('.webm')
-            ? media.url
-            : null
-    )
-    const safe = safeMediaSrc(candidate)
-    return safe || null
+    return commentMediaThumbUrl(media, safeMediaSrc)
 }
 
 function replyThumbBadge(media: CommentMediaDTO): string {
-    if (media.media_type === 'sticker') return media.emoji || '🎭'
-    if (media.media_type === 'animation') return '🎞️'
-    if (media.media_type === 'video') return '🎬'
-    if (media.media_type === 'photo') return '🖼️'
-    return '📎'
+    return commentMediaThumbBadge(media)
 }
 
-function openCommentPhoto(c: CommentDTO) {
-    if (!c.media) return
-    const url = safeMediaSrc(c.media.url)
-    if (!url) return
-    const item: ViewedImage = {
-        url,
+function openCommentPhoto(c: CommentDTO, idx = 0) {
+    const nm = getCommentMedia(c)
+    if (!nm.images.length) return
+    const items: ViewedImage[] = nm.images.map(img => ({
+        url: img.url,
         text: c.body_html || c.body_text || undefined,
         date: formatFullDate(c.created_at),
-        fileName: c.media.file_name ?? undefined,
-    }
+        fileName: img.original_name ?? undefined,
+    }))
     if (ctx?.openMediaViewer) {
-        ctx.openMediaViewer([item], 0)
+        ctx.openMediaViewer(items, idx)
     } else {
-        localViewerImgs.value = [item]
-        localViewerIdx.value = 0
+        localViewerImgs.value = items
+        localViewerIdx.value = Math.max(0, Math.min(idx, items.length - 1))
+    }
+}
+
+function onPlayCommentFile(file: TGFile) {
+    ctx?.playFile?.(file)
+}
+
+function onCommentTextClick(e: MouseEvent) {
+    const target = (e.target as HTMLElement | null)?.closest('blockquote[expandable], blockquote.expandable') as HTMLElement | null
+    if (target) {
+        target.classList.toggle('expanded')
     }
 }
 
@@ -1098,7 +1052,7 @@ function applyDelete(commentId: number) {
     comments.value = applyCommentDeleteInList(comments.value, commentId)
 }
 
-const BUBBLE_TRIGGER_IGNORE_SELECTOR = 'a, button, input, textarea, select, .comment-media-video video, .comment-media-doc, .comment-reaction-btn, .inline-reply-quote, pre, code, .spoiler'
+const BUBBLE_TRIGGER_IGNORE_SELECTOR = 'a, button, input, textarea, select, audio, .media_spoiler, .spoiler, .plyr, #Location, blockquote[expandable], blockquote.expandable, #Poll, .dice, .file .thumb, .comment-media video, .comment-reaction-btn, .inline-reply-quote, pre, code'
 
 function shouldIgnoreBubbleReactionTrigger(target: EventTarget | null): boolean {
     if (typeof window !== 'undefined' && window.getSelection()?.toString().trim()) {
@@ -1727,6 +1681,7 @@ onMounted(() => {
     void fetchComments()
     unsubscribe = ctx.subscribeComments(props.postId, {
         onCreated: (c) => upsertComment(c),
+        onUpdated: (c) => upsertComment(c),
         onDeleted: (ev) => applyDelete(ev.comment_id),
         onReactionUpdated: (ev) => {
             if ((reactionInFlightMap.get(ev.comment_id) ?? 0) > 0) return
@@ -2226,36 +2181,24 @@ onUnmounted(() => {
 .comment-media
     position: relative
     margin: 2px 0 4px
+    max-width: 268px
 
     &:last-child
         margin-bottom: 0
 
-.comment-media-photo, .comment-media-animation, .comment-media-video
+.comment-media-photo
     border-radius: 10px
     overflow: hidden
-    max-width: 256px
+    max-width: 268px
     background: rgba(112, 81, 42, 0.06)
 
     &.has-caption
         margin-bottom: 6px
 
-    img, video
-        display: block
-        max-width: 100%
-        max-height: 280px
-        width: auto
-        height: auto
-        object-fit: cover
-        border-radius: 10px
-
-.comment-media-video video
-    width: 100%
-    background: #1a140e
-
 .comment-media-sticker
     position: relative
-    width: 136px
-    height: 136px
+    width: 140px
+    min-height: 140px
     margin: 0
     display: flex
     align-items: center

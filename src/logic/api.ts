@@ -273,6 +273,7 @@ export interface LifeStreamHandlers {
   onReactionUpdated?: (event: StreamReactionUpdatedEvent) => void
   onPollUpdated?: (event: StreamPollUpdatedEvent) => void
   onCommentCreated?: (comment: CommentDTO) => void
+  onCommentUpdated?: (comment: CommentDTO) => void
   onCommentDeleted?: (event: StreamCommentDeletedEvent) => void
   onCommentReactionUpdated?: (event: StreamCommentReactionUpdatedEvent) => void
   onAllowedReactionsUpdated?: (event: StreamAllowedReactionsUpdatedEvent) => void
@@ -383,6 +384,7 @@ export class LifeStreamClient {
     bindJson<StreamReactionUpdatedEvent>('reaction.updated', this.handlers.onReactionUpdated)
     bindJson<StreamPollUpdatedEvent>('poll.updated', this.handlers.onPollUpdated)
     bindJson<CommentDTO>('comment.created', this.handlers.onCommentCreated)
+    bindJson<CommentDTO>('comment.updated', this.handlers.onCommentUpdated)
     bindJson<StreamCommentDeletedEvent>('comment.deleted', this.handlers.onCommentDeleted)
     bindJson<StreamCommentReactionUpdatedEvent>('comment.reaction.updated', this.handlers.onCommentReactionUpdated)
     bindJson<StreamAllowedReactionsUpdatedEvent>('reactions.allowed_updated', this.handlers.onAllowedReactionsUpdated)

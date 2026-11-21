@@ -55,12 +55,12 @@
                                     {{ reasonSummary(c) }}
                                 </div>
 
-                                <div v-if="c.media && safeMediaSrc(c.media.url)" class="media-preview">
-                                    <img v-if="c.media.media_type === 'photo'"
-                                         :src="safeMediaSrc(c.media.url)"
+                                <div v-if="c.media && (commentMediaThumbUrl(c.media, safeMediaSrc) || commentMediaLabel(c.media))" class="media-preview">
+                                    <img v-if="commentMediaThumbUrl(c.media, safeMediaSrc)"
+                                         :src="commentMediaThumbUrl(c.media, safeMediaSrc)!"
                                          alt="" />
                                     <span v-else class="media-type-note">
-                                        {{ c.media.media_type }}: {{ c.media.url }}
+                                        {{ commentMediaLabel(c.media) }}
                                     </span>
                                 </div>
 
@@ -120,6 +120,7 @@
 import {onMounted, ref, watch} from 'vue'
 import {LifeApiClient} from '@/logic/api'
 import {useTgbMessages} from '@/logic/messages'
+import {commentMediaLabel, commentMediaThumbUrl} from '@/logic/messageMedia'
 import {ModerationCommentDTO, ModerationWhitelistEntryDTO} from '@/logic/models'
 import {resolveApiAssetUrl} from '@/logic/url'
 

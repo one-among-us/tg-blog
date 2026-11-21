@@ -30,22 +30,20 @@
                     <blockquote v-html="p.quote.text"></blockquote>
                 </div>
                 <div class="text" v-if="p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
-                <div class="images" v-if="p.images?.length" :class="{'has-head': p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && text)}"
-                     :style="containerStyle">
-                    <div class="image_container" v-for="(img, i) in p.images" :key="i" :style="getImageStyle(i)">
-                        <img :src="img.thumb || img.url" alt="image"
-                             class="clickable" :class="{media_spoiler: img.spoiler}" @click="clickImg(img, i)" style="inset: 0">
-                    </div>
-                </div>
-                <div class="files" v-if="p.files">
-                    <FileView v-for="(f, i) in p.files" :key="f.url ?? i" :f="f"
-                              :has-head="i > 0 || !!(p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && text) || p.images?.length)"
-                              :interactive="interactive"
-                              :poll-state="f.media_type === 'poll' ? (interaction?.poll ?? null) : null"
-                              :poll-voting="pollVoting"
-                              @play-file="onPlayFile"
-                              @vote-poll="onVotePoll" />
-                </div>
+                <PostMediaContent
+                    v-if="p.images?.length || p.files?.length"
+                    :images="p.images"
+                    :files="p.files"
+                    :has-head="!!(p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && text))"
+                    :interactive="interactive"
+                    :poll-state="interaction?.poll ?? null"
+                    :poll-voting="pollVoting"
+                    :scale="sizeScale"
+                    :bleed="true"
+                    @click-img="i => emit('click-img', i)"
+                    @play-file="onPlayFile"
+                    @vote-poll="onVotePoll"
+                />
                 <div class="text" v-if="!p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
 
                 <!-- Interactive reactions styled after Telegram Web A ReactionButton.module.scss (no permanent + button) -->
@@ -128,11 +126,10 @@
 </template>
 
 <script lang="ts" setup>
-import {Image, MergedReaction, Post, PostInteractionState, ReactionTogglePayload, TGFile} from "@/logic/models";
-import FileView from "@/views/FileView.vue";
+import {MergedReaction, Post, PostInteractionState, ReactionTogglePayload, TGFile} from "@/logic/models";
+import PostMediaContent from "@/views/PostMediaContent.vue";
 import AppleEmoji from "@/views/AppleEmoji.vue";
 import CustomEmoji from "@/views/CustomEmoji.vue";
-import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
 import {replaceTextEmojisWithApple, useAppleEmojiBaseUrl} from "@/logic/appleEmoji";
 import {buildCustomEmojiCandidates, createCustomEmojiDomManager} from "@/logic/customEmojiDom";
 import {useTgbMessages} from "@/logic/messages";
@@ -146,7 +143,7 @@ import {
 } from "@/logic/reactions";
 import {resolveRelativeUrl} from "@/logic/url";
 import {initSpoilers} from "@/logic/spoilers";
-import {computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpdated, ref, StyleValue, watch} from "vue";
+import {computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, onUpdated, ref, watch} from "vue";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css";
 
@@ -335,29 +332,6 @@ function onCardPointerMove(e: PointerEvent) {
 const text = computed(() => p.value.text)
 const fwdUrl = computed(() => typeof p.value.forwarded_from == 'string' ? undefined : p.value.forwarded_from.url)
 const fwdName = computed(() => typeof p.value.forwarded_from == 'string' ? p.value.forwarded_from : p.value.forwarded_from.name)
-
-const dims = computed(() =>
-    p.value.images?.length ? calculateAlbumLayout(p.value.images, 450, 450) : null
-)
-
-const containerStyle = computed(() =>
-{
-    if (!dims.value) return {}
-    const ss = sizeScale.value
-    const dm = dims.value.containerStyle
-    return {width: dm.width * ss + "px", height: dm.height * ss + "px"}
-})
-
-function getImageStyle(i: number): StyleValue
-{
-    if (!dims.value?.layout[i]) return {}
-    const ss = sizeScale.value
-    const dm = dims.value.layout[i].dimensions
-    return {
-        left: dm.x * ss + "px", top: dm.y * ss + "px",
-        width: dm.width * ss + "px", height: dm.height * ss + "px"
-    }
-}
 
 function onPlayFile(file: TGFile) {
     emit("play-file", file)
@@ -641,19 +615,6 @@ function initEmoji()
             return []
         },
     })
-}
-
-function clickImg(img: Image, i: number)
-{
-    // Show spoiler if not already shown
-    if (img.spoiler)
-    {
-        img.spoiler = false
-        return
-    }
-
-    // Open image if spoiler is already shown
-    emit('click-img', i)
 }
 
 const shared = ref(false)
