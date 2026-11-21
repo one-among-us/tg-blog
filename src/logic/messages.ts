@@ -119,6 +119,9 @@ export interface TgBlogMessages {
     authSendMagicLink: string
     authSendingMagicLink: string
     authMagicLinkSent: (email: string) => string
+    authErrorCancelled: (provider: string) => string
+    authErrorFailed: (provider: string) => string
+    authErrorStateExpired: string
     authClose: string
 
     // --- Original Photo Viewer ---
@@ -249,6 +252,9 @@ export const defaultMessages: TgBlogMessages = {
     authSendMagicLink: 'Send magic link',
     authSendingMagicLink: 'Sending...',
     authMagicLinkSent: (email) => `Magic link sent to ${email}. Check your inbox to finish signing in!`,
+    authErrorCancelled: (provider) => provider ? `${provider} sign-in was cancelled.` : 'Sign-in was cancelled.',
+    authErrorFailed: (provider) => provider ? `${provider} sign-in failed. Please try again.` : 'Sign-in failed. Please try again.',
+    authErrorStateExpired: 'Sign-in session expired. Please try again.',
     authClose: 'Close',
 
     // Original Photo Viewer
@@ -379,6 +385,9 @@ export const zhCnMessages: TgBlogMessages = {
     authSendMagicLink: '发送登录链接',
     authSendingMagicLink: '发送中...',
     authMagicLinkSent: (email) => `登录链接已发送至 ${email}，请查收邮件完成登录！`,
+    authErrorCancelled: (provider) => provider ? `已取消 ${provider} 登录` : '已取消登录',
+    authErrorFailed: (provider) => provider ? `${provider} 登录失败，请重试` : '登录失败，请重试',
+    authErrorStateExpired: '登录会话已过期，请重试',
     authClose: '关闭',
 
     // Original Photo Viewer

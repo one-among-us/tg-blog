@@ -41,8 +41,9 @@
                    :telegram-bot-username="resolvedTelegramBotUsername"
                    :telegram-client-id="apiTelegramClientId"
                    :oidc-provider-name="oidcProviderName"
-                   @close="authModalOpen = false"
-                   @authenticated="refreshAuthAndInteractions" />
+                   :initial-error="authModalError"
+                   @close="authModalOpen = false; authModalError = null"
+                   @authenticated="authModalError = null; refreshAuthAndInteractions()" />
         <ModerationModal v-if="isInteractive && apiClient && me?.role === 'owner'"
                          :open="modModalOpen"
                          :api="apiClient"
@@ -186,6 +187,7 @@ const stickerPacks = ref<StickerPack[]>([])
 const stickersLoading = ref(false)
 const authLoaded = ref(false)
 const authModalOpen = ref(false)
+const authModalError = ref<string | null>(null)
 const modModalOpen = ref(false)
 const pendingReviewCount = ref(0)
 const reviewFocusCommentId = ref<number | null>(null)
@@ -401,6 +403,42 @@ async function handleUpdateProfile(payload: UpdateProfilePayload): Promise<void>
     if (!client) return
     const updated = await client.updateMe(payload)
     me.value = updated
+}
+
+function formatAuthProviderName(rawProvider: string | null): string {
+    switch ((rawProvider || '').trim().toLowerCase()) {
+        case 'google':
+            return 'Google'
+        case 'github':
+            return 'GitHub'
+        case 'oidc':
+            return oidcProviderName.value?.trim() || 'SSO'
+        default:
+            return ''
+    }
+}
+
+function handleAuthErrorQueryOnLoad(): void {
+    if (typeof window === 'undefined' || !isInteractive.value) return
+    const url = new URL(window.location.href)
+    const errCode = url.searchParams.get('auth_error')
+    if (!errCode) return
+    const providerName = formatAuthProviderName(url.searchParams.get('auth_provider'))
+    url.searchParams.delete('auth_error')
+    url.searchParams.delete('auth_provider')
+    const cleaned = `${url.pathname}${url.search}${url.hash}`
+    window.history.replaceState(window.history.state, '', cleaned)
+
+    let message: string
+    if (errCode === 'cancelled') {
+        message = msg.authErrorCancelled(providerName)
+    } else if (errCode === 'state_expired') {
+        message = msg.authErrorStateExpired
+    } else {
+        message = msg.authErrorFailed(providerName)
+    }
+    authModalError.value = message
+    openAuthModal()
 }
 
 function openAuthModal(): void {
@@ -1462,6 +1500,7 @@ onMounted(async () =>
             {
                 await hydrateInteractions(visiblePostIds.value)
             }
+            handleAuthErrorQueryOnLoad()
             handleReviewQueryOnLoad()
             startStream()
             await nextTick()

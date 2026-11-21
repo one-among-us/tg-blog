@@ -17,6 +17,7 @@
                         <span class="loading-spinner" aria-hidden="true"></span>
                     </div>
                     <template v-else>
+                        <div v-if="errorMsg" class="error-msg modal-top-error" role="alert">{{ errorMsg }}</div>
                         <div class="oauth-list" v-if="hasGithub || hasGoogle || hasOidc || hasTelegram">
                             <a v-if="hasGithub" class="oauth-btn github" :href="githubLoginUrl">
                                 <svg class="provider-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -74,7 +75,6 @@
                                 <input v-model.trim="displayName" type="text" maxlength="60" autocomplete="name"
                                        class="field-input" :placeholder="msg.authDisplayNamePlaceholder" :disabled="sending"/>
                                 <AltchaWidget ref="altchaRef" :api="api" v-model="altchaPayload"/>
-                                <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
                                 <button type="submit" class="submit-btn"
                                         :disabled="sending || !email || !altchaPayload">
                                     {{ sending ? msg.authSendingMagicLink : msg.authSendMagicLink }}
@@ -105,8 +105,10 @@ const props = withDefaults(defineProps<{
     telegramBotUsername?: string | null
     telegramClientId?: string | null
     oidcProviderName?: string | null
+    initialError?: string | null
 }>(), {
     authLoaded: true,
+    initialError: null,
 })
 
 const emit = defineEmits<{
@@ -166,6 +168,11 @@ const oidcLoginUrl = computed(() => props.api.getOAuthLoginUrl('oidc', nextPath.
 function refreshNextPath() {
     if (typeof window === 'undefined') {
         nextPath.value = '/'
+        return
+    }
+    const href = window.location.href
+    if (href && /^https?:\/\//i.test(href)) {
+        nextPath.value = href
         return
     }
     const rel = `${window.location.pathname}${window.location.search}${window.location.hash}`
@@ -328,7 +335,7 @@ watch(
     async (isOpen) => {
         altchaPayload.value = null
         altchaRef.value?.reset()
-        errorMsg.value = null
+        errorMsg.value = isOpen ? (props.initialError ?? null) : null
         magicLinkSentTo.value = null
         if (isOpen) {
             refreshNextPath()
@@ -569,6 +576,13 @@ onUnmounted(() => {
     color: #c93b3b
     font-size: 0.82em
     line-height: 1.35
+
+.modal-top-error
+    margin-bottom: 12px
+    padding: 9px 12px
+    border-radius: 10px
+    background: rgba(201, 59, 59, 0.08)
+    border: 1px solid rgba(201, 59, 59, 0.25)
 
 .sent-notice
     padding: 14px
