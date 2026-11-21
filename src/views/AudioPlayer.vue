@@ -52,7 +52,7 @@ function pause() {
 
 function play() {
     if (!playing.value) return
-    void playing.value.play()
+    playing.value.play().catch(() => {})
     playbackTick.value++
     emit("play")
 }
@@ -99,7 +99,7 @@ function init() {
         next()
     }
 
-    void player.play()
+    player.play().catch(() => {})
 }
 
 watch(() => props.audio, init, {immediate: true})

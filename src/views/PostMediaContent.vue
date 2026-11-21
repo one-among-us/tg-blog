@@ -1,25 +1,26 @@
 <template>
-    <div class="post-media-content" :class="{bleed, compact}">
-        <div class="images" v-if="images.length"
-             :class="{'has-head': hasHead}"
-             :style="containerStyle">
-            <div class="image_container" v-for="(img, i) in images" :key="`${img.url}-${i}`" :style="getImageStyle(i)">
-                <img :src="img.thumb || img.url" alt="image"
-                     class="clickable"
-                     :class="{media_spoiler: isSpoilerActive(img, i)}"
-                     @click.stop="clickImg(img, i)"
-                     style="inset: 0">
-            </div>
+    <div v-if="images.length"
+         class="images"
+         :class="{'has-head': hasHead, bleed, compact}"
+         :style="containerStyle">
+        <div class="image_container" v-for="(img, i) in images" :key="`${img.url}-${i}`" :style="getImageStyle(i)">
+            <img :src="img.thumb || img.url" alt="image"
+                 class="clickable"
+                 :class="{media_spoiler: isSpoilerActive(img, i)}"
+                 @click.stop="clickImg(img, i)"
+                 style="inset: 0">
         </div>
-        <div class="files" v-if="files.length" :class="{'has-images': images.length > 0}">
-            <FileView v-for="(f, i) in files" :key="`${f.url}-${i}`" :f="f"
-                      :has-head="i > 0 || hasHead || images.length > 0"
-                      :interactive="interactive"
-                      :poll-state="f.media_type === 'poll' ? pollState : null"
-                      :poll-voting="pollVoting"
-                      @play-file="file => emit('play-file', file)"
-                      @vote-poll="(pollId, indices) => emit('vote-poll', pollId, indices)" />
-        </div>
+    </div>
+    <div v-if="files.length"
+         class="files"
+         :class="{'has-images': images.length > 0, bleed, compact}">
+        <FileView v-for="(f, i) in files" :key="`${f.url}-${i}`" :f="f"
+                  :has-head="i > 0 || hasHead || images.length > 0"
+                  :interactive="interactive"
+                  :poll-state="f.media_type === 'poll' ? pollState : null"
+                  :poll-voting="pollVoting"
+                  @play-file="file => emit('play-file', file)"
+                  @vote-poll="(pollId, indices) => emit('vote-poll', pollId, indices)" />
     </div>
 </template>
 
@@ -74,7 +75,9 @@ const containerStyle = computed(() => {
     if (!dims.value) return {}
     const ss = props.scale
     const dm = dims.value.containerStyle
-    return {width: dm.width * ss + 'px', height: dm.height * ss + 'px'}
+    const width = dm.width || Math.max(0, ...dims.value.layout.map(l => l.dimensions.x + l.dimensions.width))
+    const height = dm.height || Math.max(0, ...dims.value.layout.map(l => l.dimensions.y + l.dimensions.height))
+    return {width: width * ss + 'px', height: height * ss + 'px'}
 })
 
 function getImageStyle(i: number): StyleValue {
@@ -106,53 +109,49 @@ function clickImg(img: Image, i: number) {
 </script>
 
 <style lang="sass" scoped>
-.post-media-content
-    .images
-        display: flex
-        position: relative
-        max-width: 100%
+.images
+    display: flex
+    position: relative
 
-        .image_container
-            overflow: hidden
-            position: absolute
-            // Gray bg is needed to fix the white infix vignette effect from the spoiler blur
-            background: gray
+    .image_container
+        overflow: hidden
+        position: absolute
+        // Gray bg is needed to fix the white infix vignette effect from the spoiler blur
+        background: gray
 
-        img
-            width: 100%
-            height: 100%
-            object-fit: cover
-            transition: filter 1s ease
+    img
+        width: 100%
+        height: 100%
+        object-fit: cover
+        transition: filter 1s ease
 
     &.bleed
-        .images
-            margin: -12px -20px 10px
+        margin: -12px -20px 10px
 
-            &.has-head
-                margin: 0 -20px 10px
+        &.has-head
+            margin: 0 -20px 10px
 
-        .files
-            margin-left: -20px
-            margin-right: -20px
+    &:not(.bleed)
+        margin: 0
+        max-width: 100%
+        border-radius: 10px
+        overflow: hidden
 
-            > * + *
-                margin-top: 10px
+.files
+    &.bleed
+        margin-left: -20px
+        margin-right: -20px
+
+        > * + *
+            margin-top: 10px
 
     &:not(.bleed)
         display: flex
         flex-direction: column
         gap: 6px
-        max-width: 100%
 
-        .images
-            margin: 0
-            border-radius: 10px
-            overflow: hidden
-
-        .files
-            display: flex
-            flex-direction: column
-            gap: 6px
+    &.has-images:not(.bleed)
+        margin-top: 6px
 
     &.compact
         :deep(.file), :deep(.sticker)
