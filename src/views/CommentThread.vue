@@ -843,7 +843,12 @@ watch(activeApi, (nextApi) => {
 })
 
 function safeAvatar(url?: string | null): string | null {
-    return sanitizeAvatarUrl(url)
+    const clean = sanitizeAvatarUrl(url)
+    if (!clean) return null
+    if (clean.startsWith('/') && activeApi.value?.baseUrl) {
+        return resolveApiAssetUrl(clean, activeApi.value.baseUrl, resolvedPostsUrl.value) || clean
+    }
+    return clean
 }
 
 const anonAvatarList = computed(() =>
