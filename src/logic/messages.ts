@@ -125,10 +125,8 @@ export interface TgBlogMessages {
     authClose: string
 
     // --- Original Photo Viewer ---
-    viewOriginal: string
-    viewOriginalWithSize: (size: string) => string
-    loadingOriginal: string
-    viewingOriginal: string
+    downloadOriginal: string
+    downloadOriginalWithSize: (size: string) => string
 
     // --- Interactive mode v3: Rich Media & Composer ---
     mediaPhoto: string
@@ -258,10 +256,8 @@ export const defaultMessages: TgBlogMessages = {
     authClose: 'Close',
 
     // Original Photo Viewer
-    viewOriginal: 'View Original',
-    viewOriginalWithSize: (size) => `View Original (${size})`,
-    loadingOriginal: 'Loading original...',
-    viewingOriginal: 'Viewing Original',
+    downloadOriginal: 'Download Original',
+    downloadOriginalWithSize: (size) => `Download Original (${size})`,
 
     // Interactive mode v3: Rich Media & Composer
     mediaPhoto: '[Photo]',
@@ -391,10 +387,8 @@ export const zhCnMessages: TgBlogMessages = {
     authClose: '关闭',
 
     // Original Photo Viewer
-    viewOriginal: '查看原图',
-    viewOriginalWithSize: (size) => `查看原图 (${size})`,
-    loadingOriginal: '加载原图中...',
-    viewingOriginal: '正在查看原图',
+    downloadOriginal: '下载原图',
+    downloadOriginalWithSize: (size) => `下载原图 (${size})`,
 
     // Interactive mode v3: Rich Media & Composer
     mediaPhoto: '[图片]',

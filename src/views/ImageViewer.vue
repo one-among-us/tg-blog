@@ -1,7 +1,7 @@
 <template>
     <div id="ImageViewer" v-if="img">
         <div class="img-container">
-            <img :src="displayedSrc" alt="Photo" class="undraggable" :style="imgStyle">
+            <img :src="img.url" alt="Photo" class="undraggable" :style="imgStyle">
         </div>
         <div class="top">
             <span class="f-grow1"></span>
@@ -15,15 +15,7 @@
                 </div>
             </div>
             <div class="right">
-                <button v-if="img.originalUrl" type="button"
-                        class="orig-btn clickable"
-                        :class="{ active: viewingOriginal, loading: loadingOriginal }"
-                        :disabled="loadingOriginal"
-                        @click="toggleOriginal">
-                    <span v-if="loadingOriginal" class="orig-spinner" aria-hidden="true"></span>
-                    <span>{{ originalButtonLabel }}</span>
-                </button>
-                <i-ep-download class="icn download clickable" @click="download"/>
+                <i-ep-download class="icn download clickable" :title="downloadTitle" :aria-label="downloadTitle" @click="download"/>
             </div>
             <div class="description unselectable">
                 <div class="text" v-if="img.text">
@@ -43,7 +35,7 @@ import * as KeyCode from 'keycode-js';
 import fileDownload from "js-file-download";
 import {sizeFmt} from "@/logic/formatter";
 import {useTgbMessages} from "@/logic/messages";
-import {computed, onMounted, onUnmounted, ref, watch} from "vue";
+import {computed, onMounted, onUnmounted, ref} from "vue";
 
 const msg = useTgbMessages()
 
@@ -77,9 +69,6 @@ const emit = defineEmits<{
 
 const ctrlDown = ref(false)
 const zoom = ref(1)
-const viewingOriginal = ref(false)
-const loadingOriginal = ref(false)
-let originalLoadToken = 0
 
 const img = computed(() => {
     if (imgs.value) return imgs.value[index.value]
@@ -90,61 +79,13 @@ const hasPrev = computed(() => index.value > 0)
 const hasNext = computed(() => index.value + 1 < imgs.value.length)
 const textHtml = computed(() => img.value?.text)
 
-const displayedSrc = computed(() => {
-    if (!img.value) return ''
-    if (viewingOriginal.value && img.value.originalUrl) {
-        return img.value.originalUrl
+const downloadTitle = computed(() => {
+    if (!img.value?.originalUrl) return undefined
+    if (img.value.originalSize) {
+        return msg.downloadOriginalWithSize(sizeFmt(img.value.originalSize))
     }
-    return img.value.url
+    return msg.downloadOriginal
 })
-
-const originalButtonLabel = computed(() => {
-    if (loadingOriginal.value) return msg.loadingOriginal
-    if (viewingOriginal.value) return msg.viewingOriginal
-    if (img.value?.originalSize) {
-        return msg.viewOriginalWithSize(sizeFmt(img.value.originalSize))
-    }
-    return msg.viewOriginal
-})
-
-watch([index, () => img.value?.url], () => {
-    originalLoadToken++
-    viewingOriginal.value = false
-    loadingOriginal.value = false
-})
-
-function toggleOriginal() {
-    const cur = img.value
-    if (!cur?.originalUrl || loadingOriginal.value) return
-
-    if (viewingOriginal.value) {
-        originalLoadToken++
-        viewingOriginal.value = false
-        return
-    }
-
-    const token = ++originalLoadToken
-    const targetUrl = cur.originalUrl
-    loadingOriginal.value = true
-
-    if (typeof window === 'undefined' || typeof Image === 'undefined') {
-        viewingOriginal.value = true
-        loadingOriginal.value = false
-        return
-    }
-
-    const preloader = new Image()
-    preloader.onload = () => {
-        if (token !== originalLoadToken) return
-        viewingOriginal.value = true
-        loadingOriginal.value = false
-    }
-    preloader.onerror = () => {
-        if (token !== originalLoadToken) return
-        loadingOriginal.value = false
-    }
-    preloader.src = targetUrl
-}
 
 async function download() {
     if (!img.value) return
@@ -157,9 +98,6 @@ async function download() {
 }
 
 function close() {
-    originalLoadToken++
-    viewingOriginal.value = false
-    loadingOriginal.value = false
     emit("close")
     rawUpdateIndex(-1)
 }
@@ -313,45 +251,6 @@ onUnmounted(() =>
         align-items: center
         justify-content: end
         gap: 12px
-
-.orig-btn
-    display: inline-flex
-    align-items: center
-    gap: 6px
-    padding: 5px 12px
-    border-radius: 999px
-    border: 1px solid rgba(255, 255, 255, 0.4)
-    background: rgba(0, 0, 0, 0.45)
-    color: #fff
-    font-size: 0.82em
-    font-weight: 500
-    font-family: inherit
-    backdrop-filter: blur(4px)
-    transition: background 0.18s ease, border-color 0.18s ease
-
-    &:hover:not(:disabled)
-        background: rgba(255, 255, 255, 0.18)
-        border-color: rgba(255, 255, 255, 0.75)
-
-    &.active
-        background: rgba(255, 131, 115, 0.85)
-        border-color: #ff8373
-
-    &.loading
-        cursor: wait
-        opacity: 0.85
-
-.orig-spinner
-    width: 11px
-    height: 11px
-    border-radius: 50%
-    border: 2px solid rgba(255, 255, 255, 0.35)
-    border-top-color: #fff
-    animation: tgb-viewer-spin 0.75s linear infinite
-
-@keyframes tgb-viewer-spin
-    to
-        transform: rotate(360deg)
 
 .description
     position: absolute
