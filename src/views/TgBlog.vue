@@ -1288,6 +1288,8 @@ function replacePostUrls(list: Post[]): void
         {
             img.url = replaceUrl(img.url)
             if (img.thumb) img.thumb = replaceUrl(img.thumb)
+            if (img.jxl_url) img.jxl_url = replaceUrl(img.jxl_url)
+            if (img.thumb_jxl_url) img.thumb_jxl_url = replaceUrl(img.thumb_jxl_url)
             if (img.original_url) img.original_url = replaceUrl(img.original_url)
         })
         if (it.reply?.thumb) it.reply.thumb = replaceUrl(it.reply.thumb)
@@ -1303,6 +1305,7 @@ function rebuildImgIndex(): void
 {
     imgList.value = posts.value.flatMap((post, pi) => (post.images ?? []).map(img => ({
         url: img.url,
+        jxlUrl: img.jxl_url,
         text: post.text,
         author: post.author ?? (typeof post.forwarded_from == 'string' ? post.forwarded_from : post.forwarded_from?.name),
         date: post.date,

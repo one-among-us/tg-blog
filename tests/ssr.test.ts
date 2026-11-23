@@ -26,6 +26,9 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
         images: [
           {
             url: '../media/epochs/1/photo.webp',
+            thumb: '../media/epochs/1/photo_thumb.webp',
+            jxl_url: '../media/epochs/1/photo.jxl',
+            thumb_jxl_url: '../media/epochs/1/photo_thumb.jxl',
             width: 1200,
             height: 800,
             original_url: '../media/epochs/1/photo_orig.jpg',
@@ -66,7 +69,9 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
     )
     expect(staticHtml).toContain('Photo + Original')
     expect(staticHtml).toContain('2026-11-19 8:00')
-    expect(staticHtml).toContain('/api/life/media/epochs/1/photo.webp')
+    expect(staticHtml).toContain('/api/life/media/epochs/1/photo_thumb.webp')
+    expect(staticHtml).toContain('type="image/jxl"')
+    expect(staticHtml).toContain('/api/life/media/epochs/1/photo_thumb.jxl')
     expect(staticHtml).toContain('Empty images + location + video')
     // No empty .head div when post has no forwarded_from (flush top edge fix)
     expect(staticHtml).not.toContain('class="head unselectable"')

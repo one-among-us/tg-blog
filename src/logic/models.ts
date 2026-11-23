@@ -17,6 +17,8 @@ export interface _Media {
 
 export interface Image extends Dimension, _Media {
   url: string
+  jxl_url?: string
+  thumb_jxl_url?: string
   original_url?: string
   original_size?: number
   original_name?: string

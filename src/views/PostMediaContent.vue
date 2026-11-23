@@ -4,11 +4,14 @@
          :class="{'has-head': hasHead, bleed, compact}"
          :style="containerStyle">
         <div class="image_container" v-for="(img, i) in images" :key="`${img.url}-${i}`" :style="getImageStyle(i)">
-            <img :src="img.thumb || img.url" alt="image"
-                 class="clickable"
-                 :class="{media_spoiler: isSpoilerActive(img, i)}"
-                 @click.stop="clickImg(img, i)"
-                 style="inset: 0">
+            <picture>
+                <source v-if="getThumbJxlSrc(img)" :srcset="getThumbJxlSrc(img)" type="image/jxl">
+                <img :src="img.thumb || img.url" alt="image"
+                     class="clickable"
+                     :class="{media_spoiler: isSpoilerActive(img, i)}"
+                     @click.stop="clickImg(img, i)"
+                     style="inset: 0">
+            </picture>
         </div>
     </div>
     <div v-if="files.length"
@@ -92,6 +95,12 @@ function getImageStyle(i: number): StyleValue {
     }
 }
 
+function getThumbJxlSrc(img: Image): string | undefined {
+    if (img.thumb_jxl_url) return img.thumb_jxl_url
+    if (!img.thumb && img.jxl_url) return img.jxl_url
+    return undefined
+}
+
 function isSpoilerActive(img: Image, i: number): boolean {
     return !!img.spoiler && !revealedSpoilers.value.has(i)
 }
@@ -118,6 +127,11 @@ function clickImg(img: Image, i: number) {
         position: absolute
         // Gray bg is needed to fix the white infix vignette effect from the spoiler blur
         background: gray
+
+    picture
+        display: block
+        width: 100%
+        height: 100%
 
     img
         width: 100%

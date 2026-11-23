@@ -1,7 +1,10 @@
 <template>
     <div id="ImageViewer" v-if="img">
         <div class="img-container">
-            <img :src="img.url" alt="Photo" class="undraggable" :style="imgStyle">
+            <picture>
+                <source v-if="img.jxlUrl" :srcset="img.jxlUrl" type="image/jxl">
+                <img :src="img.url" alt="Photo" class="undraggable" :style="imgStyle">
+            </picture>
         </div>
         <div class="top">
             <span class="f-grow1"></span>
@@ -42,6 +45,7 @@ const msg = useTgbMessages()
 export interface ViewedImage
 {
     url: string
+    jxlUrl?: string
     text?: string
     date?: string
     fileName?: string
@@ -179,6 +183,13 @@ onUnmounted(() =>
     display: flex
     align-items: center
     justify-content: center
+
+    picture
+        display: flex
+        align-items: center
+        justify-content: center
+        width: 100%
+        height: 100%
 
     img
         max-width: 100%
