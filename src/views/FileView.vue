@@ -93,8 +93,8 @@
        rel="noopener noreferrer">
         <div class="wp-header">
             <div class="wp-text">
-                <div class="wp-site" v-if="f.site_name || f.display_url">{{ f.site_name || f.display_url }}</div>
-                <div class="wp-title" v-if="f.title">{{ f.title }}</div>
+                <div class="wp-site" v-if="wpSiteLabel">{{ wpSiteLabel }}</div>
+                <div class="wp-title" v-if="wpTitleLabel">{{ wpTitleLabel }}</div>
                 <div class="wp-author" v-if="f.author">{{ f.author }}</div>
                 <div class="wp-desc" v-if="f.description">{{ f.description }}</div>
             </div>
@@ -258,6 +258,27 @@ const size = computed(() => sizeFmt(f.value.size))
 const safeWebPageUrl = computed((): string | null => {
     const raw = (f.value.url ?? '').trim()
     return /^https?:\/\//i.test(raw) ? raw : null
+})
+
+const wpSiteLabel = computed((): string | null => {
+    if (f.value.site_name) return f.value.site_name
+    if (f.value.display_url && (f.value.title || f.value.description || f.value.thumb)) {
+        return f.value.display_url
+    }
+    if (!safeWebPageUrl.value) return null
+    try {
+        return new URL(safeWebPageUrl.value).hostname.replace(/^www\./i, '')
+    } catch {
+        return f.value.display_url ?? null
+    }
+})
+
+const wpTitleLabel = computed((): string | null => {
+    if (f.value.title) return f.value.title
+    if (!f.value.description && !f.value.thumb && safeWebPageUrl.value) {
+        return safeWebPageUrl.value
+    }
+    return null
 })
 
 const isLargeWebPage = computed((): boolean => {

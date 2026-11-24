@@ -1195,12 +1195,19 @@ const postIdIndex = computed((): {[index: number]: number} =>
     return Object.fromEntries(posts.value.map((it, i) => [it.id, i]))
 })
 
-function clickReply(id: number)
+async function clickReply(id: number)
 {
     if (replyLoading.value) return
 
-    const list = searchedPosts.value
-    const index = list.findIndex(p => p.id === id)
+    let list = searchedPosts.value
+    let index = list.findIndex(p => p.id === id)
+    if (index < 0 && search.value && postIdIndex.value[id] !== undefined)
+    {
+        search.value = ""
+        await nextTick()
+        list = searchedPosts.value
+        index = list.findIndex(p => p.id === id)
+    }
     if (index < 0) return
 
     // If the target is outside the rendered window, extend the window toward it.

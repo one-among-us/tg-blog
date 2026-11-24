@@ -69,6 +69,12 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
             prefer_large_media: true,
             has_large_media: true,
           },
+          {
+            url: 'https://youtu.be/BLgNIDmk8KI',
+            mime_type: '',
+            media_type: 'web_page',
+            prefer_large_media: true,
+          },
         ],
       },
     ]
@@ -88,6 +94,8 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
     expect(staticHtml).toContain('https://www.youtube.com/watch?v=M8-vje-bq9c')
     expect(staticHtml).toContain('/api/life/media/epochs/1/29_wp_thumb.webp')
     expect(staticHtml).toContain('Demo Track')
+    expect(staticHtml).toContain('https://youtu.be/BLgNIDmk8KI')
+    expect(staticHtml).toContain('youtu.be')
     // No empty .head div when post has no forwarded_from (flush top edge fix)
     expect(staticHtml).not.toContain('class="head unselectable"')
     // Apple emoji image rendered in reaction pills by default
