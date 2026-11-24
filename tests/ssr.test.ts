@@ -58,6 +58,17 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
             mime_type: 'video/mp4',
             media_type: 'video_file',
           },
+          {
+            url: 'https://www.youtube.com/watch?v=M8-vje-bq9c',
+            mime_type: '',
+            media_type: 'web_page',
+            site_name: 'YouTube',
+            title: 'Demo Track',
+            description: 'Preview snippet text',
+            thumb: '../media/epochs/1/29_wp_thumb.webp',
+            prefer_large_media: true,
+            has_large_media: true,
+          },
         ],
       },
     ]
@@ -73,6 +84,10 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
     expect(staticHtml).toContain('type="image/jxl"')
     expect(staticHtml).toContain('/api/life/media/epochs/1/photo_thumb.jxl')
     expect(staticHtml).toContain('Empty images + location + video')
+    expect(staticHtml).toContain('class="web-page is-large"')
+    expect(staticHtml).toContain('https://www.youtube.com/watch?v=M8-vje-bq9c')
+    expect(staticHtml).toContain('/api/life/media/epochs/1/29_wp_thumb.webp')
+    expect(staticHtml).toContain('Demo Track')
     // No empty .head div when post has no forwarded_from (flush top edge fix)
     expect(staticHtml).not.toContain('class="head unselectable"')
     // Apple emoji image rendered in reaction pills by default

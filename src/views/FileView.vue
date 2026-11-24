@@ -83,6 +83,29 @@
             <div class="title">Telegram Story</div>
         </div>
     </div>
+
+    <!-- WebPage Link Preview -->
+    <a class="web-page"
+       v-if="f.media_type === 'web_page' && safeWebPageUrl"
+       :class="{ 'is-large': isLargeWebPage, 'is-small': !isLargeWebPage && !!f.thumb }"
+       :href="safeWebPageUrl"
+       target="_blank"
+       rel="noopener noreferrer">
+        <div class="wp-header">
+            <div class="wp-text">
+                <div class="wp-site" v-if="f.site_name || f.display_url">{{ f.site_name || f.display_url }}</div>
+                <div class="wp-title" v-if="f.title">{{ f.title }}</div>
+                <div class="wp-author" v-if="f.author">{{ f.author }}</div>
+                <div class="wp-desc" v-if="f.description">{{ f.description }}</div>
+            </div>
+            <div class="wp-thumb-small" v-if="f.thumb && !isLargeWebPage">
+                <img :src="f.thumb" :alt="f.title || f.site_name || 'Link preview'" loading="lazy" />
+            </div>
+        </div>
+        <div class="wp-thumb-large" v-if="f.thumb && isLargeWebPage">
+            <img :src="f.thumb" :alt="f.title || f.site_name || 'Link preview'" loading="lazy" />
+        </div>
+    </a>
 </template>
 
 <script lang="ts" setup>
@@ -231,6 +254,17 @@ const fileTitle = computed((): string | undefined =>
 
 const duration = computed(() => durationFmt(f.value.duration))
 const size = computed(() => sizeFmt(f.value.size))
+
+const safeWebPageUrl = computed((): string | null => {
+    const raw = (f.value.url ?? '').trim()
+    return /^https?:\/\//i.test(raw) ? raw : null
+})
+
+const isLargeWebPage = computed((): boolean => {
+    if (f.value.prefer_large_media) return true
+    if (f.value.prefer_small_media) return false
+    return Boolean(f.value.has_large_media)
+})
 </script>
 
 <style lang="sass" scoped>
@@ -343,4 +377,91 @@ const size = computed(() => sizeFmt(f.value.size))
     .file-detail
         color: $color-text-light
         font-size: 0.9em
+
+.web-page
+    display: block
+    margin: 0 20px
+    padding: 8px 12px 9px 11px
+    border-left: 3px solid $color-text-special-dark
+    border-radius: 4px 8px 8px 4px
+    background: rgba(112, 81, 42, 0.06)
+    color: inherit
+    text-decoration: none
+    overflow: hidden
+    transition: background 0.18s ease
+
+    &:hover
+        background: rgba(112, 81, 42, 0.11)
+        text-decoration: none
+
+    .wp-header
+        display: flex
+        align-items: flex-start
+        gap: 10px
+
+    .wp-text
+        flex: 1
+        min-width: 0
+
+    .wp-site
+        color: $color-text-special-dark
+        font-size: 0.85em
+        font-weight: 700
+        line-height: 1.3
+        overflow-wrap: anywhere
+
+    .wp-title
+        color: $color-text-main
+        font-weight: 700
+        font-size: 0.94em
+        line-height: 1.35
+        margin-top: 2px
+        display: -webkit-box
+        -webkit-line-clamp: 2
+        -webkit-box-orient: vertical
+        overflow: hidden
+        overflow-wrap: anywhere
+
+    .wp-author
+        color: $color-text-light
+        font-size: 0.84em
+        margin-top: 1px
+
+    .wp-desc
+        color: $color-text-light
+        font-size: 0.88em
+        line-height: 1.4
+        margin-top: 2px
+        display: -webkit-box
+        -webkit-line-clamp: 3
+        -webkit-box-orient: vertical
+        overflow: hidden
+        overflow-wrap: anywhere
+
+    .wp-thumb-small
+        flex-shrink: 0
+        width: 56px
+        height: 56px
+        border-radius: 6px
+        overflow: hidden
+        background: rgba(112, 81, 42, 0.08)
+
+        img
+            width: 100%
+            height: 100%
+            object-fit: cover
+            display: block
+
+    .wp-thumb-large
+        margin-top: 8px
+        border-radius: 6px
+        overflow: hidden
+        max-height: 300px
+        background: rgba(112, 81, 42, 0.08)
+
+        img
+            width: 100%
+            max-height: 300px
+            object-fit: cover
+            display: block
 </style>

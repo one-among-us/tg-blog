@@ -168,7 +168,7 @@ function clickImg(img: Image, i: number) {
         margin-top: 6px
 
     &.compact
-        :deep(.file), :deep(.sticker)
+        :deep(.file), :deep(.sticker), :deep(.web-page)
             margin-left: 0
             margin-right: 0
 

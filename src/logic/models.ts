@@ -55,6 +55,16 @@ export interface TGFile extends _Media {
   // For giveaway
   quantity?: number
   winner_count?: number
+
+  // For web_page (Telegram link preview)
+  site_name?: string
+  description?: string
+  author?: string
+  display_url?: string
+  web_page_type?: string
+  has_large_media?: boolean
+  prefer_large_media?: boolean
+  prefer_small_media?: boolean
 }
 
 export interface TGPollFile {

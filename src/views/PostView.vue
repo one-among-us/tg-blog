@@ -29,12 +29,19 @@
                 <div class="quote-container" v-if="p.quote && !p.reply">
                     <blockquote v-html="p.quote.text"></blockquote>
                 </div>
+                <PostMediaContent
+                    v-if="p.show_caption_above_media && webPageFiles.length"
+                    :files="webPageFiles"
+                    :has-head="!!(p.reply || p.quote || p.forwarded_from)"
+                    :scale="sizeScale"
+                    :bleed="true"
+                />
                 <div class="text" v-if="p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
                 <PostMediaContent
-                    v-if="p.images?.length || p.files?.length"
+                    v-if="p.images?.length || regularFiles.length"
                     :images="p.images"
-                    :files="p.files"
-                    :has-head="!!(p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && text))"
+                    :files="regularFiles"
+                    :has-head="!!(p.reply || p.quote || p.forwarded_from || (p.show_caption_above_media && (text || webPageFiles.length)))"
                     :interactive="interactive"
                     :poll-state="interaction?.poll ?? null"
                     :poll-voting="pollVoting"
@@ -45,6 +52,13 @@
                     @vote-poll="onVotePoll"
                 />
                 <div class="text" v-if="!p.show_caption_above_media && text" v-html="text" @click="onTextClick"></div>
+                <PostMediaContent
+                    v-if="!p.show_caption_above_media && webPageFiles.length"
+                    :files="webPageFiles"
+                    :has-head="!!(p.reply || p.quote || p.forwarded_from || text || p.images?.length || regularFiles.length)"
+                    :scale="sizeScale"
+                    :bleed="true"
+                />
 
                 <!-- Interactive reactions styled after Telegram Web A ReactionButton.module.scss (no permanent + button) -->
                 <div class="reactions interactive-reactions" v-if="interactive && displayReactions.length">
@@ -163,6 +177,8 @@ const props = defineProps<{
     pollVoting?: boolean
 }>()
 const p = computed(() => props.p)
+const regularFiles = computed(() => (p.value.files ?? []).filter(f => f.media_type !== 'web_page'))
+const webPageFiles = computed(() => (p.value.files ?? []).filter(f => f.media_type === 'web_page'))
 
 const emit = defineEmits<{
     (e: "click-reply", id: number): void
