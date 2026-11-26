@@ -71,22 +71,43 @@ watch(() => props.images, () => {
 })
 
 const dims = computed(() =>
-    props.images.length ? calculateAlbumLayout(props.images, props.maxWidth, props.maxHeight) : null
+    props.images.length
+        ? calculateAlbumLayout(props.images, props.maxWidth, props.maxHeight, props.bleed)
+        : null
 )
 
-const containerStyle = computed(() => {
-    if (!dims.value) return {}
-    const ss = props.scale
+const layoutBox = computed(() => {
+    if (!dims.value) return null
     const dm = dims.value.containerStyle
     const width = dm.width || Math.max(0, ...dims.value.layout.map(l => l.dimensions.x + l.dimensions.width))
     const height = dm.height || Math.max(0, ...dims.value.layout.map(l => l.dimensions.y + l.dimensions.height))
+    return {width, height}
+})
+
+const containerStyle = computed((): StyleValue => {
+    if (!layoutBox.value) return {}
+    const {width, height} = layoutBox.value
+    if (props.bleed) {
+        return width > 0 && height > 0 ? {aspectRatio: `${width} / ${height}`} : {}
+    }
+    const ss = props.scale
     return {width: width * ss + 'px', height: height * ss + 'px'}
 })
 
 function getImageStyle(i: number): StyleValue {
-    if (!dims.value?.layout[i]) return {}
-    const ss = props.scale
+    if (!dims.value?.layout[i] || !layoutBox.value) return {}
     const dm = dims.value.layout[i].dimensions
+    if (props.bleed && layoutBox.value.width > 0 && layoutBox.value.height > 0) {
+        const cw = layoutBox.value.width
+        const ch = layoutBox.value.height
+        return {
+            left: `${(dm.x / cw) * 100}%`,
+            top: `${(dm.y / ch) * 100}%`,
+            width: `${(dm.width / cw) * 100}%`,
+            height: `${(dm.height / ch) * 100}%`,
+        }
+    }
+    const ss = props.scale
     return {
         left: dm.x * ss + 'px',
         top: dm.y * ss + 'px',
@@ -119,7 +140,7 @@ function clickImg(img: Image, i: number) {
 
 <style lang="sass" scoped>
 .images
-    display: flex
+    display: block
     position: relative
 
     .image_container

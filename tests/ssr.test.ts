@@ -85,6 +85,7 @@ describe('TgBlog SSR rendering (pure server environment)', () => {
       })
     )
     expect(staticHtml).toContain('Photo + Original')
+    expect(staticHtml).toContain('aspect-ratio:')
     expect(staticHtml).toContain('2026-11-19 8:00')
     expect(staticHtml).toContain('/api/life/media/epochs/1/photo_thumb.webp')
     expect(staticHtml).toContain('type="image/jxl"')

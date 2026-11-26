@@ -37,6 +37,7 @@ type ILayoutParams = {
   minWidth: number;
   maxHeight: number;
   spacing: number;
+  fillWidth?: boolean;
 };
 export type IAlbumLayout = {
   layout: IMediaLayout[];
@@ -81,7 +82,8 @@ function calculateContainerSize(layout: IMediaLayout[]) {
 export function calculateAlbumLayout(
   album: Image[],
   maxWidth: number,
-  maxHeight: number
+  maxHeight: number,
+  fillWidth = false,
 ): IAlbumLayout {
   const spacing = 2;
   const ratios = album.map(i => i.width / i.height);
@@ -99,6 +101,7 @@ export function calculateAlbumLayout(
     minWidth: 100,
     maxHeight,
     spacing,
+    fillWidth,
   };
 
   if (albumCount === 1) {
@@ -109,7 +112,7 @@ export function calculateAlbumLayout(
         width: maxWidth,
         height: ratio > 1 ? maxHeight / ratio : maxHeight
       },
-      sides: 4
+      sides: AlbumRectPart.Left | AlbumRectPart.Top | AlbumRectPart.Right | AlbumRectPart.Bottom,
     }]
   } else if (albumCount >= 5 || forceCalc) {
     layout = layoutWithComplexLayouter(params);
@@ -370,6 +373,22 @@ function layoutThree(params: ILayoutParams) {
     : layoutThreeTopAndOther(params);
 }
 
+function expandPairWidths(
+  leftWidth: number,
+  rightWidth: number,
+  spacing: number,
+  maxWidth: number,
+  fillWidth?: boolean,
+): { leftWidth: number; rightWidth: number } {
+  const totalWidth = leftWidth + spacing + rightWidth;
+  if (!fillWidth || totalWidth >= maxWidth || leftWidth + rightWidth <= 0) {
+    return { leftWidth, rightWidth };
+  }
+  const available = maxWidth - spacing;
+  const expandedLeft = Math.round((leftWidth / (leftWidth + rightWidth)) * available);
+  return { leftWidth: expandedLeft, rightWidth: available - expandedLeft };
+}
+
 function layoutThreeLeftAndOther(params: ILayoutParams) {
   const {
     maxHeight,
@@ -377,6 +396,7 @@ function layoutThreeLeftAndOther(params: ILayoutParams) {
     ratios,
     maxWidth,
     minWidth,
+    fillWidth,
   } = params;
   const firstHeight = maxHeight;
   const thirdHeight = Math.round(
@@ -386,7 +406,7 @@ function layoutThreeLeftAndOther(params: ILayoutParams) {
     ),
   );
   const secondHeight = firstHeight - thirdHeight - spacing;
-  const rightWidth = Math.max(
+  const rawRightWidth = Math.max(
     minWidth,
     Math.round(
       Math.min(
@@ -398,7 +418,14 @@ function layoutThreeLeftAndOther(params: ILayoutParams) {
       ),
     ),
   );
-  const leftWidth = Math.min(Math.round(firstHeight * ratios[0]), maxWidth - spacing - rightWidth);
+  const rawLeftWidth = Math.min(Math.round(firstHeight * ratios[0]), maxWidth - spacing - rawRightWidth);
+  const { leftWidth, rightWidth } = expandPairWidths(
+    rawLeftWidth,
+    rawRightWidth,
+    spacing,
+    maxWidth,
+    fillWidth,
+  );
 
   return [{
     dimensions: {
@@ -537,14 +564,22 @@ function layoutFourLeftAndOther({
   maxWidth,
   spacing,
   minWidth,
+  fillWidth,
 }: ILayoutParams) {
   const h = maxHeight;
-  const w0 = Math.round(Math.min(h * ratios[0], 0.6 * (maxWidth - spacing)));
+  const rawW0 = Math.round(Math.min(h * ratios[0], 0.6 * (maxWidth - spacing)));
   const w = Math.round((maxHeight - 2 * spacing) / (1 / ratios[1] + 1 / ratios[2] + 1 / ratios[3]));
   const h0 = Math.round(w / ratios[1]);
   const h1 = Math.round(w / ratios[2]);
   const h2 = h - h0 - h1 - 2 * spacing;
-  const w1 = Math.max(minWidth, Math.min(maxWidth - w0 - spacing, w));
+  const rawW1 = Math.max(minWidth, Math.min(maxWidth - rawW0 - spacing, w));
+  const { leftWidth: w0, rightWidth: w1 } = expandPairWidths(
+    rawW0,
+    rawW1,
+    spacing,
+    maxWidth,
+    fillWidth,
+  );
 
   return [{
     dimensions: {

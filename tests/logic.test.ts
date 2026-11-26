@@ -10,6 +10,7 @@ import {
   sanitizeAvatarUrl,
 } from '../src/logic/url'
 import {solveAltchaChallenge} from '../src/logic/altcha'
+import {calculateAlbumLayout} from '../src/logic/webz/calculateAlbumLayout'
 import {
   applyCommentDeleteInList,
   applyOptimisticCommentReactionToggle,
@@ -2124,5 +2125,32 @@ describe('spoilers.ts — inner wrapper normalization for strikethrough stacking
       distinctCombos.add(`${res.avatarUrl}|${res.ringColor}`)
     }
     expect(distinctCombos.size).toBeGreaterThan(20)
+  })
+})
+
+describe('calculateAlbumLayout full-width bleed mode', () => {
+  test('expands portrait 3-photo and 4-photo (e.g. #9642) albums to full maxWidth when fillWidth=true', () => {
+    const portrait4 = Array.from({length: 4}, (_, i) => ({
+      url: `/${i}.webp`,
+      width: 1536,
+      height: 2048,
+    }))
+    const shrink = calculateAlbumLayout(portrait4, 450, 450, false)
+    expect(shrink.containerStyle.width).toBeLessThan(450)
+
+    const filled4 = calculateAlbumLayout(portrait4, 450, 450, true)
+    expect(filled4.containerStyle.width).toBe(450)
+    expect(filled4.layout[0].dimensions.x).toBe(0)
+    expect(filled4.layout[1].dimensions.x + filled4.layout[1].dimensions.width).toBe(450)
+    expect(filled4.layout[3].dimensions.x + filled4.layout[3].dimensions.width).toBe(450)
+
+    const portrait3 = Array.from({length: 3}, (_, i) => ({
+      url: `/p${i}.webp`,
+      width: 1080,
+      height: 1920,
+    }))
+    const filled3 = calculateAlbumLayout(portrait3, 450, 450, true)
+    expect(filled3.containerStyle.width).toBe(450)
+    expect(filled3.layout[1].dimensions.x + filled3.layout[1].dimensions.width).toBe(450)
   })
 })
